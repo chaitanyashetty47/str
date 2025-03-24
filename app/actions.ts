@@ -23,7 +23,10 @@ export const signUpAction = async (formData: FormData) => {
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      //emailRedirectTo: `${origin}/auth/callback`,
+      data: {
+        full_name: 'Aditya Mandan',
+      },
     },
   });
 
@@ -47,13 +50,15 @@ export const signInAction = async (formData: FormData) => {
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
+    
   });
 
   if (error) {
     return encodedRedirect("error", "/sign-in", error.message);
   }
 
-  return redirect("/protected");
+  // return redirect("/protected");
+  return redirect("/");
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {
@@ -132,3 +137,38 @@ export const signOutAction = async () => {
   await supabase.auth.signOut();
   return redirect("/sign-in");
 };
+
+// export const signInWithGoogle = async () => {
+//   const supabase = await createClient();
+//   const origin = (await headers()).get("origin");
+
+//   await supabase.auth.signInWithOAuth({
+//     provider: "google",
+//     options: {
+//       redirectTo: `${origin}/auth/callback`,
+//     },
+//   });
+// };
+export const signInWithGoogle = async () => {
+  const supabase = await createClient();
+  const origin = (await headers()).get("origin");
+  
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  redirect(data.url);
+};
+
+
