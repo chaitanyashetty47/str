@@ -81,8 +81,9 @@ async function getWorkoutPlan(planId: string) {
   }
 }
 
-export default async function WorkoutPlanPage({ params }: { params: { planId: string } }) {
-  const plan = await getWorkoutPlan(params.planId)
+export default async function WorkoutPlanPage({params}: {params: Promise<{ planId: string }>}) {
+  const { planId } = await params
+  const plan = await getWorkoutPlan(planId)
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">

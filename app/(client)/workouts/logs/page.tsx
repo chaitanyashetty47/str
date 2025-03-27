@@ -57,18 +57,19 @@ const mockWorkoutData = {
   },
 }
 
-export default function WorkoutLogPage({
+export default async function WorkoutLogPage({
   searchParams,
 }: {
-  searchParams: { planId: string; week: string; day: string }
+  searchParams: Promise<{ planId: string; week: string; day: string }>
 }) {
   // In a real app, you would fetch this data based on the searchParams
+  const { planId, week, day } = await searchParams;
   const workoutData = mockWorkoutData
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-6">
       <Link
-        href={`/workouts/${searchParams.planId}`}
+        href={`/workouts/${planId}`}
         className="flex items-center text-sm text-muted-foreground hover:text-primary mb-6"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -87,9 +88,9 @@ export default function WorkoutLogPage({
 
       <WorkoutLogger
         workoutData={workoutData}
-        week={Number.parseInt(searchParams.week)}
-        day={Number.parseInt(searchParams.day)}
-        planId={searchParams.planId}
+        week={Number.parseInt(week)}
+        day={Number.parseInt(day)}
+        planId={planId}
       />
     </div>
   )
