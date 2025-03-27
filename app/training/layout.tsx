@@ -47,6 +47,13 @@ const routes = [
     href: "/training/reports",
     color: "text-emerald-500",
   },
+  {
+    label: "Exercises",
+    icon: FileText,
+    href: "/training/exercises",
+    color: "text-red-500",
+  },
+  
 ];
 
 export default function TrainingLayout({

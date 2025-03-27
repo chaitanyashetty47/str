@@ -44,4 +44,5 @@ export interface WorkoutExercise {
   rest_time?: string;
   youtube_link?: string;
   notes?: string;
+  exercise_id?: string;
 } 

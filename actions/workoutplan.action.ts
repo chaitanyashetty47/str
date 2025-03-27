@@ -404,7 +404,7 @@ export async function updatePlanAction(id: string, formData: FormData) {
         if (dayToDelete) {
           // First delete associated exercises
           await supabase
-            .from("exercises")
+            .from("exercises_workout")
             .delete()
             .eq("workout_day_id", dayToDelete.id);
           
@@ -540,7 +540,7 @@ export async function getWorkoutExercises(planId: string, day: number) {
     .eq("day_number", day)
     .single();
 
-    console.log("existingDay", existingDay);
+  console.log("existingDay", existingDay);
     
   if (existingDay) {
     workoutDayId = existingDay.id;
@@ -564,17 +564,17 @@ export async function getWorkoutExercises(planId: string, day: number) {
     workoutDayId = newDay.id;
   }
 
-  // Get exercises for the workout day
-  const { data: exercises, error: exercisesError } = await supabase
-    .from("exercises")
+  // Get exercises for the workout day with join to the exercise table
+  const { data: exerciseWorkouts, error: exercisesError } = await supabase
+    .from("exercises_workout")
     .select(`
       id,
-      name,
       sets,
       reps,
       rest_time,
-      youtube_link,
-      notes
+      notes,
+      exercise_id,
+      exercise:exercise_id(name, youtube_link)
     `)
     .eq("workout_day_id", workoutDayId);
 
@@ -584,12 +584,22 @@ export async function getWorkoutExercises(planId: string, day: number) {
   }
 
   // Transform the data to match the WorkoutExercise type
-  const typedExercises = exercises?.map(exercise => ({
-    ...exercise,
-    rest_time: exercise.rest_time as string | undefined,
-    youtube_link: exercise.youtube_link as string | undefined,
-    notes: exercise.notes as string | undefined
-  })) || [];
+  const typedExercises = exerciseWorkouts?.map(workout => {
+    // Handle potential null/undefined exercise data
+    const exerciseData = workout.exercise || { name: "Unknown Exercise", youtube_link: null };
+    
+    return {
+      id: workout.id,
+      workout_day_id: workoutDayId,
+      name: exerciseData.name,
+      sets: workout.sets,
+      reps: workout.reps,
+      rest_time: workout.rest_time as string | undefined,
+      notes: workout.notes as string | undefined,
+      youtube_link: exerciseData.youtube_link as string | undefined,
+      exercise_id: workout.exercise_id
+    };
+  }) || [];
 
   console.log("typedExercises", typedExercises);
 
@@ -617,6 +627,7 @@ export async function saveExercise(formData: FormData) {
   const restTime = formData.get("restTime")?.toString();
   const youtubeLink = formData.get("youtubeLink")?.toString();
   const notes = formData.get("notes")?.toString();
+  const exercise_id = formData.get("exercise_id")?.toString();
 
   if (!planId || !day || !name || !sets || !reps) {
     return { error: "Required fields missing", success: false };
@@ -648,32 +659,75 @@ export async function saveExercise(formData: FormData) {
   
   const workoutDayId = workoutDay.id;
 
-  // Update or insert the exercise
+  // Check if we have an exercise_id from the form
+  let exerciseDataId = exercise_id;
+  
+  // If no exercise_id provided, find or create one
+  if (!exerciseDataId) {
+    // Find existing exercise in the exercise table
+    const { data: existingExercise } = await supabase
+      .from("exercise")
+      .select("id")
+      .eq("name", name)
+      .eq("trainer_id", user.id)
+      .maybeSingle();
+      
+    if (existingExercise) {
+      exerciseDataId = existingExercise.id;
+      
+      // Update the youtube_link if it was provided and different from existing
+      if (youtubeLink) {
+        await supabase
+          .from("exercise")
+          .update({ youtube_link: youtubeLink })
+          .eq("id", exerciseDataId);
+      }
+    } else {
+      // Create the exercise in the exercise table
+      const { data: newExercise, error: exerciseError } = await supabase
+        .from("exercise")
+        .insert({
+          name,
+          youtube_link: youtubeLink || null,
+          trainer_id: user.id
+        })
+        .select("id")
+        .single();
+        
+      if (exerciseError) {
+        return { error: "Failed to create exercise template", success: false };
+      }
+      
+      exerciseDataId = newExercise.id;
+    }
+  }
+
+  // Update or insert the exercise workout relationship
   let result;
   if (exerciseId) {
-    // Update existing exercise
+    // Update existing exercise workout
     result = await supabase
-      .from("exercises")
+      .from("exercises_workout")
       .update({
-        name,
+        exercise_id: exerciseDataId,
         sets: parseInt(sets),
         reps: parseInt(reps),
         rest_time: restTime,
-        youtube_link: youtubeLink,
         notes,
       })
       .eq("id", exerciseId);
   } else {
-    // Insert new exercise
-    result = await supabase.from("exercises").insert({
-      workout_day_id: workoutDayId,
-      name,
-      sets: parseInt(sets),
-      reps: parseInt(reps),
-      rest_time: restTime,
-      youtube_link: youtubeLink,
-      notes,
-    });
+    // Insert new exercise workout
+    result = await supabase
+      .from("exercises_workout")
+      .insert({
+        workout_day_id: workoutDayId,
+        exercise_id: exerciseDataId,
+        sets: parseInt(sets),
+        reps: parseInt(reps),
+        rest_time: restTime,
+        notes,
+      });
   }
 
   if (result.error) {
@@ -708,8 +762,9 @@ export async function deleteExercise(exerciseId: string, planId: string) {
     return { error: "Unauthorized access to this plan", success: false };
   }
 
+  // Delete the exercise workout reference
   const { error: deleteError } = await supabase
-    .from("exercises")
+    .from("exercises_workout")
     .delete()
     .eq("id", exerciseId);
 
@@ -771,7 +826,7 @@ export async function deletePlanAction(planId: string) {
     const workoutDayIds = workoutDays.map(day => day.id);
     
     const { error: exercisesDeleteError } = await supabase
-      .from("exercises")
+      .from("exercises_workout")
       .delete()
       .in("workout_day_id", workoutDayIds);
 

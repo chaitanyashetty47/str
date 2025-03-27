@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import ExerciseForm from "./exercise-form";
 import { getWorkoutExercises } from "@/actions/workoutplan.action";
 import { WorkoutExercise } from "@/types/workout.types";
-import { Collapsible } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DayTabsProps {
   planId: string;
@@ -26,7 +26,6 @@ export default function DayTabs({ planId, days }: DayTabsProps) {
       setLoading(true);
       try {
         const { data, error } = await getWorkoutExercises(planId, parseInt(activeTab));
-        console.log("Workout Exercises: ", data);
         if (error) {
           console.error("Error fetching exercises:", error);
         } else {
@@ -68,30 +67,34 @@ export default function DayTabs({ planId, days }: DayTabsProps) {
     <TabsTrigger
       key={day}
       value={day.toString()}
-      className="px-4 py-2"
+      className="px-2 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap"
     >
       Day {day}
     </TabsTrigger>
   ));
 
   return (
-    <div className="space-y-6 mt-6">
+    <div className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Daily Workouts</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold">Daily Workouts</h2>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-7 mb-4">{dayTabs}</TabsList>
+        <ScrollArea className="pb-2">
+          <TabsList className="inline-flex h-auto w-auto p-1 mb-4">
+            {dayTabs}
+          </TabsList>
+        </ScrollArea>
         
         {Array.from({ length: days }, (_, i) => i + 1).map((day) => (
           <TabsContent key={day} value={day.toString()} className="space-y-4">
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Day {day} Workout</CardTitle>
                 <CardDescription>
                   Manage exercises for day {day} of the workout plan
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
                 {loading ? (
                   <div className="text-center py-4">Loading exercises...</div>
                 ) : (
@@ -99,16 +102,16 @@ export default function DayTabs({ planId, days }: DayTabsProps) {
                     {exercises.length > 0 ? (
                       <div className="space-y-4">
                         {exercises.map((exercise) => (
-                          <Collapsible key={exercise.id} className="border rounded-md">
-                            <div className="p-4 flex justify-between items-center">
-                              <div>
+                          <div key={exercise.id} className="border rounded-md">
+                            <div className="p-3 sm:p-4 flex flex-col sm:flex-row justify-between gap-3 sm:items-center">
+                              <div className="flex-grow">
                                 <h3 className="font-medium">{exercise.name}</h3>
                                 <p className="text-sm text-muted-foreground">
                                   {exercise.sets} sets × {exercise.reps} reps
                                   {exercise.rest_time ? ` | Rest: ${exercise.rest_time}` : ""}
                                 </p>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 self-end sm:self-auto">
                                 <ExerciseForm
                                   planId={planId}
                                   day={day.toString()}
@@ -119,7 +122,7 @@ export default function DayTabs({ planId, days }: DayTabsProps) {
                                 />
                               </div>
                             </div>
-                          </Collapsible>
+                          </div>
                         ))}
                       </div>
                     ) : (
@@ -140,7 +143,7 @@ export default function DayTabs({ planId, days }: DayTabsProps) {
                     ) : (
                       <Button 
                         onClick={handleAddExercise} 
-                        className="mt-4"
+                        className="mt-4 w-full sm:w-auto"
                       >
                         Add Exercise
                       </Button>

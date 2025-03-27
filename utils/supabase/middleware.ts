@@ -64,9 +64,13 @@ export const updateSession = async (request: NextRequest) => {
       if (userRole === "trainer") {
         return NextResponse.redirect(new URL("/training", request.url));
       }
+
+      if (userRole === "admin") {
+        return NextResponse.redirect(new URL("/admin", request.url));
+      }
       
       // Default redirect for other authenticated users (clients, admin, etc.)
-      return NextResponse.redirect(new URL("/protected", request.url));
+      return NextResponse.redirect(new URL("/home", request.url));
     }
 
     return response;
