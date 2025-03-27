@@ -48,6 +48,7 @@ export default function ExerciseForm({
   const [name, setName] = useState(existingExercise?.name || "");
   const [selectedExerciseId, setSelectedExerciseId] = useState(existingExercise?.exercise_id || "");
   const [sets, setSets] = useState(existingExercise?.sets?.toString() || "3");
+  const [weight, setWeight] = useState(existingExercise?.weight?.toString() || "80");
   const [reps, setReps] = useState(existingExercise?.reps?.toString() || "10");
   const [restTime, setRestTime] = useState(existingExercise?.rest_time || "");
   const [youtubeLink, setYoutubeLink] = useState(existingExercise?.youtube_link || "");
@@ -120,7 +121,7 @@ export default function ExerciseForm({
       formData.append("name", name);
       formData.append("sets", sets);
       formData.append("reps", reps);
-      
+      formData.append("weight", weight);
       if (selectedExerciseId) {
         formData.append("exercise_id", selectedExerciseId);
       }
@@ -272,23 +273,10 @@ export default function ExerciseForm({
           </PopoverContent>
         </Popover>
         
-        <div className="mt-2">
-          <Input
-            id="name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (e.target.value !== name) {
-                setSelectedExerciseId("");
-              }
-            }}
-            placeholder="or type exercise name manually"
-            required
-          />
-        </div>
+       
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="sets">Sets</Label>
           <Input
@@ -308,6 +296,17 @@ export default function ExerciseForm({
             onChange={(e) => setReps(e.target.value)}
             placeholder="e.g., 10 or 8-12"
             required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="weight">Weight</Label>
+          <Input
+            id="weight"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder="e.g., 80-90 kgs"
+            required
+            
           />
         </div>
       </div>

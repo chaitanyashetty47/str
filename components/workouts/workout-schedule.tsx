@@ -10,7 +10,7 @@ type Exercise = {
   name: string
   sets: number
   reps: number
-  // weight: string
+  weight: number
   notes: string
 }
 
@@ -65,7 +65,7 @@ export default function WorkoutSchedule({ workoutDays, planId, week = 1 }: Worko
                     <div className="col-span-2">
                       {exercise.sets} x {exercise.reps}
                     </div>
-                    {/* <div className="col-span-2">{exercise.weight}</div> */}
+                    <div className="col-span-2">{exercise.weight}</div>
                     <div className="col-span-5 text-muted-foreground">{exercise.notes}</div>
                   </div>
                 ))}

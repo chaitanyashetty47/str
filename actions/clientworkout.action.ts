@@ -231,5 +231,161 @@ export async function getAllWorkoutPlanForClient(filters?: WorkoutPlanFilters) {
   return { data: processedPlans, error: null };
 }
 
+/**
+ * Fetches comprehensive details for a specific workout plan, including:
+ * - Basic plan information
+ * - Workout days with associated exercises
+ * - Weekly progress tracking
+ * - Completion statistics
+ * 
+ * @param planId The unique identifier of the workout plan
+ * @returns Full workout plan details or redirects on error
+ */
+export async function getWorkoutPlanDetails(planId: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return encodedRedirect("error", "/sign-in", "Session expired");
+  }
+
+  // Fetch the workout plan with related trainer data
+  const { data: workoutPlan, error: planError } = await supabase
+    .from("workout_plans")
+    .select(`
+      id,
+      name,
+      description,
+      category,
+      days,
+      duration_weeks,
+      start_date,
+      end_date,
+      trainer:users!workout_plans_trainer_id_fkey (
+        id,
+        name,
+        email
+      )
+    `)
+    .eq("id", planId)
+    .single();
+
+  if (planError) {
+    console.error("Error fetching workout plan:", planError);
+    return encodedRedirect("error", "/workouts", "Failed to fetch workout plan");
+  }
+
+  // Fetch all workout days with their exercises
+  const { data: workoutDays, error: daysError } = await supabase
+    .from("workout_days")
+    .select(`
+      id,
+      day_number,
+      workout_type,
+      exercises:exercises_workout(
+        id,
+        sets,
+        reps,
+        weight,
+        notes,
+        rest_time,
+        exercise:exercise(
+          id,
+          name,
+          youtube_link
+        )
+      )
+    `)
+    .eq("plan_id", planId)
+    .order("day_number", { ascending: true });
+
+  if (daysError) {
+    console.error("Error fetching workout days:", daysError);
+    return encodedRedirect("error", "/workouts", "Failed to fetch workout details");
+  }
+
+  // Format workout days and exercises for the UI
+  const formattedWorkoutDays = workoutDays.map(day => ({
+    id: day.id,
+    day_number: day.day_number,
+    workout_type: WORKOUT_TYPES[day.workout_type as WorkoutType] || String(day.workout_type),
+    exercises: day.exercises.map(ex => ({
+      id: ex.id,
+      name: ex.exercise.name,
+      sets: ex.sets,
+      reps: ex.reps,
+      weight: ex.weight,
+      notes: ex.notes || "",
+    }))
+  }));
+
+  // Fetch weekly progress data
+  const { data: weeklyData, error: weeklyError } = await supabase
+    .from("workout_plan_weeks")
+    .select("id, week_number, status, start_date, end_date")
+    .eq("plan_id", planId)
+    .order("week_number", { ascending: true });
+
+  if (weeklyError) {
+    console.error("Error fetching weekly progress:", weeklyError);
+    // Continue execution even if weekly data fails
+  }
+
+  // Calculate overall progress based on today's date relative to plan dates
+  const now = new Date();
+  const startDate = new Date(workoutPlan.start_date);
+  const endDate = new Date(workoutPlan.end_date);
+  
+  // Calculate total duration and elapsed time in milliseconds
+  const totalDuration = endDate.getTime() - startDate.getTime();
+  const elapsedTime = now.getTime() - startDate.getTime();
+  
+  // Calculate progress percentage (0-100)
+  const progressPercentage = Math.min(Math.max(Math.round((elapsedTime / totalDuration) * 100), 0), 100);
+
+  // Calculate completion rate based on logged workouts (placeholder logic)
+  // In a real implementation, you would count completed workouts vs. total workouts
+  // const { data: completedWorkouts, error: completedError } = await supabase
+  //   .from("user_workout_logs")
+  //   .select("id")
+  //   .eq("plan_week_id", weeklyData?.[0]?.id || '')
+  //   .count();
+
+  // Format weekly progress for UI
+  const weeks = weeklyData?.map(week => {
+    const weekStartDate = new Date(week.start_date);
+    const weekEndDate = new Date(week.end_date);
+    let status: "completed" | "active" | "upcoming" = "upcoming";
+    
+    if (now > weekEndDate) {
+      status = "completed";
+    } else if (now >= weekStartDate && now <= weekEndDate) {
+      status = "active";
+    }
+    
+    return {
+      week_number: week.week_number,
+      status: week.status || status,
+    };
+  }) || [];
+
+  // Return the complete workout plan details
+  return {
+    error: null,
+    data: {
+      ...workoutPlan,
+      workout_days: formattedWorkoutDays,
+      weeks: weeks,
+      progress: progressPercentage,
+      completion_rate: 75, // In a real app, calculate this based on completed workouts
+      days_per_week: workoutPlan.days || formattedWorkoutDays.length,
+    }
+  };
+}
+
 
 

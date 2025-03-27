@@ -5,85 +5,27 @@ import WorkoutSchedule from "@/components/workouts/workout-schedule"
 import WorkoutTabs from "@/components/workouts/workout-tabs"
 import StatsCards from "@/components/workouts/stats-cards"
 import LogTodayButton from "@/components/workouts/log-today-button"
-
-async function getWorkoutPlan(planId: string) {
-  // In a real app, this would fetch from your database
-  return {
-    id: planId,
-    name: "Strength Training Fundamentals",
-    category: "Strength",
-    description:
-      "Build foundational strength with compound movements and progressive overload techniques. This program focuses on the major muscle groups with an emphasis on proper form and gradual weight increases.",
-    trainer: {
-      id: "trainer-1",
-      name: "Alex Johnson",
-    },
-    duration_weeks: 8,
-    start_date: "2023-05-15",
-    end_date: "2023-07-10",
-    progress: 75,
-    days_per_week: 4,
-    completion_rate: 75,
-    weeks: Array.from({ length: 8 }, (_, i) => ({
-      week_number: i + 1,
-      status: i < 5 ? "completed" : i === 5 ? "active" : "upcoming",
-    })),
-    workout_days: [
-      {
-        id: "day-1",
-        day_number: 1,
-        workout_type: "Lower Body Focus",
-        exercises: Array.from({ length: 4 }, (_, i) => ({
-          id: `ex-${i + 1}`,
-          name: ["Barbell Squats", "Romanian Deadlifts", "Leg Press", "Calf Raises"][i],
-          sets: 4,
-          reps: 10,
-          notes: "Focus on proper form and controlled movement",
-        })),
-      },
-      {
-        id: "day-2",
-        day_number: 2,
-        workout_type: "Upper Body Push",
-        exercises: Array.from({ length: 4 }, (_, i) => ({
-          id: `ex-${i + 5}`,
-          name: ["Bench Press", "Overhead Press", "Incline Dumbbell Press", "Tricep Pushdowns"][i],
-          sets: 4,
-          reps: 10,
-          notes: "Maintain tension throughout the movement",
-        })),
-      },
-      {
-        id: "day-3",
-        day_number: 3,
-        workout_type: "Upper Body Pull",
-        exercises: Array.from({ length: 4 }, (_, i) => ({
-          id: `ex-${i + 9}`,
-          name: ["Pull-ups", "Barbell Rows", "Face Pulls", "Bicep Curls"][i],
-          sets: 4,
-          reps: 10,
-          notes: "Focus on engaging the back muscles",
-        })),
-      },
-      {
-        id: "day-4",
-        day_number: 4,
-        workout_type: "Full Body + Core",
-        exercises: Array.from({ length: 4 }, (_, i) => ({
-          id: `ex-${i + 13}`,
-          name: ["Deadlifts", "Push Press", "Plank", "Russian Twists"][i],
-          sets: 4,
-          reps: 10,
-          notes: "Maintain core engagement throughout",
-        })),
-      },
-    ],
-  }
-}
+import { getWorkoutPlanDetails } from "@/actions/clientworkout.action"
+import { redirect } from "next/navigation"
 
 export default async function WorkoutPlanPage({params}: {params: Promise<{ planId: string }>}) {
   const { planId } = await params
-  const plan = await getWorkoutPlan(planId)
+  
+  // Get real workout plan data from the server action
+  const result = await getWorkoutPlanDetails(planId)
+  
+  // If result is a Next.js Redirect object returned from encodedRedirect
+  if (result && typeof result === 'object' && 'type' in result && result.type === 'redirect') {
+    // Return the redirect object to let Next.js handle it
+    return result
+  }
+  
+  // Handle other error responses
+  if (result.error) {
+    throw new Error(result.error)
+  }
+  
+  const plan = result.data
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -179,9 +121,9 @@ export default async function WorkoutPlanPage({params}: {params: Promise<{ planI
 
           <WorkoutSchedule workoutDays={plan.workout_days} />
 
-        <div className="mt-8 flex justify-center">
+        {/* <div className="mt-8 flex justify-center">
           <LogTodayButton workoutDays={plan.workout_days} />
-        </div>
+        </div> */}
 
         <StatsCards
           programLength={plan.duration_weeks}

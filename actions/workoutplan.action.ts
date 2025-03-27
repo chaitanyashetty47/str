@@ -571,6 +571,7 @@ export async function getWorkoutExercises(planId: string, day: number) {
       id,
       sets,
       reps,
+      weight,
       rest_time,
       notes,
       exercise_id,
@@ -594,6 +595,7 @@ export async function getWorkoutExercises(planId: string, day: number) {
       name: exerciseData.name,
       sets: workout.sets,
       reps: workout.reps,
+      weight: workout.weight,
       rest_time: workout.rest_time as string | undefined,
       notes: workout.notes as string | undefined,
       youtube_link: exerciseData.youtube_link as string | undefined,
@@ -624,12 +626,13 @@ export async function saveExercise(formData: FormData) {
   const name = formData.get("name")?.toString();
   const sets = formData.get("sets")?.toString();
   const reps = formData.get("reps")?.toString();
+  const weight = formData.get("weight")?.toString();
   const restTime = formData.get("restTime")?.toString();
   const youtubeLink = formData.get("youtubeLink")?.toString();
   const notes = formData.get("notes")?.toString();
   const exercise_id = formData.get("exercise_id")?.toString();
 
-  if (!planId || !day || !name || !sets || !reps) {
+  if (!planId || !day || !name || !sets || !reps || !weight) {
     return { error: "Required fields missing", success: false };
   }
 
@@ -712,6 +715,7 @@ export async function saveExercise(formData: FormData) {
         exercise_id: exerciseDataId,
         sets: parseInt(sets),
         reps: parseInt(reps),
+        weight: parseInt(weight),
         rest_time: restTime,
         notes,
       })
@@ -725,6 +729,7 @@ export async function saveExercise(formData: FormData) {
         exercise_id: exerciseDataId,
         sets: parseInt(sets),
         reps: parseInt(reps),
+        weight: parseInt(weight),
         rest_time: restTime,
         notes,
       });

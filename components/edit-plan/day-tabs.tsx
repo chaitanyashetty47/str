@@ -108,6 +108,7 @@ export default function DayTabs({ planId, days }: DayTabsProps) {
                                 <h3 className="font-medium">{exercise.name}</h3>
                                 <p className="text-sm text-muted-foreground">
                                   {exercise.sets} sets × {exercise.reps} reps
+                                  {exercise.weight ? ` | Weight: ${exercise.weight}` : ""}
                                   {exercise.rest_time ? ` | Rest: ${exercise.rest_time}` : ""}
                                 </p>
                               </div>

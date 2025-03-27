@@ -40,6 +40,7 @@ export interface WorkoutExercise {
   day?: number;
   name: string;
   sets: number;
+  weight: number;
   reps: string | number;
   rest_time?: string;
   youtube_link?: string;
