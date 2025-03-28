@@ -11,7 +11,8 @@ type Exercise = {
   sets: number
   reps: number
   weight: number
-  notes: string
+  notes: string | null
+  youtube_link?: string | null
 }
 
 type WorkoutDay = {

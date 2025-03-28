@@ -119,7 +119,7 @@ export default async function WorkoutPlanPage({params}: {params: Promise<{ planI
 
         <WorkoutTabs />
 
-          <WorkoutSchedule workoutDays={plan.workout_days} />
+          <WorkoutSchedule workoutDays={plan.workout_days} planId={planId} />
 
         {/* <div className="mt-8 flex justify-center">
           <LogTodayButton workoutDays={plan.workout_days} />
@@ -134,4 +134,3 @@ export default async function WorkoutPlanPage({params}: {params: Promise<{ planI
     </div>
   )
 }
-

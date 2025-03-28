@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "sonner";
 import { cn } from "@/lib/utils";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -58,6 +59,7 @@ export default function RootLayout({
             </div>
           </main>
           <Toaster />
+          <SonnerToaster position="top-right" />
         </ThemeProvider>
       </body>
     </html>

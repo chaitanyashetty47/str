@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+// import { redirect } from "next/navigation";
 import { encodedRedirect } from "@/utils/utils";
 
 interface WorkoutProgress {
@@ -312,14 +312,15 @@ export async function getWorkoutPlanDetails(planId: string) {
   const formattedWorkoutDays = workoutDays.map(day => ({
     id: day.id,
     day_number: day.day_number,
-    workout_type: WORKOUT_TYPES[day.workout_type as WorkoutType] || String(day.workout_type),
+    workout_type: WORKOUT_TYPES[day.workout_type as WorkoutType] || day.workout_type,
     exercises: day.exercises.map(ex => ({
       id: ex.id,
       name: ex.exercise.name,
       sets: ex.sets,
       reps: ex.reps,
+      notes: ex.notes,
       weight: ex.weight,
-      notes: ex.notes || "",
+      youtube_link: ex.exercise.youtube_link,
     }))
   }));
 
@@ -385,6 +386,319 @@ export async function getWorkoutPlanDetails(planId: string) {
       days_per_week: workoutPlan.days || formattedWorkoutDays.length,
     }
   };
+}
+
+/**
+ * Fetches workout details for a specific day and week to be logged by the user
+ * - Gets exercise details including programmed sets, reps, and weights
+ * - Fetches previous logs if they exist for this workout/day
+ * 
+ * @param planId Workout plan ID 
+ * @param dayNumber Day number in the workout plan
+ * @param weekNumber Week number in the workout plan
+ * @returns Workout details with exercise information
+ */
+export async function getWorkoutDayForLogging(planId: string, dayNumber: number, weekNumber: number) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return encodedRedirect("error", "/sign-in", "Session expired");
+  }
+
+  // Get the workout plan to verify ownership
+  const { data: workoutPlan, error: planError } = await supabase
+    .from("workout_plans")
+    .select("id, name, description, category, duration_weeks")
+    .eq("id", planId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (planError) {
+    console.error("Error fetching workout plan:", planError);
+    return encodedRedirect("error", "/workouts", "Failed to fetch workout plan");
+  }
+
+  // Get the workout day with exercises
+  const { data: workoutDay, error: dayError } = await supabase
+    .from("workout_days")
+    .select(`
+      id,
+      day_number,
+      workout_type,
+      exercises:exercises_workout(
+        id,
+        sets,
+        reps,
+        weight,
+        notes,
+        rest_time,
+        exercise:exercise(
+          id,
+          name,
+          youtube_link
+        )
+      )
+    `)
+    .eq("plan_id", planId)
+    .eq("day_number", dayNumber)
+    .single();
+
+  if (dayError) {
+    console.error("Error fetching workout day:", dayError);
+    return encodedRedirect("error", "/workouts", "Failed to fetch workout details");
+  }
+
+  // Check if user has previously logged this workout
+  const { data: previousLogs, error: logsError } = await supabase
+    .from("user_workout_logs")
+    .select(`
+      id,
+      date_logged,
+      exercise_id,
+      workout_log_sets (
+        id,
+        set_number,
+        weight,
+        reps
+      )
+    `)
+    .eq("user_id", user.id)
+    .eq("workout_day_id", workoutDay.id)
+    .eq("week_number", weekNumber)
+    .order("date_logged", { ascending: false });
+
+  // Ensure previousLogs is treated as an array
+  const logData = Array.isArray(previousLogs) ? previousLogs : [];
+  const hasLogs = logData.length > 0;
+  
+  // Create a map of exercise IDs to their logged sets for easier access
+  const exerciseLogMap: Record<string, Array<{id: string, set_number: number, weight: number, reps: number}>> = {};
+  
+  if (hasLogs) {
+    // Group log sets by exercise_id
+    logData.forEach(log => {
+      if (log.exercise_id && log.workout_log_sets) {
+        if (!exerciseLogMap[log.exercise_id]) {
+          exerciseLogMap[log.exercise_id] = [];
+        }
+        // Add all sets from this log to the exercise's sets array
+        exerciseLogMap[log.exercise_id].push(...log.workout_log_sets);
+      }
+    });
+  }
+
+  // Format exercises for UI
+  const formattedExercises = workoutDay.exercises.map(ex => {
+    // Get previously logged sets for this exercise if they exist
+    const previousSets = exerciseLogMap[ex.id] || [];
+    
+    // Sort sets by set number
+    previousSets.sort((a, b) => a.set_number - b.set_number);
+
+    return {
+      id: ex.id,
+      name: ex.exercise.name,
+      programmedSets: ex.sets,
+      programmedReps: ex.reps,
+      programmedWeight: ex.weight || 0,
+      notes: ex.notes,
+      youtube_link: ex.exercise.youtube_link,
+      // Include previous logged data if available
+      previousSets: previousSets.length > 0 ? previousSets : null,
+      // Include log IDs for each exercise to use when updating
+      logId: hasLogs ? logData.find(log => log.exercise_id === ex.id)?.id : null
+    };
+  });
+
+  return {
+    error: null,
+    data: {
+      planId,
+      workoutPlan: {
+        id: workoutPlan.id,
+        name: workoutPlan.name,
+        description: workoutPlan.description,
+        category: workoutPlan.category,
+        durationWeeks: workoutPlan.duration_weeks
+      },
+      workoutDay: {
+        id: workoutDay.id,
+        dayNumber: workoutDay.day_number,
+        workoutType: WORKOUT_TYPES[workoutDay.workout_type as WorkoutType] || workoutDay.workout_type,
+        exercises: formattedExercises,
+      },
+      weekNumber,
+      hasPreviousLog: hasLogs,
+      previousLogDate: hasLogs
+        ? new Date(logData[0].date_logged).toLocaleDateString() 
+        : null
+    }
+  };
+}
+
+/**
+ * Interface for logged set data
+ */
+interface LoggedSet {
+  setNumber: number;
+  weight: number;
+  reps: number;
+  setId?: string; // Optional ID for updating existing sets
+}
+
+/**
+ * Interface for logged exercise data
+ */
+interface LoggedExercise {
+  exerciseId: string;
+  sets: LoggedSet[];
+  logId?: string; // Optional ID for updating existing log
+}
+
+/**
+ * Logs a completed workout with all sets for each exercise
+ * - Creates entries in user_workout_logs and workout_log_sets tables
+ * - Updates existing entries if logId or setId is provided
+ * - PR tracking is handled by database trigger
+ * 
+ * @param planId Workout plan ID
+ * @param dayId Workout day ID 
+ * @param weekNumber Week number being logged
+ * @param exercises Array of exercises with their sets data
+ * @returns Success status or error
+ */
+export async function logWorkoutCompletion(
+  planId: string,
+  dayId: string,
+  weekNumber: number,
+  exercises: LoggedExercise[]
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Session expired", success: false };
+  }
+
+  // Start a transaction to ensure all records are created together
+  try {
+    // 1. Get plan week ID if it exists
+    const { data: planWeek } = await supabase
+      .from("workout_plan_weeks")
+      .select("id")
+      .eq("plan_id", planId)
+      .eq("week_number", weekNumber)
+      .single();
+      
+    const planWeekId = planWeek?.id || null;
+    console.log("planWeekId", planWeekId);
+
+    // 2. Process each exercise
+    for (const exercise of exercises) {
+      console.log("Processing exercise:", exercise.exerciseId);
+      
+      let logId = exercise.logId;
+      
+      // If no existing log ID, create a new log entry
+      if (!logId) {
+        console.log("Creating new workout log entry");
+        const { data: logEntry, error: logError } = await supabase
+          .from("user_workout_logs")
+          .insert({
+            user_id: user.id,
+            exercise_id: exercise.exerciseId,
+            workout_day_id: dayId,
+            plan_week_id: planWeekId,
+            week_number: weekNumber,
+            date_logged: new Date().toISOString(),
+            completed_sets: exercise.sets.length,
+            completed_reps: exercise.sets.reduce((total, set) => total + set.reps, 0),
+            weight_used: Math.max(...exercise.sets.map(set => set.weight))
+          })
+          .select("id")
+          .single();
+
+        if (logError) {
+          console.error("Error creating workout log:", logError);
+          return { error: "Failed to log workout", success: false };
+        }
+        
+        if (!logEntry || !logEntry.id) {
+          console.error("No log entry ID was returned");
+          return { error: "Failed to create workout log record", success: false };
+        }
+        
+        logId = logEntry.id;
+        console.log("Created log entry:", logId);
+      } else {
+        // Update existing log
+        console.log("Updating existing workout log:", logId);
+        const { error: updateError } = await supabase
+          .from("user_workout_logs")
+          .update({
+            completed_sets: exercise.sets.length,
+            completed_reps: exercise.sets.reduce((total, set) => total + set.reps, 0),
+            weight_used: Math.max(...exercise.sets.map(set => set.weight)),
+            date_logged: new Date().toISOString(), // Update the timestamp
+          })
+          .eq("id", logId);
+          
+        if (updateError) {
+          console.error("Error updating workout log:", updateError);
+          return { error: "Failed to update workout log", success: false };
+        }
+      }
+
+      // Process each set
+      for (const set of exercise.sets) {
+        if (set.setId) {
+          // Update existing set
+          console.log(`Updating set ${set.setNumber} with ID ${set.setId}`);
+          const { error: updateError } = await supabase
+            .from("workout_log_sets")
+            .update({
+              weight: Math.max(set.weight, 0.1), // Ensure weight > 0
+              reps: Math.max(set.reps, 1),      // Ensure reps > 0
+            })
+            .eq("id", set.setId);
+            
+          if (updateError) {
+            console.error(`Error updating set ${set.setNumber}:`, updateError);
+            return { error: `Failed to update set ${set.setNumber}`, success: false };
+          }
+        } else {
+          // Create new set
+          const { error: insertError } = await supabase
+            .from("workout_log_sets")
+            .insert({
+              log_id: logId,
+              set_number: set.setNumber,
+              weight: Math.max(set.weight, 0.1), // Ensure weight > 0
+              reps: Math.max(set.reps, 1)        // Ensure reps > 0
+            });
+            
+          if (insertError) {
+            console.error(`Error creating set ${set.setNumber}:`, insertError);
+            return { error: `Failed to log set ${set.setNumber}`, success: false };
+          }
+        }
+      }
+    }
+
+    return { success: true, error: null };
+  } catch (error) {
+    console.error("Error in workout logging transaction:", error);
+    return { error: "An unexpected error occurred", success: false };
+  }
 }
 
 
