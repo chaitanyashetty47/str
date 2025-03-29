@@ -1,6 +1,4 @@
-"use client";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -11,58 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LineChart,  Target, Award } from "lucide-react";
+import { LineChart, Target, Award, ExternalLink } from "lucide-react";
+import { getClientsProgress } from "@/actions/trainer.action";
+import Link from "next/link";
 
-const clientProgress = [
-  {
-    name: "Alex Johnson",
-    plan: "Strength Training",
-    progress: 75,
-    status: "On Track",
-    metrics: {
-      attendance: 90,
-      goalCompletion: 85,
-      improvement: "+12%",
-    },
-    recentMilestones: [
-      "Completed 20 sessions",
-      "Achieved weight goal",
-      "New personal best in deadlift",
-    ],
-  },
-  {
-    name: "Maria Garcia",
-    plan: "Weight Loss Program",
-    progress: 45,
-    status: "Behind Schedule",
-    metrics: {
-      attendance: 60,
-      goalCompletion: 45,
-      improvement: "-5%",
-    },
-    recentMilestones: [
-      "Completed 10 sessions",
-      "Started nutrition plan",
-    ],
-  },
-  {
-    name: "Sam Wilson",
-    plan: "HIIT Training",
-    progress: 95,
-    status: "Exceeding Goals",
-    metrics: {
-      attendance: 95,
-      goalCompletion: 100,
-      improvement: "+20%",
-    },
-    recentMilestones: [
-      "Completed program",
-      "Achieved all targets",
-      "Ready for advanced program",
-    ],
-  },
-];
-
+// Helper functions for UI display
 const getStatusColor = (status: string) => {
   switch (status) {
     case "On Track":
@@ -83,7 +34,33 @@ const getProgressColor = (progress: number) => {
   return "bg-red-500";
 };
 
-export default function ClientProgressPage() {
+export default async function ClientProgressPage() {
+  const { data: clientProgress, error } = await getClientsProgress();
+  
+  // Handle potential errors
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="text-center space-y-4">
+          <h3 className="text-xl font-medium">Error loading client progress</h3>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Handle empty client list
+  if (!clientProgress || clientProgress.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="text-center space-y-4">
+          <h3 className="text-xl font-medium">No clients found</h3>
+          <p className="text-muted-foreground">You currently have no active clients with workout plans.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -96,8 +73,8 @@ export default function ClientProgressPage() {
             <SelectContent>
               <SelectItem value="all">All Programs</SelectItem>
               <SelectItem value="strength">Strength Training</SelectItem>
-              <SelectItem value="weight-loss">Weight Loss</SelectItem>
-              <SelectItem value="hiit">HIIT Training</SelectItem>
+              <SelectItem value="hypertrophy">Hypertrophy</SelectItem>
+              <SelectItem value="endurance">Endurance</SelectItem>
             </SelectContent>
           </Select>
           <Button>
@@ -109,7 +86,7 @@ export default function ClientProgressPage() {
 
       <div className="grid gap-6">
         {clientProgress.map((client) => (
-          <Card key={client.name}>
+          <Card key={client.id}>
             <CardContent className="p-6">
               <div className="grid gap-6 md:grid-cols-4">
                 {/* Client Info */}
@@ -178,6 +155,12 @@ export default function ClientProgressPage() {
                       </li>
                     ))}
                   </ul>
+                  <Link 
+                    href={`/training/progress/logs/${client.planId}`}
+                    className="inline-flex items-center gap-1 text-sm font-medium mt-4 text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    View Detailed Progress <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
               </div>
             </CardContent>

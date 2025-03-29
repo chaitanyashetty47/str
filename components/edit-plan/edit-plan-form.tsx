@@ -19,6 +19,18 @@ import { useRouter } from "next/navigation";
 import { TrainerClient } from "@/types/trainerclients.types";
 import { WorkoutPlan } from "@/types/workout.types";
 import { Pencil } from "lucide-react";
+import { Database } from "@/utils/supabase/types";
+
+// Import workout category enum
+type WorkoutCategory = Database["public"]["Enums"]["workout_category"];
+
+// Define workout categories for the dropdown
+const WORKOUT_CATEGORIES: Record<WorkoutCategory, string> = {
+  hypertrophy: "Hypertrophy",
+  strength: "Strength",
+  deload: "Deload",
+  endurance: "Endurance"
+};
 
 interface EditPlanFormProps {
   plan: WorkoutPlan;
@@ -178,6 +190,22 @@ export function EditPlanForm({ plan, trainerClients }: EditPlanFormProps) {
               disabled={!isEditing}
               className="border-2"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category">Workout Category</Label>
+            <Select name="category" defaultValue={plan.category} disabled={!isEditing}>
+              <SelectTrigger className="border-2">
+                <SelectValue placeholder="Select workout category" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(WORKOUT_CATEGORIES).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

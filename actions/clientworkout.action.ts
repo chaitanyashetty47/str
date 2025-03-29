@@ -348,13 +348,21 @@ export async function getWorkoutPlanDetails(planId: string) {
   // Calculate progress percentage (0-100)
   const progressPercentage = Math.min(Math.max(Math.round((elapsedTime / totalDuration) * 100), 0), 100);
 
-  // Calculate completion rate based on logged workouts (placeholder logic)
-  // In a real implementation, you would count completed workouts vs. total workouts
-  // const { data: completedWorkouts, error: completedError } = await supabase
-  //   .from("user_workout_logs")
-  //   .select("id")
-  //   .eq("plan_week_id", weeklyData?.[0]?.id || '')
-  //   .count();
+  // Get completed workouts from workout_day_completion table
+  const { data: completedWorkouts, error: completionError } = await supabase
+    .from("workout_day_completion")
+    .select("id", { count: 'exact' })
+    .eq("plan_id", planId)
+    .eq("user_id", user.id);
+
+  if (completionError) {
+    console.error("Error fetching completion data:", completionError);
+  }
+
+  // Calculate completion rate based on completed workouts vs total expected workouts
+  const totalExpectedWorkouts = (workoutPlan.days || 0) * workoutPlan.duration_weeks;
+  const completedCount = completedWorkouts?.length || 0;
+  const completionRate = Math.round((completedCount / totalExpectedWorkouts) * 100) || 0;
 
   // Format weekly progress for UI
   const weeks = weeklyData?.map(week => {
@@ -382,7 +390,7 @@ export async function getWorkoutPlanDetails(planId: string) {
       workout_days: formattedWorkoutDays,
       weeks: weeks,
       progress: progressPercentage,
-      completion_rate: 75, // In a real app, calculate this based on completed workouts
+      completion_rate: completionRate,
       days_per_week: workoutPlan.days || formattedWorkoutDays.length,
     }
   };
@@ -690,6 +698,72 @@ export async function logWorkoutCompletion(
             console.error(`Error creating set ${set.setNumber}:`, insertError);
             return { error: `Failed to log set ${set.setNumber}`, success: false };
           }
+        }
+      }
+    }
+
+    // 3. Check if all exercises for this workout day have been logged
+    const { data: workoutDayExercises } = await supabase
+      .from("exercises_workout")
+      .select("id")
+      .eq("workout_day_id", dayId);
+
+    const { data: existingLogs } = await supabase
+      .from("user_workout_logs")
+      .select("exercise_id")
+      .eq("workout_day_id", dayId)
+      .eq("week_number", weekNumber)
+      .eq("user_id", user.id);
+
+    // Compare the number of unique exercise IDs that have been logged with the total count
+    const loggedExerciseIds = existingLogs 
+      ? Array.from(new Set(existingLogs.map(log => log.exercise_id))) 
+      : [];
+    const allExercisesLogged = loggedExerciseIds.length === workoutDayExercises?.length;
+
+    // 4. If all exercises are logged, mark the day as completed
+    if (allExercisesLogged) {
+      console.log("All exercises logged, marking day as completed");
+      
+      // Check if a completion record already exists
+      const { data: existingCompletion, error: checkError } = await supabase
+        .from("workout_day_completion")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("plan_id", planId)
+        .eq("workout_day_id", dayId)
+        .eq("week_number", weekNumber)
+        .maybeSingle();
+        
+      if (checkError) {
+        console.error("Error checking for existing completion record:", checkError);
+      }
+      
+      if (existingCompletion) {
+        // Update the existing completion record's timestamp
+        const { error: updateError } = await supabase
+          .from("workout_day_completion")
+          .update({ completed_at: new Date().toISOString() })
+          .eq("id", existingCompletion.id);
+          
+        if (updateError) {
+          console.error("Error updating workout completion record:", updateError);
+        }
+      } else {
+        // Create a new completion record
+        const { error: completionError } = await supabase
+          .from("workout_day_completion")
+          .insert({
+            user_id: user.id,
+            plan_id: planId,
+            workout_day_id: dayId,
+            week_number: weekNumber,
+            completed_at: new Date().toISOString()
+          });
+          
+        if (completionError) {
+          console.error("Error marking workout as completed:", completionError);
+          // Continue even if this fails, as the exercise logs were successful
         }
       }
     }

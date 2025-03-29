@@ -20,6 +20,20 @@ import { createPlanAction } from "@/actions/workoutplan.action";
 import { format, addDays, nextMonday } from "date-fns";
 import { DatePicker } from "./date-picker";
 import { useRouter } from "next/navigation";
+import { Database } from "@/utils/supabase/types";
+
+// Import workout category enum
+type WorkoutCategory = Database["public"]["Enums"]["workout_category"];
+
+// Define workout categories for the dropdown
+const WORKOUT_CATEGORIES: Record<WorkoutCategory, string> = {
+  hypertrophy: "Hypertrophy",
+  strength: "Strength",
+  deload: "Deload",
+  endurance: "Endurance"
+};
+
+type WorkoutType = Database["public"]["Enums"]["workout_type"];
 
 interface CreatePlanDialogProps {
   trainerClients: any[];
@@ -159,6 +173,22 @@ export function CreatePlanDialog({ trainerClients, label = "Create New Plan" }: 
                 onChange={(e) => handleDurationChange(e.target.value)}
                 required
               />
+            </div>
+
+            <div>
+              <Label htmlFor="category">Workout Category</Label>
+              <Select name="category" defaultValue="hypertrophy">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select workout category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(WORKOUT_CATEGORIES).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

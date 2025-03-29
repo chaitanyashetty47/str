@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { encodedRedirect } from "@/utils/utils";
 import { WorkoutPlan, WorkoutPlanFilters } from "@/types/workout.types";
 import { TrainerClient } from "@/types/trainerclients.types";
+import { Database } from "@/utils/supabase/types";
 
+// Import workout category enum
+type WorkoutCategory = Database["public"]["Enums"]["workout_category"];
 
 export async function getWorkoutPlans(filters?: WorkoutPlanFilters) {
   const supabase = await createClient();
@@ -96,6 +99,7 @@ export async function createPlanAction(formData: FormData) {
   const duration = formData.get("duration")?.toString();
   const description = formData.get("description")?.toString();
   const startDateStr = formData.get("startDate")?.toString();
+  const category = formData.get("category")?.toString() as WorkoutCategory || "hypertrophy";
 
   if (!planName || !clientId || !trainingDays || !duration || !description) {
     return encodedRedirect(
@@ -120,7 +124,7 @@ export async function createPlanAction(formData: FormData) {
       days: parseInt(trainingDays),
       duration_weeks: parseInt(duration),
       description: description,
-      category: "hypertrophy", // Default category
+      category: category, // Use provided category instead of hardcoded "hypertrophy"
       start_date: now.toISOString(),
       end_date: endDate.toISOString(),
     })
@@ -186,7 +190,7 @@ export async function createPlanAction(formData: FormData) {
       week_number: weekNum,
       start_date: weekStartDate.toISOString(),
       end_date: weekEndDate.toISOString(),
-      status: "active" as "active" | "completed" | "pending" // Type assertion for Supabase enum
+      status: "pending" as "active" | "completed" | "pending" // Type assertion for Supabase enum
     });
   }
   
@@ -249,6 +253,7 @@ export async function getPlanById(id: string) {
     return { error: "Unauthorized", data: null };
   }
 
+  // Use .maybeSingle() instead of .single() to handle no rows gracefully
   const { data: plan, error: planError } = await supabase
     .from("workout_plans")
     .select(`
@@ -268,11 +273,15 @@ export async function getPlanById(id: string) {
     `)
     .eq("id", id)
     .eq("trainer_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (planError) {
     console.error("Error fetching plan:", planError);
     return { error: planError.message, data: null };
+  }
+
+  if (!plan) {
+    return { error: "Plan not found", data: null };
   }
 
   return { data: plan as unknown as WorkoutPlan, error: null };
@@ -296,6 +305,7 @@ export async function updatePlanAction(id: string, formData: FormData) {
   const duration = formData.get("duration")?.toString();
   const description = formData.get("description")?.toString();
   const startDateStr = formData.get("startDate")?.toString();
+  const category = formData.get("category")?.toString() as WorkoutCategory || "hypertrophy";
 
   if (!planName || !clientId || !trainingDays || !duration || !description) {
     return encodedRedirect(
@@ -342,6 +352,7 @@ export async function updatePlanAction(id: string, formData: FormData) {
       days: newDays,
       duration_weeks: newDuration,
       description: description,
+      category: category,
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
     })
@@ -810,7 +821,7 @@ export async function deletePlanAction(planId: string) {
     );
   }
 
-  // Get all workout days for this plan to find related exercises
+  // Get all workout days for this plan
   const { data: workoutDays, error: workoutDaysError } = await supabase
     .from("workout_days")
     .select("id")
@@ -825,15 +836,95 @@ export async function deletePlanAction(planId: string) {
     );
   }
 
-  // Delete in the correct order to maintain referential integrity
-  // 1. Delete all exercises for all workout days
-  if (workoutDays && workoutDays.length > 0) {
-    const workoutDayIds = workoutDays.map(day => day.id);
-    
+  // Get all workout plan weeks for this plan
+  const { data: workoutPlanWeeks, error: weeksError } = await supabase
+    .from("workout_plan_weeks")
+    .select("id")
+    .eq("plan_id", planId);
+
+  if (weeksError) {
+    console.error("Error fetching workout plan weeks:", weeksError);
+    return encodedRedirect(
+      "error",
+      `/training/plans/${planId}`,
+      "Error preparing to delete plan weeks"
+    );
+  }
+
+  // Creating arrays of IDs for use in subsequent queries
+  const workoutDayIds = workoutDays?.map(day => day.id) || [];
+  const workoutPlanWeekIds = workoutPlanWeeks?.map(week => week.id) || [];
+
+  try {
+    // 1. First, get the exercises_workout IDs associated with this plan
+    const { data: exercisesWorkouts } = await supabase
+      .from("exercises_workout")
+      .select("id")
+      .in("workout_day_id", workoutDayIds.length > 0 ? workoutDayIds : ['']);
+
+    const exerciseWorkoutIds = exercisesWorkouts?.map(ew => ew.id) || [];
+
+    // 2. Delete from workout_log_sets using user_workout_logs
+    if (workoutDayIds.length > 0) {
+      // 2.1 First get all user_workout_logs
+      const { data: workoutLogs } = await supabase
+        .from("user_workout_logs")
+        .select("id")
+        .or(`workout_day_id.in.(${workoutDayIds.join(',')}),exercise_id.in.(${exerciseWorkoutIds.join(',')})`);
+
+      const logIds = workoutLogs?.map(log => log.id) || [];
+
+      if (logIds.length > 0) {
+        // 2.2 Then delete from workout_log_sets first
+        const { error: setsDeleteError } = await supabase
+          .from("workout_log_sets")
+          .delete()
+          .in("log_id", logIds);
+
+        if (setsDeleteError) {
+          console.error("Error deleting workout log sets:", setsDeleteError);
+        }
+
+        // 2.3 Delete PR history entries
+        const { error: prDeleteError } = await supabase
+          .from("pr_history")
+          .delete()
+          .in("log_set_id", logIds);
+
+        if (prDeleteError) {
+          console.error("Error deleting PR history:", prDeleteError);
+        }
+      }
+
+      // 3. Delete all user_workout_logs that reference these workout days
+      console.log("workoutDayIds:", workoutDayIds);
+      const { data: logsDeleteData, error: logsDeleteError } = await supabase
+        .from("user_workout_logs")
+        .delete()
+        .in("workout_day_id", workoutDayIds);
+
+      console.log("logsDeleteData:", logsDeleteData);
+
+      if (logsDeleteError) {
+        console.error("Error deleting user workout logs:", logsDeleteError);
+      }
+    }
+
+    // 4. Delete workout day completion records
+    const { error: completionDeleteError } = await supabase
+      .from("workout_day_completion")
+      .delete()
+      .eq("plan_id", planId);
+
+    if (completionDeleteError) {
+      console.error("Error deleting workout day completions:", completionDeleteError);
+    }
+
+    // 5. Now delete exercises_workout records
     const { error: exercisesDeleteError } = await supabase
       .from("exercises_workout")
       .delete()
-      .in("workout_day_id", workoutDayIds);
+      .in("workout_day_id", workoutDayIds.length > 0 ? workoutDayIds : ['']);
 
     if (exercisesDeleteError) {
       console.error("Error deleting exercises:", exercisesDeleteError);
@@ -843,39 +934,61 @@ export async function deletePlanAction(planId: string) {
         "Error deleting exercises"
       );
     }
-  }
 
-  // 2. Delete all workout days
-  const { error: workoutDaysDeleteError } = await supabase
-    .from("workout_days")
-    .delete()
-    .eq("plan_id", planId);
+    // 6. Delete all workout days
+    const { error: workoutDaysDeleteError } = await supabase
+      .from("workout_days")
+      .delete()
+      .eq("plan_id", planId);
 
-  if (workoutDaysDeleteError) {
-    console.error("Error deleting workout days:", workoutDaysDeleteError);
+    if (workoutDaysDeleteError) {
+      console.error("Error deleting workout days:", workoutDaysDeleteError);
+      return encodedRedirect(
+        "error",
+        `/training/plans/${planId}`,
+        "Error deleting workout days"
+      );
+    }
+
+    // 7. Delete all workout plan weeks
+    const { error: weeksDeleteError } = await supabase
+      .from("workout_plan_weeks")
+      .delete()
+      .eq("plan_id", planId);
+
+    if (weeksDeleteError) {
+      console.error("Error deleting workout plan weeks:", weeksDeleteError);
+      return encodedRedirect(
+        "error",
+        `/training/plans/${planId}`,
+        "Error deleting workout plan weeks"
+      );
+    }
+
+    // 8. Finally delete the workout plan
+    const { error: planDeleteError } = await supabase
+      .from("workout_plans")
+      .delete()
+      .eq("id", planId)
+      .eq("trainer_id", user.id);
+
+    if (planDeleteError) {
+      console.error("Error deleting plan:", planDeleteError);
+      return encodedRedirect(
+        "error",
+        `/training/plans/${planId}`,
+        "Error deleting workout plan"
+      );
+    }
+
+    // Successfully deleted everything
+    return redirect("/training/plans?success=Plan%20successfully%20deleted");
+  } catch (error) {
+    console.error("Error in deletion process:", error);
     return encodedRedirect(
       "error",
       `/training/plans/${planId}`,
-      "Error deleting workout days"
+      "Error during deletion process"
     );
   }
-
-  // 3. Finally delete the workout plan
-  const { error: planDeleteError } = await supabase
-    .from("workout_plans")
-    .delete()
-    .eq("id", planId)
-    .eq("trainer_id", user.id);
-
-  if (planDeleteError) {
-    console.error("Error deleting plan:", planDeleteError);
-    return encodedRedirect(
-      "error",
-      `/training/plans/${planId}`,
-      "Error deleting workout plan"
-    );
-  }
-
-  // Successfully deleted everything
-  return redirect("/training/plans?success=Plan%20successfully%20deleted");
-} 
+}
