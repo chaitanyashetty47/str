@@ -2,8 +2,9 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { Database } from "@/utils/supabase/types";
+import { getBodyPartDisplayName } from "@/constants/workout-types";
 
-type WorkoutType = Database["public"]["Enums"]["workout_type"];
+type WorkoutType = string;
 
 interface TrainerDashboardData {
   stats: {
@@ -165,7 +166,7 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
           // This workout day is pending
           upcomingSessions.push({
             client: plan.users?.name || "Unknown User",
-            sessionType: workoutDay.workout_type,
+            sessionType: getBodyPartDisplayName(workoutDay.workout_type),
             status: "Pending"
           });
         }
@@ -224,7 +225,7 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
             }),
             weekNumber: update.week_number || 1,
             day: 1,
-            workoutType: "legs" as WorkoutType
+            workoutType: "unknown"
           });
         } else {
           console.error(`Error fetching workout day for completion ${update.id}:`, workoutDayError);
@@ -238,7 +239,7 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
             }),
             weekNumber: update.week_number || 1,
             day: 1,
-            workoutType: "legs" as WorkoutType
+            workoutType: "unknown"
           });
         }
         continue;
@@ -254,7 +255,7 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
         }),
         weekNumber: update.week_number || 1,
         day: workoutDay?.day_number || 1,
-        workoutType: (workoutDay?.workout_type || "legs") as WorkoutType
+        workoutType: getBodyPartDisplayName(workoutDay?.workout_type || "unknown")
       });
     }
   }

@@ -81,6 +81,32 @@ export async function getWorkoutPlans(filters?: WorkoutPlanFilters) {
   return { data: data as unknown as WorkoutPlan[], error: null };
 }
 
+export async function getWorkoutDays(planId: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Unauthorized", data: null };
+  }
+
+  const { data, error } = await supabase
+    .from("workout_days")
+    .select("id, day_number, workout_type")
+    .eq("plan_id", planId)
+    .order("day_number", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching workout days:", error);
+    return { error: error.message, data: null };
+  }
+
+  return { data, error: null };
+}
+
 export async function createPlanAction(formData: FormData) {
   const supabase = await createClient();
 
@@ -124,7 +150,7 @@ export async function createPlanAction(formData: FormData) {
       days: parseInt(trainingDays),
       duration_weeks: parseInt(duration),
       description: description,
-      category: category, // Use provided category instead of hardcoded "hypertrophy"
+      category: category,
       start_date: now.toISOString(),
       end_date: endDate.toISOString(),
     })
@@ -144,20 +170,15 @@ export async function createPlanAction(formData: FormData) {
   const workoutDays = [];
   const numDays = parseInt(trainingDays);
   
-  // Define workout types based on number of days
-  const workoutTypes: Record<number, Array<"legs" | "chest_triceps" | "back_biceps" | "full_body">> = {
-    3: ["legs", "chest_triceps", "back_biceps"],
-    4: ["legs", "chest_triceps", "back_biceps", "full_body"],
-    5: ["legs", "chest_triceps", "back_biceps", "legs", "full_body"]
-  };
-
-  const types = workoutTypes[numDays] || Array(numDays).fill("full_body");
-  
+  // Get workout focus selections for each day from form data
   for (let i = 0; i < numDays; i++) {
+    const dayNumber = i + 1;
+    const workoutFocus = formData.get(`workoutFocus_${dayNumber}`)?.toString() || "";
+    
     workoutDays.push({
       plan_id: plan.id,
-      day_number: i + 1,
-      workout_type: types[i]
+      day_number: dayNumber,
+      workout_type: workoutFocus
     });
   }
   
@@ -379,15 +400,6 @@ export async function updatePlanAction(id: string, formData: FormData) {
 
   const existingDayNumbers = existingWorkoutDays?.map(day => day.day_number) || [];
   
-  // Define workout types based on number of days
-  const workoutTypes: Record<number, Array<"legs" | "chest_triceps" | "back_biceps" | "full_body">> = {
-    3: ["legs", "chest_triceps", "back_biceps"],
-    4: ["legs", "chest_triceps", "back_biceps", "full_body"],
-    5: ["legs", "chest_triceps", "back_biceps", "legs", "full_body"]
-  };
-
-  const types = workoutTypes[newDays] || Array(newDays).fill("full_body");
-
   // Handle changes in workout days
   if (oldDays !== newDays) {
     if (newDays > oldDays) {
@@ -395,10 +407,13 @@ export async function updatePlanAction(id: string, formData: FormData) {
       const newWorkoutDays = [];
       
       for (let i = oldDays; i < newDays; i++) {
+        const dayNumber = i + 1;
+        const workoutFocus = formData.get(`workoutFocus_${dayNumber}`)?.toString() || "";
+        
         newWorkoutDays.push({
           plan_id: id,
-          day_number: i + 1,
-          workout_type: types[i]
+          day_number: dayNumber,
+          workout_type: workoutFocus
         });
       }
       
@@ -429,18 +444,17 @@ export async function updatePlanAction(id: string, formData: FormData) {
     }
   }
 
-  // Update workout types to ensure they match our standard pattern
-  const updatedDays = Math.min(oldDays, newDays); // Process only days that existed before and after update
-  
-  for (let i = 0; i < updatedDays; i++) {
+  // Update workout types for existing days
+  for (let i = 0; i < Math.min(oldDays, newDays); i++) {
     const dayNumber = i + 1;
     const existingDay = existingWorkoutDays?.find(day => day.day_number === dayNumber);
+    const workoutFocus = formData.get(`workoutFocus_${dayNumber}`)?.toString() || "";
     
     if (existingDay) {
       await supabase
         .from("workout_days")
         .update({
-          workout_type: types[i]
+          workout_type: workoutFocus
         })
         .eq("id", existingDay.id);
     }

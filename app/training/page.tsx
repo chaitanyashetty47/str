@@ -11,28 +11,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
 import { Users, Activity, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getTrainerDashboardData } from "@/actions/trainer.dashboard.action";
-import { Database } from "@/utils/supabase/types";
+import { getBodyPartDisplayName } from "@/constants/workout-types";
 
-type WorkoutType = Database["public"]["Enums"]["workout_type"];
+// Update to use string type instead of enum
+type WorkoutType = string;
 
 // Helper function to format workout types for display
 const formatWorkoutType = (type: WorkoutType): string => {
-  switch (type) {
-    case "legs":
-      return "Legs";
-    case "chest_triceps":
-      return "Chest & Triceps";
-    case "back_biceps":
-      return "Back & Biceps";
-    case "full_body":
-      return "Full Body";
-    default:
-      return type;
-  }
+  // console.log ("getBody method returns: ", getBodyPartDisplayName(type));
+  return getBodyPartDisplayName(type);
 };
 
 export default function TrainerDashboard() {
@@ -178,7 +168,9 @@ export default function TrainerDashboard() {
                   {dashboardData.upcomingSessions.map((session, index) => (
                     <TableRow key={`${session.client}-${index}`}>
                       <TableCell>{session.client}</TableCell>
-                      <TableCell>{formatWorkoutType(session.sessionType)}</TableCell>
+                      <TableCell>
+                        {formatWorkoutType(session.sessionType)}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{session.status}</Badge>
                       </TableCell>

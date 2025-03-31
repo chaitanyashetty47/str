@@ -13,13 +13,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
-import { updatePlanAction } from "@/actions/workoutplan.action";
+import { updatePlanAction, getWorkoutDays } from "@/actions/workoutplan.action";
 import { DatePicker } from "./date-picker";
 import { useRouter } from "next/navigation";
 import { TrainerClient } from "@/types/trainerclients.types";
 import { WorkoutPlan } from "@/types/workout.types";
 import { Pencil } from "lucide-react";
 import { Database } from "@/utils/supabase/types";
+import { WorkoutFocusSelector } from "../workout-focus-selector";
 
 // Import workout category enum
 type WorkoutCategory = Database["public"]["Enums"]["workout_category"];
@@ -50,6 +51,8 @@ export function EditPlanForm({ plan, trainerClients }: EditPlanFormProps) {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [workoutDays, setWorkoutDays] = useState<{ id: string; day_number: number; workout_type: string }[]>([]);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: boolean }>({});
 
   // Calculate end date based on duration weeks
   useEffect(() => {
@@ -59,6 +62,66 @@ export function EditPlanForm({ plan, trainerClients }: EditPlanFormProps) {
       setEndDate(newEndDate);
     }
   }, [startDate, durationWeeks]);
+
+  // Fetch workout days when the component mounts
+  useEffect(() => {
+    async function fetchWorkoutDays() {
+      try {
+        const { data, error } = await getWorkoutDays(plan.id);
+        if (error) {
+          console.error("Error fetching workout days:", error);
+        } else {
+          setWorkoutDays(data || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch workout days:", error);
+      }
+    }
+    
+    if (plan.id) {
+      fetchWorkoutDays();
+    }
+  }, [plan.id]);
+  
+  // Update workout days array when training days number changes
+  useEffect(() => {
+    if (!isEditing) return;
+    
+    const numDays = parseInt(durationWeeks);
+    const currentDays = workoutDays.length;
+    
+    if (numDays > currentDays) {
+      // Add new days
+      const newDays = [...workoutDays];
+      for (let i = currentDays + 1; i <= numDays; i++) {
+        newDays.push({
+          id: `temp-${i}`, // Temporary ID for new days
+          day_number: i,
+          workout_type: ""
+        });
+      }
+      setWorkoutDays(newDays);
+    } else if (numDays < currentDays) {
+      // Remove excess days
+      setWorkoutDays(workoutDays.slice(0, numDays));
+    }
+  }, [durationWeeks, isEditing, workoutDays.length]);
+
+  // Update workout day focus for a specific day
+  const updateWorkoutFocus = (index: number, value: string) => {
+    const newDays = [...workoutDays];
+    if (newDays[index]) {
+      newDays[index].workout_type = value;
+      setWorkoutDays(newDays);
+      
+      // Clear error when value is selected
+      if (value && formErrors[`focus_${index}`]) {
+        const newErrors = { ...formErrors };
+        delete newErrors[`focus_${index}`];
+        setFormErrors(newErrors);
+      }
+    }
+  };
 
   const handleDurationChange = (value: string) => {
     setDurationWeeks(value);
@@ -72,11 +135,35 @@ export function EditPlanForm({ plan, trainerClients }: EditPlanFormProps) {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    
+    // Validate workout focuses
+    const newFormErrors: { [key: string]: boolean } = {};
+    let hasErrors = false;
+    
+    // Check that each day has at least one focus area selected
+    workoutDays.forEach((day, index) => {
+      if (!day.workout_type) {
+        newFormErrors[`focus_${index}`] = true;
+        hasErrors = true;
+      }
+    });
+    
+    setFormErrors(newFormErrors);
+    
+    if (hasErrors) {
+      return; // Stop submission if validation fails
+    }
+    
     try {
       setIsSubmitting(true);
       
       const formData = new FormData(event.currentTarget);
       formData.append("startDate", startDate.toISOString());
+      
+      // Add workout day focuses to form data
+      workoutDays.forEach((day) => {
+        formData.append(`workoutFocus_${day.day_number}`, day.workout_type);
+      });
       
       // The action will handle the redirect if successful
       await updatePlanAction(plan.id, formData);
@@ -236,6 +323,29 @@ export function EditPlanForm({ plan, trainerClients }: EditPlanFormProps) {
               disabled={!isEditing}
             />
           </div>
+
+          {/* Workout Focus Selectors */}
+          {workoutDays.length > 0 && (
+            <div className="space-y-4 md:col-span-2 mt-4">
+              <Label className="text-lg font-medium">Workout Focus Areas</Label>
+              <p className="text-sm text-gray-500 mb-2">
+                Select the muscle groups to focus on for each training day
+              </p>
+              
+              <div className="space-y-4">
+                {workoutDays.map((day, index) => (
+                  <WorkoutFocusSelector
+                    key={`focus-${day.day_number}`}
+                    dayNumber={day.day_number}
+                    value={day.workout_type}
+                    error={formErrors[`focus_${index}`]}
+                    disabled={!isEditing}
+                    onChange={(value) => updateWorkoutFocus(index, value)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {isEditing && (

@@ -245,7 +245,7 @@ export default function WorkoutLogger({ workoutData, week, day, planId }: Workou
             </p>
           </div>
           <Select value={week.toString()} onValueChange={handleWeekChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[90px]">
               <SelectValue placeholder="Select week" />
             </SelectTrigger>
             <SelectContent>
@@ -256,6 +256,7 @@ export default function WorkoutLogger({ workoutData, week, day, planId }: Workou
               ))}
             </SelectContent>
           </Select>
+          
         </div>
 
         {validationError && (

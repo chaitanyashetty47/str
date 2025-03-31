@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 // import { redirect } from "next/navigation";
 import { encodedRedirect } from "@/utils/utils";
+import { getBodyPartDisplayName } from "@/constants/workout-types";
 
 interface WorkoutProgress {
   currentWeek: number;
@@ -11,16 +12,8 @@ interface WorkoutProgress {
   progressPercentage: number;
 }
 
-// Define the workout type as a const to use in type definitions
-const WORKOUT_TYPES = {
-  legs: "Legs",
-  chest_triceps: "Chest & Triceps",
-  back_biceps: "Back & Biceps",
-  full_body: "Full Body",
-} as const;
-
-// Create a type from the keys of WORKOUT_TYPES
-type WorkoutType = keyof typeof WORKOUT_TYPES;
+// Update workout type to be a string instead of an enum
+type WorkoutType = string;
 
 // Interface for the workout day
 interface WorkoutDay {
@@ -142,7 +135,7 @@ export async function getUpcomingWorkouts(planId: string) {
   // Transform the workout data with proper typing and formatting
   const formattedWorkouts = workoutDays?.map((workout) => ({
     ...workout,
-    workout_type: WORKOUT_TYPES[workout.workout_type as WorkoutType] // Format the workout type
+    workout_type: getBodyPartDisplayName(workout.workout_type)
   }));
 
   return { data: formattedWorkouts, error: null };
@@ -312,7 +305,7 @@ export async function getWorkoutPlanDetails(planId: string) {
   const formattedWorkoutDays = workoutDays.map(day => ({
     id: day.id,
     day_number: day.day_number,
-    workout_type: WORKOUT_TYPES[day.workout_type as WorkoutType] || day.workout_type,
+    workout_type: getBodyPartDisplayName(day.workout_type),
     exercises: day.exercises.map(ex => ({
       id: ex.id,
       name: ex.exercise.name,
@@ -378,9 +371,12 @@ export async function getWorkoutPlanDetails(planId: string) {
     
     return {
       week_number: week.week_number,
-      status: week.status || status,
+      status:  status,
+      //status: week.status || status,
     };
   }) || [];
+
+  console.log("weeks", weeks);
 
   // Return the complete workout plan details
   return {
@@ -537,7 +533,7 @@ export async function getWorkoutDayForLogging(planId: string, dayNumber: number,
       workoutDay: {
         id: workoutDay.id,
         dayNumber: workoutDay.day_number,
-        workoutType: WORKOUT_TYPES[workoutDay.workout_type as WorkoutType] || workoutDay.workout_type,
+        workoutType: getBodyPartDisplayName(workoutDay.workout_type),
         exercises: formattedExercises,
       },
       weekNumber,

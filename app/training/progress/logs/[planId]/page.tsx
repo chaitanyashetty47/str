@@ -5,16 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getClientDetailedProgress } from "@/actions/trainer.action";
 import ClientProgressFilter from "./client-progress-filter";
+import { getBodyPartDisplayName } from "@/constants/workout-types";
 
 // Get formatted workout type names
 const getWorkoutTypeName = (type: string) => {
-  const typeMap: Record<string, string> = {
-    legs: "Legs",
-    chest_triceps: "Chest & Triceps",
-    back_biceps: "Back & Biceps",
-    full_body: "Full Body",
-  };
-  return typeMap[type] || type;
+  return getBodyPartDisplayName(type);
 };
 
 export default async function ClientProgressLogsPage({

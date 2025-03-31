@@ -117,9 +117,14 @@ export default async function WorkoutPlanPage({params}: {params: Promise<{ planI
           </div>
         </div>
 
-        <WorkoutTabs />
 
-          <WorkoutSchedule workoutDays={plan.workout_days} planId={planId} />
+        <WorkoutTabs  />
+        
+        {/* Find the current active week and pass it to the WorkoutSchedule component */}
+        {(() => {
+          const currentWeek = plan.weeks.find(week => week.status === "active")?.week_number || 1;
+          return <WorkoutSchedule workoutDays={plan.workout_days} planId={planId} week={currentWeek} />;
+        })()}
 
         {/* <div className="mt-8 flex justify-center">
           <LogTodayButton workoutDays={plan.workout_days} />

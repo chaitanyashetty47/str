@@ -21,6 +21,7 @@ import { format, addDays, nextMonday } from "date-fns";
 import { DatePicker } from "./date-picker";
 import { useRouter } from "next/navigation";
 import { Database } from "@/utils/supabase/types";
+import { WorkoutFocusSelector } from "@/components/workout-focus-selector";
 
 // Import workout category enum
 type WorkoutCategory = Database["public"]["Enums"]["workout_category"];
@@ -47,6 +48,9 @@ export function CreatePlanDialog({ trainerClients, label = "Create New Plan" }: 
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [durationWeeks, setDurationWeeks] = useState<string>("4");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [trainingDaysCount, setTrainingDaysCount] = useState<number>(3);
+  const [workoutFocuses, setWorkoutFocuses] = useState<string[]>([]);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: boolean }>({});
 
   // Calculate end date based on duration weeks
   useEffect(() => {
@@ -57,8 +61,18 @@ export function CreatePlanDialog({ trainerClients, label = "Create New Plan" }: 
     }
   }, [startDate, durationWeeks]);
 
+  // Initialize workout focuses when training days changes
+  useEffect(() => {
+    setWorkoutFocuses(Array(trainingDaysCount).fill(""));
+  }, [trainingDaysCount]);
+
   const handleDurationChange = (value: string) => {
     setDurationWeeks(value);
+  };
+
+  const handleTrainingDaysChange = (value: string) => {
+    const count = parseInt(value);
+    setTrainingDaysCount(count);
   };
 
   // Ensure that the selected date is always a Monday
@@ -86,11 +100,35 @@ export function CreatePlanDialog({ trainerClients, label = "Create New Plan" }: 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); // Prevent default form submission
+
+    // Validate workout focuses
+    const newFormErrors: { [key: string]: boolean } = {};
+    let hasErrors = false;
+    
+    // Check that each day has at least one focus area selected
+    workoutFocuses.forEach((focus, index) => {
+      if (!focus) {
+        newFormErrors[`focus_${index}`] = true;
+        hasErrors = true;
+      }
+    });
+    
+    setFormErrors(newFormErrors);
+    
+    if (hasErrors) {
+      return; // Stop submission if validation fails
+    }
+    
     try {
       setIsSubmitting(true);
   
       const formData = new FormData(event.currentTarget); // Get form data
       formData.append("startDate", startDate.toISOString());
+      
+      // Add workout focuses to form data
+      workoutFocuses.forEach((focus, index) => {
+        formData.append(`workoutFocus_${index + 1}`, focus);
+      });
   
       await createPlanAction(formData);
       setOpen(false);
@@ -147,7 +185,12 @@ export function CreatePlanDialog({ trainerClients, label = "Create New Plan" }: 
 
             <div>
               <Label htmlFor="trainingDays">Training Days</Label>
-              <Select name="trainingDays" required>
+              <Select 
+                name="trainingDays" 
+                defaultValue="3"
+                onValueChange={handleTrainingDaysChange}
+                required
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select number of days" />
                 </SelectTrigger>
@@ -190,6 +233,38 @@ export function CreatePlanDialog({ trainerClients, label = "Create New Plan" }: 
                 </SelectContent>
               </Select>
             </div>
+
+            {trainingDaysCount > 0 && (
+              <div className="space-y-4 rounded-md">
+                <div>
+                  <h3 className="font-medium text-lg">Workout Focus Areas</h3>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Select the muscle groups to focus on for each training day
+                  </p>
+                </div>
+                
+                {Array.from({ length: trainingDaysCount }).map((_, index) => (
+                  <WorkoutFocusSelector
+                    key={`focus-${index}`}
+                    dayNumber={index + 1}
+                    value={workoutFocuses[index]}
+                    error={formErrors[`focus_${index}`]}
+                    onChange={(value) => {
+                      const newFocuses = [...workoutFocuses];
+                      newFocuses[index] = value;
+                      setWorkoutFocuses(newFocuses);
+                      
+                      // Clear error when value is selected
+                      if (value && formErrors[`focus_${index}`]) {
+                        const newErrors = { ...formErrors };
+                        delete newErrors[`focus_${index}`];
+                        setFormErrors(newErrors);
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
 
             <div>
               <Label>Start Date (Always Monday)</Label>
