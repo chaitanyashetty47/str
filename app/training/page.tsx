@@ -120,10 +120,10 @@ export default function TrainerDashboard() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold">Trainer Dashboard</h2>
-        <div className="flex gap-4">
+        {/* <div className="flex gap-4">
           <Button>Assign New Plan</Button>
           <Button variant="outline">View All Clients</Button>
-        </div>
+        </div> */}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -229,7 +229,7 @@ export default function TrainerDashboard() {
         </Card>
       </div>
 
-      <Card>
+      {/* <Card>
         <CardContent className="p-6">
           <h3 className="text-xl font-semibold mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -245,7 +245,7 @@ export default function TrainerDashboard() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 } 

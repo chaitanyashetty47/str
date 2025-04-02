@@ -77,10 +77,10 @@ export default async function ClientProgressPage() {
               <SelectItem value="endurance">Endurance</SelectItem>
             </SelectContent>
           </Select>
-          <Button>
+          {/* <Button>
             <LineChart className="mr-2 h-4 w-4" />
             Generate Report
-          </Button>
+          </Button> */}
         </div>
       </div>
 

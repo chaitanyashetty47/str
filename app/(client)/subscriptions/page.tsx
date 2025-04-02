@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Check, X, Dumbbell, Brain, Sparkles } from "lucide-react"
-import ActiveSubscriptions from "@/components/active-subscriptions"
+import { ActiveSubscriptions } from "@/components/subscription/active-subscriptions"
+import { SubscribeButton } from "@/components/subscription/subscribe-button"
 
 // Define subscription plan types
 type PlanInterval = "monthly" | "quarterly" | "yearly"
@@ -333,9 +334,11 @@ function PlanCard({ plan, interval }: { plan: SubscriptionPlan; interval: PlanIn
         </ul>
       </CardContent>
       <CardFooter>
-        <Button className="w-full" variant={plan.popular ? "default" : "outline"}>
-          Subscribe
-        </Button>
+        <SubscribeButton 
+          planId={plan.id}
+          className="w-full" 
+          variant={plan.popular ? "default" : "outline"}
+        />
       </CardFooter>
     </Card>
   )

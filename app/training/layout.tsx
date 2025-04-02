@@ -23,12 +23,12 @@ const routes = [
     href: "/training",
     color: "text-sky-500",
   },
-  {
-    label: "My Clients",
-    icon: Users,
-    href: "/training/clients",
-    color: "text-violet-500",
-  },
+  // {
+  //   label: "My Clients",
+  //   icon: Users,
+  //   href: "/training/clients",
+  //   color: "text-violet-500",
+  // },
   {
     label: "Workout Plans",
     icon: Dumbbell,
@@ -41,12 +41,7 @@ const routes = [
     href: "/training/progress",
     color: "text-orange-700",
   },
-  {
-    label: "Reports & Feedback",
-    icon: FileText,
-    href: "/training/reports",
-    color: "text-emerald-500",
-  },
+
   {
     label: "Exercises",
     icon: FileText,

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, CreditCard, Dumbbell, Brain, Sparkles, User, LifeBuoy, Menu, X } from "lucide-react"
+import { LayoutDashboard, CreditCard, Dumbbell, Brain, Sparkles, User, Camera, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
@@ -25,12 +25,12 @@ const navItems = [
   },
   {
     title: "My Psychological Plans",
-    href: "/psychological-plans",
+    href: "/psychological",
     icon: Brain,
   },
   {
     title: "My Manifestation Plans",
-    href: "/manifestation-plans",
+    href: "/manifestation",
     icon: Sparkles,
   },
   {
@@ -39,9 +39,9 @@ const navItems = [
     icon: User,
   },
   {
-    title: "Support",
-    href: "/support",
-    icon: LifeBuoy,
+    title: "Before & After",
+    href: "/photos",
+    icon: Camera,
   },
 ]
 
