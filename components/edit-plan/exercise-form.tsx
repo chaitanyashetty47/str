@@ -33,7 +33,6 @@ interface ExerciseOption {
   id: string;
   name: string;
   youtube_link: string | null;
-  // gif_link: string | null;
 }
 
 export default function ExerciseForm({
@@ -233,7 +232,7 @@ export default function ExerciseForm({
               variant="outline"
               role="combobox"
               aria-expanded={isExerciseDropdownOpen}
-              className="w-full justify-between font-normal bg-background  px-3 hover:bg-background focus-visible:border-ring focus-visible:outline-[3px] focus-visible:outline-ring/20"
+              className="w-full justify-between font-normal bg-background col px-3 hover:bg-background focus-visible:border-ring focus-visible:outline-[3px] focus-visible:outline-ring/20"
             >
               <span className={cn("truncate", !name && "text-muted-foreground")}>
                 {name || "Select an exercise..."}
