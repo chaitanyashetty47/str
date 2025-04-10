@@ -3,12 +3,7 @@
 # dependencies
 /node_modules
 /.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+.pnp.js
 
 # testing
 /coverage
@@ -31,6 +26,9 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env
 
 # vercel
@@ -39,3 +37,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# credentials and secrets
+**/credentials.json
+**/*.key
+**/*.pem
+**/*.cert
+
+# Supabase
+.supabase
+/**/supabase/.branches
+/**/supabase/.temp
+/**/.branches
+/**/.temp
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo

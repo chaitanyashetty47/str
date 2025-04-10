@@ -1,8 +1,8 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { Database } from "@/utils/supabase/types";
 import { getBodyPartDisplayName } from "@/constants/workout-types";
+import prisma from "@/utils/prisma/prismaClient";
 
 type WorkoutType = string;
 
@@ -47,54 +47,117 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
   const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
   
   // Fetch total clients count
-  const { count: totalClients, error: clientsError } = await supabase
-    .from("trainer_clients")
-    .select("*", { count: "exact", head: true })
-    .eq("trainer_id", trainerId);
-  
-  if (clientsError) {
-    console.error("Error fetching clients:", clientsError);
+  let totalClients = 0;
+  let clientsError = null;
+
+  try {
+    totalClients = await prisma.trainer_clients.count({
+      where: {
+        trainer_id: trainerId,
+      },
+    });
+  } catch (error) {
+    clientsError = error;
   }
+  // const { count: totalClients, error: clientsError } = await supabase
+  //   .from("trainer_clients")
+  //   .select("*", { count: "exact", head: true })
+  //   .eq("trainer_id", trainerId);
   
-  // Fetch active workout plans count
-  const { count: activePlans, error: plansError } = await supabase
-    .from("workout_plans")
-    .select("*", { count: "exact", head: true })
-    .eq("trainer_id", trainerId);
+  // if (clientsError) {
+  //   console.error("Error fetching clients:", clientsError);
+  // }
   
-  if (plansError) {
-    console.error("Error fetching plans:", plansError);
-  }
+  // Fetch active workout plans using Prisma
+  const activePlanData = await prisma.workout_plans.findMany({
+    where: {
+      trainer_id: trainerId,
+      start_date: {
+        lte: new Date(currentDate), // Plan has started
+      },
+      end_date: {
+        gte: new Date(currentDate), // Plan hasn't ended
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      start_date: true,
+      end_date: true,
+      user_id: true,
+      users_workout_plans_clients: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      start_date: 'asc',
+    },
+  });
+
+  // const { data: activePlanData, error: activePlanError } = await supabase
+  //   .from("workout_plans")
+  //   .select(`
+  //     id,
+  //     name,
+  //     start_date,
+  //     end_date,
+  //     user_id,
+  //     users!workout_plans_user_id_fkey(id, name)
+  //   `)
+  //   .eq("trainer_id", trainerId)
+  //   .lte("start_date", currentDate) // Plan has started
+  //   .gte("end_date", currentDate)   // Plan hasn't ended
+  //   .order("start_date", { ascending: true });
+  
+  // if (activePlanError) {
+  //   console.error("Error fetching active plans:", activePlanError);
+  // }
   
   // Fetch completed workout days to estimate completed sessions
-  const { count: completedSessions, error: sessionsError } = await supabase
-    .from("workout_day_completion")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", trainerId);
-  
-  if (sessionsError) {
-    console.error("Error fetching sessions:", sessionsError);
+
+
+  let completedSessionsError = null;
+  let completedSessions = 0;
+  try {
+
+    const clientResults  = await prisma.trainer_clients.findMany({
+      where: {
+        trainer_id: trainerId,
+      },
+      select: {
+        client_id: true,
+      },
+    });
+
+    const clientIds = clientResults.map(c => c.client_id); // Extract string[] of client IDs
+
+ 
+    completedSessions = await prisma.workout_day_completion.count({
+      where: {
+        user_id: {
+          in: clientIds,
+        },
+      },
+    });
+  } catch (error) {
+    completedSessionsError = error;
   }
+
+  // const { count: completedSessions, error: sessionsError } = await supabase
+  //   .from("workout_day_completion")
+  //   .select("*", { count: "exact", head: true })
+  //   .eq("user_id", trainerId);
+  
+  // if (sessionsError) {
+  //   console.error("Error fetching sessions:", sessionsError);
+  // }
   
   // 1. Fetch active workout plans (where current date is between start_date and end_date)
-  const { data: activePlanData, error: activePlanError } = await supabase
-    .from("workout_plans")
-    .select(`
-      id,
-      name,
-      start_date,
-      end_date,
-      user_id,
-      users!workout_plans_user_id_fkey(id, name)
-    `)
-    .eq("trainer_id", trainerId)
-    .lte("start_date", currentDate) // Plan has started
-    .gte("end_date", currentDate)   // Plan hasn't ended
-    .order("start_date", { ascending: true });
+
   
-  if (activePlanError) {
-    console.error("Error fetching active plans:", activePlanError);
-  }
   
   // Array to store upcoming sessions
   let upcomingSessions: {
@@ -107,55 +170,94 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
   if (activePlanData && activePlanData.length > 0) {
     for (const plan of activePlanData) {
       // 2. Find the current week for this plan
-      const { data: currentWeekData, error: weekError } = await supabase
-        .from("workout_plan_weeks")
-        .select("id, week_number, start_date, end_date")
-        .eq("plan_id", plan.id)
-        .lte("start_date", currentDate)  // Week has started
-        .gte("end_date", currentDate)    // Week hasn't ended
-        .single();
+      const currentWeekData = await prisma.workout_plan_weeks.findFirst({
+        where: {
+          plan_id: plan.id,
+          start_date: {
+            lte: new Date(currentDate), // Week has started
+          },
+          end_date: {
+            gte: new Date(currentDate), // Week hasn't ended
+          },
+        },
+        select: {
+          id: true,
+          week_number: true,
+          start_date: true,
+          end_date: true,
+        },
+      });
+
+      // const { data: currentWeekData, error: weekError } = await supabase
+      //   .from("workout_plan_weeks")
+      //   .select("id, week_number, start_date, end_date")
+      //   .eq("plan_id", plan.id)
+      //   .lte("start_date", currentDate)  // Week has started
+      //   .gte("end_date", currentDate)    // Week hasn't ended
+      //   .single();
       
       // Handle no rows found error gracefully
-      if (weekError) {
-        if (isNoRowsError(weekError)) {
-          console.log(`No current week found for plan ${plan.id}`);
-          continue; // Skip this plan if no current week
-        } else {
-          console.error(`Error fetching current week for plan ${plan.id}:`, weekError);
-          continue;
-        }
-      }
+      // if (weekError) {
+      //   if (isNoRowsError(weekError)) {
+      //     console.log(`No current week found for plan ${plan.id}`);
+      //     continue; // Skip this plan if no current week
+      //   } else {
+      //     console.error(`Error fetching current week for plan ${plan.id}:`, weekError);
+      //     continue;
+      //   }
+      // }
       
       if (!currentWeekData) {
         continue; // No current week found for this plan
       }
       
       // 3. Get all workout days for this plan
-      const { data: workoutDaysData, error: daysError } = await supabase
-        .from("workout_days")
-        .select("id, day_number, workout_type")
-        .eq("plan_id", plan.id);
+      const workoutDaysData = await prisma.workout_days.findMany({
+        where: {
+          plan_id: plan.id,
+        },
+        select: {
+          id: true,
+          day_number: true,
+          workout_type: true,
+        },
+      });
+
+      // const { data: workoutDaysData, error: daysError } = await supabase
+      //   .from("workout_days")
+      //   .select("id, day_number, workout_type")
+      //   .eq("plan_id", plan.id);
       
-      if (daysError) {
-        console.error(`Error fetching workout days for plan ${plan.id}:`, daysError);
-        continue;
-      }
+      // if (daysError) {
+      //   console.error(`Error fetching workout days for plan ${plan.id}:`, daysError);
+      //   continue;
+      // }
       
       if (!workoutDaysData || workoutDaysData.length === 0) {
         continue; // No workout days found for this plan
       }
       
       // 4. Find which workout days are completed for the current week
-      const { data: completedDaysData, error: completedError } = await supabase
-        .from("workout_day_completion")
-        .select("workout_day_id")
-        .eq("plan_id", plan.id)
-        .eq("week_number", currentWeekData.week_number);
+      const completedDaysData = await prisma.workout_day_completion.findMany({
+        where: {
+          plan_id: plan.id,
+          week_number: currentWeekData.week_number,
+        },
+        select: {
+          workout_day_id: true,
+        },
+      });
+
+      // const { data: completedDaysData, error: completedError } = await supabase
+      //   .from("workout_day_completion")
+      //   .select("workout_day_id")
+      //   .eq("plan_id", plan.id)
+      //   .eq("week_number", currentWeekData.week_number);
       
-      if (completedError) {
-        console.error(`Error fetching completed days for plan ${plan.id}, week ${currentWeekData.week_number}:`, completedError);
-        continue;
-      }
+      // if (completedError) {
+      //   console.error(`Error fetching completed days for plan ${plan.id}, week ${currentWeekData.week_number}:`, completedError);
+      //   continue;
+      // }
       
       // Make a set of completed workout day IDs for easy lookup
       const completedDayIds = new Set(completedDaysData?.map(day => day.workout_day_id) || []);
@@ -165,7 +267,7 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
         if (!completedDayIds.has(workoutDay.id)) {
           // This workout day is pending
           upcomingSessions.push({
-            client: plan.users?.name || "Unknown User",
+            client: plan.users_workout_plans_clients?.name || "Unknown User",
             sessionType: getBodyPartDisplayName(workoutDay.workout_type),
             status: "Pending"
           });
@@ -178,22 +280,25 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
   upcomingSessions = upcomingSessions.slice(0, 5);
   
   // Fetch recent client activities (using workout completions with associated workout info)
-  const { data: recentUpdatesData, error: recentError } = await supabase
-    .from("workout_day_completion")
-    .select(`
-      id,
-      completed_at,
-      week_number,
-      plan_id,
-      workout_day_id,
-      users!workout_day_completion_user_id_fkey(id, name)
-    `)
-    .order("completed_at", { ascending: false })
-    .limit(3);
-  
-  if (recentError) {
-    console.error("Error fetching recent updates:", recentError);
-  }
+  const recentUpdatesData = await prisma.workout_day_completion.findMany({
+    select: {
+      id: true,
+      completed_at: true,
+      week_number: true,
+      plan_id: true,
+      workout_day_id: true,
+      users: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    },
+    orderBy: {
+      completed_at: 'desc'
+    },
+    take: 3
+  });
   
   // Format recent updates with workout details
   const recentUpdates: TrainerDashboardData["recentUpdates"] = [];
@@ -207,41 +312,29 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
       }
       
       // Fetch workout day details to get the day number and workout type
-      const { data: workoutDay, error: workoutDayError } = await supabase
-        .from("workout_days")
-        .select("day_number, workout_type")
-        .eq("id", update.workout_day_id)
-        .single();
-      
-      if (workoutDayError) {
-        if (isNoRowsError(workoutDayError)) {
-          // No workout day found, but we can still show the update with default values
-          recentUpdates.push({
-            client: update.users?.name || "Unknown User",
-            action: "Completed workout",
-            time: new Date(update.completed_at || "").toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            }),
-            weekNumber: update.week_number || 1,
-            day: 1,
-            workoutType: "unknown"
-          });
-        } else {
-          console.error(`Error fetching workout day for completion ${update.id}:`, workoutDayError);
-          // Add without workout details
-          recentUpdates.push({
-            client: update.users?.name || "Unknown User",
-            action: "Completed workout",
-            time: new Date(update.completed_at || "").toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            }),
-            weekNumber: update.week_number || 1,
-            day: 1,
-            workoutType: "unknown"
-          });
+      const workoutDay = await prisma.workout_days.findUnique({
+        where: {
+          id: update.workout_day_id
+        },
+        select: {
+          day_number: true,
+          workout_type: true
         }
+      });
+      
+      if (!workoutDay) {
+        // No workout day found, but we can still show the update with default values
+        recentUpdates.push({
+          client: update.users?.name || "Unknown User",
+          action: "Completed workout",
+          time: new Date(update.completed_at || "").toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          weekNumber: update.week_number || 1,
+          day: 1,
+          workoutType: "unknown"
+        });
         continue;
       }
 
@@ -254,8 +347,8 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
           day: "numeric",
         }),
         weekNumber: update.week_number || 1,
-        day: workoutDay?.day_number || 1,
-        workoutType: getBodyPartDisplayName(workoutDay?.workout_type || "unknown")
+        day: workoutDay.day_number || 1,
+        workoutType: getBodyPartDisplayName(workoutDay.workout_type || "unknown")
       });
     }
   }
@@ -266,7 +359,7 @@ export async function getTrainerDashboardData(): Promise<TrainerDashboardData> {
   return {
     stats: {
       totalClients: totalClients || 0,
-      activePlans: activePlans || 0,
+      activePlans: activePlanData.length || 0,
       completedSessions: completedSessions || 0,
     },
     upcomingSessions,

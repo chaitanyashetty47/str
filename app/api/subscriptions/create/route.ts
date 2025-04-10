@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
 import Razorpay from 'razorpay';
 
 export async function POST(request: NextRequest) {
@@ -28,18 +27,34 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get the plan details
+    // Validate that the plan exists and is active
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
-      .select('*')
-      .eq('razorpay_plan_id', planId)
+      .select('id, name, price, razorpay_plan_id, category, billing_period, is_active')
+      .eq('id', planId)
+      .eq('is_active', true)
       .single();
     
     if (planError || !plan) {
-      console.error('Error fetching plan:', planError);
       return NextResponse.json(
-        { error: 'Subscription plan not found' },
+        { error: 'Subscription plan not found or inactive' },
         { status: 404 }
+      );
+    }
+    
+    // Check if user already has an active subscription of this type
+    const { data: existingSubscription, error: subscriptionError } = await supabase
+      .from('user_subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .eq('plan_id', planId)
+      .single();
+    
+    if (existingSubscription) {
+      return NextResponse.json(
+        { error: 'You already have an active subscription of this type' },
+        { status: 400 }
       );
     }
     
@@ -51,7 +66,6 @@ export async function POST(request: NextRequest) {
       .single();
     
     if (userDataError || !userData) {
-      console.error('Error fetching user data:', userDataError);
       return NextResponse.json(
         { error: 'User details not found' },
         { status: 404 }
@@ -60,7 +74,6 @@ export async function POST(request: NextRequest) {
     
     // Initialize Razorpay
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      console.error('Razorpay credentials not configured');
       return NextResponse.json(
         { error: 'Payment provider not configured' },
         { status: 500 }
@@ -73,31 +86,36 @@ export async function POST(request: NextRequest) {
     });
     
     // Create a subscription
-    let subscription;
-    
     try {
       // We need to use the Razorpay plan ID from our database
       if (!plan.razorpay_plan_id) {
         return NextResponse.json(
-          { error: 'Razorpay plan ID not configured for this plan' },
+          { error: 'Payment configuration error' },
           { status: 400 }
         );
       }
       
-      // Create the subscription in Razorpay
-      subscription = await razorpay.subscriptions.create({
+      // Create the subscription in Razorpay with secure notes
+      const subscription = await razorpay.subscriptions.create({
         plan_id: plan.razorpay_plan_id,
         customer_notify: 1,
         total_count: plan.billing_period === 'yearly' ? 1 : 4, // 1 year or 4 quarters
         notes: {
           user_id: user.id,
           plan_name: plan.name,
-          plan_id: plan.id,
-          category: plan.category
+          plan_id: plan.id
         }
       });
       
-      // Return the subscription ID for the frontend to use
+      // Log the subscription creation for audit purposes
+      await supabase.from('subscription_events').insert({
+        event_type: 'subscription.created',
+        user_id: user.id,
+        plan_id: plan.id,
+        metadata: { razorpay_subscription_id: subscription.id }
+      });
+      
+      // Return only what's needed for the frontend, avoid sending sensitive data
       return NextResponse.json({
         subscriptionId: subscription.id,
         key: process.env.RAZORPAY_KEY_ID,
@@ -108,21 +126,15 @@ export async function POST(request: NextRequest) {
         prefill: {
           name: userData.name,
           email: userData.email,
-        },
-        notes: {
-          user_id: user.id,
-          plan_id: planId,
         }
       });
     } catch (error) {
-      console.error('Error creating Razorpay subscription:', error);
       return NextResponse.json(
         { error: 'Failed to create subscription' },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Error in subscription creation:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

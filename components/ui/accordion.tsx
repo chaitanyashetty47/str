@@ -33,8 +33,21 @@ const AccordionTrigger = React.forwardRef<
       )}
       {...props}
     >
+      {/* {children}
+      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" /> */}
+
+<div // This div prevents the error by wrapping children + icon into a single element
+      className={cn(
+        "flex w-full items-center justify-between",
+        !props.asChild && "gap-2",
+      )}
+    >
       {children}
+      {!props.asChild && ( // This conditional prevents the chevron from rendering if `asChild` is being used
+      
       <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+      )}
+    </div>
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))

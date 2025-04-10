@@ -1,0 +1,356 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DIRECT_URL")
+  schemas  = ["public"]
+}
+
+model exercise {
+  id                String              @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  name              String              @unique
+  youtube_link      String?
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  trainer_id        String              @db.Uuid
+  gif_url           String?
+  users             users               @relation(fields: [trainer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  exercises_workout exercises_workout[]
+
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "idx_exercise_name", type: Gin)
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model exercises_workout {
+  id                String                   @id(map: "exercises_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workout_day_id    String                   @db.Uuid
+  sets              Int
+  reps              Int
+  rest_time         Unsupported("interval")?
+  notes             String?
+  exercise_id       String                   @db.Uuid
+  weight            Int
+  workout_days      workout_days             @relation(fields: [workout_day_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "exercises_workout_day_id_fkey")
+  exercise          exercise                 @relation(fields: [exercise_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pr_history        pr_history[]
+  user_workout_logs user_workout_logs[]
+
+  @@schema("public")
+}
+
+model pr_history {
+  id                String             @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id           String?            @db.Uuid
+  exercise_id       String?            @db.Uuid
+  weight            Decimal            @db.Decimal
+  reps              Int
+  one_rm            Decimal?           @default(dbgenerated("(weight * ((1)::numeric + ((reps)::numeric / 30.0)))")) @db.Decimal
+  date_achieved     DateTime           @default(dbgenerated("CURRENT_DATE")) @db.Date
+  log_set_id        String?            @db.Uuid
+  exercises_workout exercises_workout? @relation(fields: [exercise_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workout_log_sets  workout_log_sets?  @relation(fields: [log_set_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users             users?             @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id, exercise_id, date_achieved], map: "pr_history_user_exercise_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  id                    String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id               String  @db.Uuid
+  weight                Float?
+  body_fat_percentage   Float?
+  psychological_tracker String?
+  manifestation_goals   String?
+  users                 users   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model subscription_events {
+  id                   String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id              String    @db.Uuid
+  event_type           String    @db.VarChar
+  payment_id           String?   @db.VarChar
+  amount               Decimal?  @db.Decimal
+  created_at           DateTime? @default(now()) @db.Timestamptz(6)
+  metadata             Json?
+  subscription_id      String?
+  subscription_plan_id String?
+  users                users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([event_type], map: "idx_subscription_events_event_type")
+  @@index([user_id], map: "idx_subscription_events_user_id")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model subscription_plans {
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String                @db.VarChar(255)
+  category           subscription_category
+  plan_type          plan_type?            @default(online)
+  price              Decimal               @db.Decimal(10, 2)
+  features           Json?
+  razorpay_plan_id   String?               @db.VarChar
+  billing_period     String                @default("monthly") @db.VarChar
+  billing_cycle      Int                   @default(1)
+  user_subscriptions user_subscriptions[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model trainer_clients {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trainer_id  String    @db.Uuid
+  client_id   String    @db.Uuid
+  assigned_at DateTime? @default(now()) @db.Timestamptz(6)
+  trainer     users     @relation("trainer_clients_trainer", fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  client      users     @relation("trainer_clients_client", fields: [trainer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model transformation_photos {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String         @db.Uuid
+  image_url       String         @db.VarChar(255)
+  uploaded_at     DateTime?      @default(now()) @db.Timestamptz(6)
+  privacy_setting photo_privacy? @default(private)
+  photo_type      photo_type
+  description     String?
+  photo_date      DateTime       @default(dbgenerated("CURRENT_DATE")) @db.Date
+  users           users          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model user_subscriptions {
+  id                       String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                  String               @db.Uuid
+  plan_id                  String               @db.Uuid
+  status                   subscription_status? @default(active)
+  start_date               DateTime?            @default(now()) @db.Timestamptz(6)
+  end_date                 DateTime             @db.Timestamptz(6)
+  payment_status           payment_status?      @default(pending)
+  razorpay_subscription_id String?
+  subscription_plans       subscription_plans   @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                    users                @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([razorpay_subscription_id], map: "idx_razorpay_subscription_id")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_workout_logs {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String              @db.Uuid
+  workout_day_id     String              @db.Uuid
+  exercise_id        String              @db.Uuid
+  date_logged        DateTime            @db.Date
+  completed_sets     Int
+  completed_reps     Int
+  weight_used        Float?
+  optional_exercise  String?             @db.VarChar(255)
+  week_number        Int
+  plan_week_id       String?             @db.Uuid
+  exercises_workout  exercises_workout   @relation(fields: [exercise_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workout_plan_weeks workout_plan_weeks? @relation(fields: [plan_week_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users              users               @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workout_days       workout_days        @relation(fields: [workout_day_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workout_log_sets   workout_log_sets[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  id                         String                   @id @db.Uuid
+  name                       String                   @db.VarChar(255)
+  email                      String                   @unique @db.VarChar(255)
+  role                       app_role                 @default(client)
+  created_at                 DateTime?                @default(now()) @db.Timestamptz(6)
+  auth_user_id               String?                  @unique @db.Uuid
+  exercises                  exercise[]
+  pr_history                 pr_history[]
+  profiles                   profiles[]
+  subscription_events        subscription_events[]
+  trainer_clients_as_trainer trainer_clients[]        @relation("trainer_clients_trainer")
+  trainer_clients_as_client  trainer_clients[]        @relation("trainer_clients_client")
+  transformation_photos      transformation_photos[]
+  user_subscriptions         user_subscriptions[]
+  user_workout_logs          user_workout_logs[]
+  workout_day_completion     workout_day_completion[]
+  workout_plans_as_trainer   workout_plans[]          @relation("workout_plans_trainer")
+  workout_plans_as_user      workout_plans[]          @relation("workout_plans_user")
+
+  @@index([auth_user_id], map: "idx_users_auth_user_id")
+  @@schema("public")
+}
+
+model workout_day_completion {
+  id             String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id        String?        @db.Uuid
+  plan_id        String?        @db.Uuid
+  workout_day_id String?        @db.Uuid
+  week_number    Int
+  completed_at   DateTime?      @default(now()) @db.Timestamptz(6)
+  workout_plans  workout_plans? @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users          users?         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workout_days   workout_days?  @relation(fields: [workout_day_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, plan_id, workout_day_id, week_number])
+  @@schema("public")
+}
+
+model workout_days {
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plan_id                String                   @db.Uuid
+  day_number             Int
+  workout_type           String
+  exercises_workout      exercises_workout[]
+  user_workout_logs      user_workout_logs[]
+  workout_day_completion workout_day_completion[]
+  workout_plans          workout_plans            @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model workout_log_sets {
+  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  log_id            String                   @db.Uuid
+  set_number        Int
+  reps              Int
+  weight            Decimal                  @db.Decimal
+  duration          Unsupported("interval")?
+  created_at        DateTime?                @default(now()) @db.Timestamptz(6)
+  pr_history        pr_history[]
+  user_workout_logs user_workout_logs        @relation(fields: [log_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([log_id], map: "idx_log_sets")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workout_plan_weeks {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plan_id           String              @db.Uuid
+  week_number       Int
+  start_date        DateTime            @db.Date
+  end_date          DateTime            @db.Date
+  status            week_status?        @default(pending)
+  user_workout_logs user_workout_logs[]
+  workout_plans     workout_plans       @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workout_plans {
+  id                          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trainer_id                  String                   @db.Uuid
+  user_id                     String                   @db.Uuid
+  name                        String                   @db.VarChar(255)
+  category                    workout_category
+  duration_weeks              Int
+  created_at                  DateTime?                @default(now()) @db.Timestamptz(6)
+  start_date                  DateTime                 @db.Date
+  end_date                    DateTime                 @db.Date
+  description                 String?                  @default("")
+  days                        Int?
+  workout_day_completion      workout_day_completion[]
+  workout_days                workout_days[]
+  workout_plan_weeks          workout_plan_weeks[]
+  users_workout_plans_trainer users                    @relation("workout_plans_trainer", fields: [trainer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_workout_plans_clients users                    @relation("workout_plans_user", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+enum app_role {
+  client
+  trainer
+  admin
+
+  @@schema("public")
+}
+
+enum payment_status {
+  pending
+  completed
+  failed
+
+  @@schema("public")
+}
+
+enum photo_privacy {
+  private
+  public
+
+  @@schema("public")
+}
+
+enum photo_type {
+  before
+  after
+
+  @@schema("public")
+}
+
+enum plan_type {
+  online
+  in_person  @map("in-person")
+  self_paced @map("self-paced")
+
+  @@schema("public")
+}
+
+enum subscription_category {
+  fitness
+  psychology
+  manifestation
+
+  @@schema("public")
+}
+
+enum subscription_status {
+  active
+  expired
+  canceled
+
+  @@schema("public")
+}
+
+enum week_status {
+  active
+  completed
+  pending
+
+  @@schema("public")
+}
+
+enum workout_category {
+  hypertrophy
+  strength
+  deload
+  endurance
+
+  @@schema("public")
+}
+
+enum workout_type {
+  legs
+  chest_triceps
+  back_biceps
+  full_body
+
+  @@schema("public")
+}

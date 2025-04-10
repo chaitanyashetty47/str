@@ -2,7 +2,9 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import prisma from "@/utils/prisma/prismaClient";
 
+// use `prisma` in your application to read and write data in your DB
 interface ExerciseFilters {
   searchQuery?: string;
   page?: number;

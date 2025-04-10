@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import WorkoutHistory from "./workout-history"
-import { Check, AlertCircle } from "lucide-react"
+import { Check, AlertCircle, ChevronDown } from "lucide-react"
 import { logWorkoutCompletion } from "@/actions/clientworkout.action"
 import { toast } from "sonner"
-
+import YoutubeEmbed from "@/components/youtube-embed/youtube-embed"
 interface WorkoutExercise {
   id: string
   name: string
@@ -290,7 +290,8 @@ export default function WorkoutLogger({ workoutData, week, day, planId }: Workou
                 value={exercise.id}
                 className="border rounded-lg overflow-hidden"
               >
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <AccordionTrigger asChild className="px-6 py-4 hover:no-underline">
+                  {/* This single div is the direct child */}
                   <div className="flex justify-between items-center w-full pr-4">
                     <div className="text-left">
                       <h3 className="text-lg font-semibold">{exercise.name}</h3>
@@ -303,8 +304,18 @@ export default function WorkoutLogger({ workoutData, week, day, planId }: Workou
                         {exerciseLogs[exercise.id]?.filter(set => set.isComplete).length || 0}/{exercise.programmedSets} sets
                       </span>
                     </div>
+
+                    {/* Embed video inline instead of separate div */}
+                    {exercise.youtube_link && (
+                      <div className="border border-gray-200 rounded-md">
+                        <YoutubeEmbed videoLink={exercise.youtube_link} />
+                      </div>
+                    )}
+
+                      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                   </div>
                 </AccordionTrigger>
+
                 
                 <AccordionContent className="px-6 pb-4">
                   {exercise.notes && (

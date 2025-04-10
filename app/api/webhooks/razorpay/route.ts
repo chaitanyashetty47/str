@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { handleSubscriptionEvent } from '@/actions/subscription.action';
 
-// Webhook signature verification
+// Improved webhook signature verification with timing-safe equals
 const verifyRazorpaySignature = (
   body: string,
   signature: string,
@@ -25,21 +25,24 @@ const verifyRazorpaySignature = (
   }
 };
 
+// Check if event is already processed (idempotency check)
+const isEventProcessed = async (eventId: string, supabase: any): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('subscription_events')
+    .select('id')
+    .eq('metadata->event_id', eventId)
+    .single();
+  
+  return !error && data !== null;
+};
+
 export async function POST(request: NextRequest) {
   try {
-    // Log request method and headers for debugging
-    console.log('Webhook received:', request.method);
-    console.log('Headers:', Object.fromEntries(request.headers.entries()));
-    
     // Get the raw request body as text (important for signature verification)
     const rawBody = await request.text();
     
-    // Debug: log the raw body length
-    console.log('Raw body length:', rawBody.length);
-    
     // Check if body is empty
     if (!rawBody || rawBody.trim() === '') {
-      console.error('Empty request body received');
       return NextResponse.json(
         { error: 'Empty request body' },
         { status: 400 }
@@ -50,10 +53,7 @@ export async function POST(request: NextRequest) {
     let payload;
     try {
       payload = JSON.parse(rawBody);
-      console.log('Parsed webhook payload event type:', payload.event);
     } catch (error) {
-      console.error('Error parsing webhook payload:', error);
-      console.error('Raw payload:', rawBody);
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
         { status: 400 }
@@ -62,9 +62,6 @@ export async function POST(request: NextRequest) {
     
     // Get the signature from headers
     const signature = request.headers.get('x-razorpay-signature');
-    
-    // Debug: log if signature exists
-    console.log('Signature present:', !!signature);
     
     if (!signature) {
       return NextResponse.json(
@@ -77,7 +74,6 @@ export async function POST(request: NextRequest) {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     
     if (!webhookSecret) {
-      console.error('RAZORPAY_WEBHOOK_SECRET not configured');
       return NextResponse.json(
         { error: 'Webhook secret not configured' },
         { status: 500 }
@@ -87,40 +83,66 @@ export async function POST(request: NextRequest) {
     const isValid = verifyRazorpaySignature(rawBody, signature, webhookSecret);
     
     if (!isValid) {
-      console.error('Invalid webhook signature');
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 401 }
       );
     }
     
-    // Extract event type from the webhook payload
+    // Extract event type and ID from the webhook payload
     const eventType = payload.event;
+    const eventId = payload.id || `${payload.event}_${payload.created_at}`;
     
     if (!eventType) {
-      console.error('Missing event type in payload');
-      console.log('Payload structure:', JSON.stringify(payload, null, 2));
       return NextResponse.json(
         { error: 'Missing event type' },
         { status: 400 }
       );
     }
     
+    // Create Supabase client
+    const supabase = await createClient();
+    
+    // Check if this event was already processed (idempotency)
+    if (await isEventProcessed(eventId, supabase)) {
+      return NextResponse.json({ 
+        success: true,
+        message: 'Event already processed' 
+      });
+    }
+    
     // Process the subscription event
     const result = await handleSubscriptionEvent(payload);
     
     if (result.error) {
-      console.error(`Error processing webhook event ${eventType}:`, result.error);
       return NextResponse.json(
         { error: result.error },
         { status: 500 }
       );
     }
     
+    // Store the event to prevent duplicate processing using the correct schema
+    await supabase.from('subscription_events').insert({
+      event_type: eventType,
+      // Extract user_id from the payload if available
+      user_id: payload.payload?.subscription?.entity?.customer_id || 
+               payload.payload?.subscription?.entity?.notes?.user_id || null,
+      // Use metadata to store the event details for idempotency
+      metadata: {
+        event_id: eventId,
+        processed_at: new Date().toISOString(),
+        payload_summary: {
+          event: payload.event,
+          account_id: payload.account_id,
+          contains: payload.contains
+        }
+      }
+    });
+    
     // Return a 200 response to acknowledge the webhook
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    // Don't expose detailed error information
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

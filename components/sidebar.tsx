@@ -23,16 +23,7 @@ const navItems = [
     href: "/workouts",
     icon: Dumbbell,
   },
-  {
-    title: "My Psychological Plans",
-    href: "/psychological",
-    icon: Brain,
-  },
-  {
-    title: "My Manifestation Plans",
-    href: "/manifestation",
-    icon: Sparkles,
-  },
+
   {
     title: "Profile & Settings",
     href: "/profile",
