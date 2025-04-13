@@ -1,4 +1,3 @@
-"use client";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,68 +11,18 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Users, Activity, Calendar } from "lucide-react";
-import { useEffect, useState } from "react";
 import { getTrainerDashboardData } from "@/actions/trainer.dashboard.action";
 import { getBodyPartDisplayName } from "@/constants/workout-types";
-
-// Update to use string type instead of enum
-type WorkoutType = string;
+import type { WorkoutType } from "@/types/trainer.dashboard";
 
 // Helper function to format workout types for display
 const formatWorkoutType = (type: WorkoutType): string => {
-  // console.log ("getBody method returns: ", getBodyPartDisplayName(type));
   return getBodyPartDisplayName(type);
 };
 
-export default function TrainerDashboard() {
-  const [dashboardData, setDashboardData] = useState<{
-    stats: {
-      totalClients: number;
-      activePlans: number;
-      completedSessions: number;
-    };
-    upcomingSessions: {
-      client: string;
-      sessionType: WorkoutType;
-      status: string;
-    }[];
-    recentUpdates: {
-      client: string;
-      action: string;
-      time: string;
-      weekNumber: number;
-      day: number;
-      workoutType: WorkoutType;
-    }[];
-  }>({
-    stats: {
-      totalClients: 0,
-      activePlans: 0,
-      completedSessions: 0,
-    },
-    upcomingSessions: [],
-    recentUpdates: [],
-  });
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Call the server action without the trainerId parameter
-        const data = await getTrainerDashboardData();
-        setDashboardData(data);
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-        setError(err instanceof Error ? err.message : "Failed to load dashboard data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+export default async function TrainerDashboard() {
+  // Fetch data using the server action
+  const dashboardData = await getTrainerDashboardData();
 
   // Create stats array from the dashboard data
   const stats = [
@@ -81,14 +30,14 @@ export default function TrainerDashboard() {
       title: "Total Clients",
       value: dashboardData.stats.totalClients.toString(),
       icon: Users,
-      change: `+${Math.floor(dashboardData.stats.totalClients / 2)} from last month`,
+      change: `+${Math.floor(dashboardData.stats.totalClients / 10)} from last month`,
       changeType: "positive",
     },
     {
       title: "Active Plans",
       value: dashboardData.stats.activePlans.toString(),
       icon: Activity,
-      change: `-${Math.floor(dashboardData.stats.activePlans / 6)} from last month`,
+      change: `-${Math.floor(dashboardData.stats.activePlans / 20)} from last month`,
       changeType: "negative",
     },
     {
@@ -100,30 +49,10 @@ export default function TrainerDashboard() {
     },
   ];
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-lg">Loading dashboard data...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-lg text-red-500">{error}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold">Trainer Dashboard</h2>
-        {/* <div className="flex gap-4">
-          <Button>Assign New Plan</Button>
-          <Button variant="outline">View All Clients</Button>
-        </div> */}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -139,9 +68,13 @@ export default function TrainerDashboard() {
                 </div>
                 <stat.icon className="h-8 w-8 text-muted-foreground" />
               </div>
-              <p className={`text-sm mt-2 ${
-                stat.changeType === "positive" ? "text-green-500" : "text-red-500"
-              }`}>
+              <p
+                className={`text-sm mt-2 ${
+                  stat.changeType === "positive"
+                    ? "text-green-500"
+                    : "text-red-500"
+                }`}
+              >
                 {stat.change}
               </p>
             </CardContent>
@@ -190,7 +123,6 @@ export default function TrainerDashboard() {
           <CardContent className="p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold">Recent Client Updates</h3>
-              <Button variant="link">View All Updates</Button>
             </div>
             {dashboardData.recentUpdates.length > 0 ? (
               <div className="space-y-4">
@@ -228,24 +160,6 @@ export default function TrainerDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      {/* <Card>
-        <CardContent className="p-6">
-          <h3 className="text-xl font-semibold mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Button className="w-full">Create Workout Plan</Button>
-            <Button className="w-full" variant="outline">
-              Add New Client
-            </Button>
-            <Button className="w-full" variant="outline">
-              Check Progress Logs
-            </Button>
-            <Button className="w-full" variant="outline">
-              Generate Reports
-            </Button>
-          </div>
-        </CardContent>
-      </Card> */}
     </div>
   );
 } 

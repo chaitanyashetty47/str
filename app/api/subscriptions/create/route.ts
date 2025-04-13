@@ -30,9 +30,9 @@ export async function POST(request: NextRequest) {
     // Validate that the plan exists and is active
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
-      .select('id, name, price, razorpay_plan_id, category, billing_period, is_active')
+      .select('id, name, price, razorpay_plan_id, category, billing_period') //had is_active column as well but removed it  
       .eq('id', planId)
-      .eq('is_active', true)
+      // .eq('is_active', true)
       .single();
     
     if (planError || !plan) {
