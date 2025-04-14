@@ -4,9 +4,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DIRECT_URL")
-  schemas  = ["public"]
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["public"]
 }
 
 model exercise {
@@ -185,6 +186,8 @@ model users {
   trainer_clients_as_trainer trainer_clients[]        @relation("trainer_clients_trainer")
   trainer_clients_as_client  trainer_clients[]        @relation("trainer_clients_client")
   transformation_photos      transformation_photos[]
+  user_body_measurements     user_body_measurements[]
+  user_metrics               user_metrics[]
   user_subscriptions         user_subscriptions[]
   user_workout_logs          user_workout_logs[]
   workout_day_completion     workout_day_completion[]
@@ -271,6 +274,46 @@ model workout_plans {
   workout_plan_weeks          workout_plan_weeks[]
   users_workout_plans_trainer users                    @relation("workout_plans_trainer", fields: [trainer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_workout_plans_clients users                    @relation("workout_plans_user", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model user_body_measurements {
+  id                  String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id             String   @db.Uuid
+  weight              Float
+  body_fat_percentage Float
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime @updatedAt @db.Timestamptz(6)
+  date_logged         DateTime @db.Date
+  users               users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model user_metrics {
+  id          String      @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id     String      @db.Uuid
+  metric_type metric_type
+  value       Float
+  date_logged DateTime    @db.Date
+  users       users       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+enum metric_type {
+  bmi_calculator
+  calorie_calculator
+  body_fat_calculator
+  bmr_calculator
+  ideal_weight_calculator
+  lean_body_mass_calculator
+  healthy_weight_calculator
+  calories_burned_calculator
+  one_rep_max_calculator
+  macro_calculator
+  body_type_calculator
 
   @@schema("public")
 }
