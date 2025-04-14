@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +22,6 @@ const formatWorkoutType = (type: WorkoutType): string => {
 export default async function TrainerDashboard() {
   // Fetch data using the server action
   const dashboardData = await getTrainerDashboardData();
-  console.log("Dashboard Data: \n", dashboardData);
 
   // Create stats array from the dashboard data
   const stats = [

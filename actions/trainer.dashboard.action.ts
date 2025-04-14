@@ -164,10 +164,7 @@ async function fetchRecentUpdates(trainerId: string): Promise<RecentUpdate[]> {
     client: update.users?.name || "Unknown User",
     action: "Completed workout",
     time: update.completed_at
-      ? new Date(update.completed_at).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        })
+      ? new Date(update.completed_at).toISOString().split('T')[0]
       : "N/A",
     weekNumber: update.week_number || 1,
     day: update.workout_days?.day_number || 1,
@@ -178,7 +175,6 @@ async function fetchRecentUpdates(trainerId: string): Promise<RecentUpdate[]> {
 // Cached function for fetching dashboard data
 const getCachedTrainerDashboardData = unstable_cache(
   async (trainerId: string): Promise<TrainerDashboardData> => {
-    console.log(`Cache miss: Fetching fresh dashboard data for trainer ${trainerId}`);
     const currentDate = new Date();
 
     try {

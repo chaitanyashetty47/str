@@ -36,7 +36,6 @@ export const BODY_PART_DELIMITER = ",";
 // Helper functions for working with body part selections
 export function parseBodyParts(value: string): BodyPart[] {
   if (!value) return [];
-  console.log("value: ", value);
   return value.split(BODY_PART_DELIMITER) as BodyPart[];
 }
 
@@ -60,7 +59,6 @@ export function getBodyPartDisplayName(value: string): string {
   
   if (parts.length === 0) return "Not specified";
   
-  console.log("parts: ", parts);
   return parts.map(part => {
     // Check if part exists in BODY_PARTS
     if (part in BODY_PARTS) {
