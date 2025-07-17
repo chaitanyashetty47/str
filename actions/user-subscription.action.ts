@@ -1,24 +1,29 @@
 'use server';
 
+import { PrismaClient } from "@prisma/client";
 import { createClient } from '@/utils/supabase/server';
 import Razorpay from 'razorpay';
+import { Prisma } from '@prisma/client';
+import crypto from 'crypto';
+
+const prisma = new PrismaClient();
 
 export interface SubscriptionWithPlan {
   id: string;
-  razorpay_subscription_id: string;
-  start_date: string;
-  end_date: string;
-  status: 'active' | 'canceled' | 'expired';
-  payment_status: 'pending' | 'completed' | 'failed';
-  subscription_plans: {
+  razorpaySubscriptionId: string;
+  startDate: string;
+  endDate: string | null;
+  status: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'CANCELED';
+  paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | null;
+  plan: {
     id: string;
     name: string;
     price: number;
     category: string;
-    plan_type: string;
+    planType: string | null;
     features: any;
-    billing_period: string;
-    billing_cycle: number;
+    billingPeriod: string;
+    billingCycle: number;
   };
 }
 
@@ -45,6 +50,14 @@ export interface CreateSubscriptionResponse {
   error?: string;
 }
 
+// Add this helper function or import it if it exists elsewhere
+
+// Convert Unix timestamp to ISO date string
+// const unixToISOString = (timestamp: number | null): string | null => {
+//   if (!timestamp) return null;
+//   return new Date(timestamp * 1000).toISOString();
+// };
+
 export async function createUserSubscription(planId: string): Promise<CreateSubscriptionResponse> {
   try {
     const supabase = await createClient();
@@ -58,19 +71,22 @@ export async function createUserSubscription(planId: string): Promise<CreateSubs
     
     // Get the plan details
     const { data: plan, error: planError } = await supabase
-      .from('subscription_plans')
+      .from('SubscriptionPlan')
       .select('*')
-      .eq('razorpay_plan_id', planId)
+      .eq('razorpayPlanId', planId)
       .single();
     
     if (planError || !plan) {
       console.error('Error fetching plan:', planError);
       return { error: 'Subscription plan not found', subscriptionId: '', key: '', amount: 0, currency: '', name: '', description: '' };
     }
+
+    // Store the actual database plan ID
+    const databasePlanId = plan.id;
     
     // Get user details
     const { data: userData, error: userDataError } = await supabase
-      .from('users')
+      .from('User')
       .select('email, name')
       .eq('id', user.id)
       .single();
@@ -92,48 +108,134 @@ export async function createUserSubscription(planId: string): Promise<CreateSubs
     });
     
     // We need to use the Razorpay plan ID from our database
-    if (!plan.razorpay_plan_id) {
+    if (!plan.razorpayPlanId) {
       return { error: 'Razorpay plan ID not configured for this plan', subscriptionId: '', key: '', amount: 0, currency: '', name: '', description: '' };
     }
     
     try {
-      // Create the subscription in Razorpay
-      const subscription = await razorpay.subscriptions.create({
-        plan_id: plan.razorpay_plan_id,
-        customer_notify: 1,
-        total_count: plan.billing_period === 'yearly' ? 1 : 4, // 1 year or 4 quarters
-        notes: {
-          user_id: user.id,
-          plan_name: plan.name,
-          plan_id: plan.id,
-          category: plan.category
+      // Create Razorpay subscription first, outside the transaction
+      let subscription;
+      try {
+        subscription = await razorpay.subscriptions.create({
+          plan_id: plan.razorpayPlanId,
+          customer_notify: 1,
+          // total_count: plan.billingPeriod === 'yearly' ? 1 : 4,
+          notes: {
+            userId: user.id,
+            plan_name: plan.name,
+            planId: databasePlanId,
+            category: plan.category
+          }
+        });
+
+        console.log('Razorpay subscription created:\n', subscription);
+      } catch (razorpayError) {
+        console.error('Error creating Razorpay subscription:', razorpayError);
+        throw new Error('Failed to create subscription with payment provider');
+      }
+
+      try {
+        // Start a transaction with increased timeout
+        const result = await prisma.$transaction(async (tx) => {
+          // Check for existing active subscription
+          const existingSubscription = await tx.userSubscription.findFirst({
+            where: {
+              userId: user.id,
+              planId: databasePlanId,
+              status: 'ACTIVE'
+            }
+          });
+
+          if (existingSubscription) {
+            throw new Error('You already have an active subscription of this type');
+          }
+
+          // Create initial subscription record
+          await tx.userSubscription.create({
+            data: {
+              userId: user.id,
+              planId: databasePlanId,
+              razorpaySubscriptionId: subscription.id,
+              status: 'CREATED',
+              paymentStatus: 'PENDING'
+            }
+          });
+
+          // Record the subscription creation event
+          await tx.subscriptionEvent.create({
+            data: {
+              userId: user.id,
+              eventType: 'subscription.created',
+              subscriptionId: subscription.id,
+              subscriptionPlanId: databasePlanId,
+              metadata: {
+                razorpaySubscription: subscription,
+                createdAt: new Date().toISOString()
+              }
+            }
+          });
+
+          // Since we've already checked for RAZORPAY_KEY_ID existence above, we can safely assert it's a string
+          const razorpayKeyId = process.env.RAZORPAY_KEY_ID as string;
+
+          return {
+            subscriptionId: subscription.id,
+            key: razorpayKeyId,
+            amount: plan.price * 100,
+            currency: 'INR',
+            name: plan.name,
+            description: `${plan.category} Subscription - ${plan.name}`,
+            prefill: {
+              name: userData.name,
+              email: userData.email,
+            },
+            notes: {
+              userId: user.id,
+              planId: databasePlanId,
+            }
+          };
+        }, {
+          timeout: 10000, // Increase timeout to 10 seconds
+          maxWait: 15000, // Maximum time to wait for transaction to start
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable // Ensure data consistency
+        });
+
+        return result;
+      } catch (transactionError) {
+        // If transaction fails, cancel the Razorpay subscription
+        try {
+          console.error('Transaction failed, cleaning up Razorpay subscription:', subscription.id);
+          await razorpay.subscriptions.cancel(subscription.id, true);
+          console.log('Successfully cancelled Razorpay subscription after transaction failure');
+        } catch (cancelError) {
+          console.error('Failed to cancel Razorpay subscription after transaction failure:', cancelError);
+          // Even though cleanup failed, we still want to throw the original error
         }
-      });
-      
-      // Return the subscription details for the frontend
-      return {
-        subscriptionId: subscription.id,
-        key: process.env.RAZORPAY_KEY_ID,
-        amount: plan.price * 100, // Convert to paise
-        currency: 'INR',
-        name: plan.name,
-        description: `${plan.category} Subscription - ${plan.name}`,
-        prefill: {
-          name: userData.name,
-          email: userData.email,
-        },
-        notes: {
-          user_id: user.id,
-          plan_id: planId,
-        }
-      };
+        throw transactionError; // Re-throw the original error after cleanup
+      }
     } catch (error) {
-      console.error('Error creating Razorpay subscription:', error);
-      return { error: 'Failed to create subscription', subscriptionId: '', key: '', amount: 0, currency: '', name: '', description: '' };
+      console.error('Error in subscription creation:', error);
+      return { 
+        error: error instanceof Error ? error.message : 'Internal server error', 
+        subscriptionId: '', 
+        key: '', 
+        amount: 0, 
+        currency: '', 
+        name: '', 
+        description: '' 
+      };
     }
   } catch (error) {
     console.error('Error in subscription creation:', error);
-    return { error: 'Internal server error', subscriptionId: '', key: '', amount: 0, currency: '', name: '', description: '' };
+    return { 
+      error: error instanceof Error ? error.message : 'Internal server error', 
+      subscriptionId: '', 
+      key: '', 
+      amount: 0, 
+      currency: '', 
+      name: '', 
+      description: '' 
+    };
   }
 }
 
@@ -155,27 +257,27 @@ export async function getUserSubscriptions(): Promise<SubscriptionResponse> {
     
     // Fetch the user's subscriptions with plan details
     const { data: subscriptions, error: subscriptionError } = await supabase
-      .from('user_subscriptions')
+      .from('UserSubscription')
       .select(`
         id,
-        razorpay_subscription_id,
-        start_date,
-        end_date,
+        razorpaySubscriptionId,
+        startDate,
+        endDate,
         status,
-        payment_status,
-        subscription_plans:plan_id (
+        paymentStatus,
+        plan:planId (
           id,
           name,
           price,
           category,
-          plan_type,
+          planType,
           features,
-          billing_period,
-          billing_cycle
+          billingPeriod,
+          billingCycle
         )
       `)
-      .eq('user_id', user.id)
-      .order('start_date', { ascending: false });
+      .eq('userId', user.id)
+      .order('startDate', { ascending: false });
     
     if (subscriptionError) {
       console.error('Error fetching subscriptions:', subscriptionError);
@@ -189,11 +291,11 @@ export async function getUserSubscriptions(): Promise<SubscriptionResponse> {
     
     // Get subscription events for additional context if needed
     const { data: events, error: eventsError } = await supabase
-      .from('subscription_events')
+      .from('SubscriptionEvent')
       .select('*')
-      .eq('user_id', user.id)
-      .in('subscription_id', subscriptions.map(sub => sub.razorpay_subscription_id))
-      .order('created_at', { ascending: false });
+      .eq('userId', user.id)
+      .in('subscriptionId', subscriptions.map(sub => sub.razorpaySubscriptionId))
+      .order('createdAt', { ascending: false });
     
     if (eventsError) {
       console.error('Error fetching subscription events:', eventsError);
@@ -230,10 +332,10 @@ export async function cancelUserSubscription(subscriptionId: string): Promise<{ 
     
     // Verify the subscription belongs to the user
     const { data: subscription, error: subscriptionError } = await supabase
-      .from('user_subscriptions')
+      .from('UserSubscription')
       .select('id')
-      .eq('user_id', user.id)
-      .eq('razorpay_subscription_id', subscriptionId)
+      .eq('userId', user.id)
+      .eq('razorpaySubscriptionId', subscriptionId)
       .single();
       
     if (subscriptionError || !subscription) {
@@ -258,9 +360,9 @@ export async function cancelUserSubscription(subscriptionId: string): Promise<{ 
       
       // Update the subscription status in our database
       const { error: updateError } = await supabase
-        .from('user_subscriptions')
+        .from('UserSubscription')
         .update({
-          status: 'canceled',
+          status: 'CANCELED',
         })
         .eq('id', subscription.id);
         
@@ -271,13 +373,14 @@ export async function cancelUserSubscription(subscriptionId: string): Promise<{ 
       
       // Record the cancellation event
       const { error: eventError } = await supabase
-        .from('subscription_events')
+        .from('SubscriptionEvent')
         .insert({
-          event_type: 'subscription.cancelled.manual',
-          subscription_id: subscriptionId,
-          user_id: user.id,
-          subscription_plan_id: subscription.id,
-          created_at: new Date().toISOString(),
+          id: crypto.randomUUID(),
+          eventType: 'subscription.cancelled.manual',
+          subscriptionId: subscriptionId,
+          userId: user.id,
+          subscriptionPlanId: subscription.id,
+          createdAt: new Date().toISOString(),
           metadata: {
             canceled_by: 'user',
             cancel_at_cycle_end: true,

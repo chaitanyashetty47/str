@@ -1,119 +1,148 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import prisma from '@/utils/prisma/prismaClient';
 import Razorpay from 'razorpay';
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse the request body
-    const body = await request.json();
-    const { subscriptionId } = body;
-    
-    if (!subscriptionId) {
-      return NextResponse.json(
-        { error: 'Subscription ID is required' },
-        { status: 400 }
-      );
-    }
-    
     const supabase = await createClient();
     
-    // Get the current authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+    // Get the authenticated user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
     if (userError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
-    // Verify that the subscription belongs to this user
-    const { data: subscription, error: subscriptionError } = await supabase
-      .from('user_subscriptions')
-      .select('id, razorpay_subscription_id')
-      .eq('user_id', user.id)
-      .eq('razorpay_subscription_id', subscriptionId)
-      .single();
-    
-    if (subscriptionError || !subscription) {
-      console.error('Error fetching subscription:', subscriptionError);
+
+    // Parse request body
+    const { razorpaySubscriptionId } = await request.json();
+
+    if (!razorpaySubscriptionId) {
       return NextResponse.json(
-        { error: 'Subscription not found or does not belong to this user' },
-        { status: 404 }
+        { error: 'Subscription ID is required' },
+        { status: 400 }
       );
     }
-    
-    // Initialize Razorpay
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      console.error('Razorpay credentials not configured');
-      return NextResponse.json(
-        { error: 'Payment provider not configured' },
-        { status: 500 }
-      );
-    }
-    
-    const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
+
+    // Use Prisma transaction for atomic operations
+    const result = await prisma.$transaction(async (tx) => {
+      // Step 1: Find the subscription in our database
+      const subscription = await tx.user_subscriptions.findFirst({
+        where: {
+          razorpay_subscription_id: razorpaySubscriptionId,
+          user_id: user.id, // Ensure user owns this subscription
+        },
+      });
+
+      if (!subscription) {
+        throw new Error('Subscription not found or you do not have permission to cancel it');
+      }
+
+      // Step 2: Check if subscription is in a cancellable state
+      if (subscription.status !== 'ACTIVE') {
+        throw new Error('Only active subscriptions can be cancelled');
+      }
+
+      // Step 3: Check if cancellation is already requested
+      if (subscription.cancel_requested_at) {
+        throw new Error('Cancellation already requested for this subscription');
+      }
+
+      // Step 4: Call Razorpay API to cancel subscription at cycle end
+      const razorpayResponse = await razorpay.subscriptions.cancel(razorpaySubscriptionId, true);
+
+      console.log('Razorpay cancel response:', razorpayResponse);
+
+      // Step 5: Update our database with cancellation request
+      // According to Razorpay docs, subscription status becomes 'cancelled' immediately
+      // but remains active until current_end date
+      await tx.user_subscriptions.update({
+        where: {
+          id: subscription.id,
+        },
+        data: {
+          cancel_requested_at: new Date(),
+          cancel_at_cycle_end: true,
+          // Set end_date to current cycle end - subscription will remain active until then
+          end_date: subscription.current_end,
+          // Keep status as ACTIVE until webhook confirms actual cancellation
+          // Webhook will update status to CANCELLED when it actually ends
+        },
+      });
+
+      // Step 6: Log the cancellation request event
+      await tx.subscription_events.create({
+        data: {
+          id: crypto.randomUUID(),
+          event_type: 'cancel_requested',
+          user_id: subscription.user_id,
+          subscription_plan_id: subscription.plan_id,
+          metadata: {
+            razorpay_subscription_id: razorpaySubscriptionId,
+            cancel_at_cycle_end: true,
+            requested_at: new Date().toISOString(),
+          },
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Subscription cancellation scheduled successfully',
+      };
     });
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Error cancelling subscription:', error);
     
-    try {
-      // Cancel the subscription in Razorpay
-      // Note: This only stops future renewals, access continues until the end date
-      await razorpay.subscriptions.cancel(subscriptionId, true);
-      
-      // Update the subscription status in our database
-      // The webhook will also update this when it receives the cancellation event
-      const { error: updateError } = await supabase
-        .from('user_subscriptions')
-        .update({
-          status: 'canceled',
-        })
-        .eq('id', subscription.id);
-      
-      if (updateError) {
-        console.error('Error updating subscription:', updateError);
+    // Handle specific Razorpay errors
+    if (error instanceof Error) {
+      if (error.message.includes('expired')) {
         return NextResponse.json(
-          { error: 'Failed to update subscription status' },
-          { status: 500 }
+          { error: 'Cannot cancel expired subscription' },
+          { status: 400 }
         );
       }
-      
-      // Record the cancellation event manually (in addition to the webhook)
-      const { error: eventError } = await supabase
-        .from('subscription_events')
-        .insert({
-          event_type: 'subscription.cancelled.manual',
-          subscription_id: subscriptionId,
-          user_id: user.id,
-          subscription_plan_id: subscription.id,
-          created_at: new Date().toISOString(),
-          metadata: {
-            canceled_by: 'user',
-            cancel_at_cycle_end: true,
-          }
-        });
-      
-      if (eventError) {
-        console.error('Error recording cancellation event:', eventError);
-        // Continue anyway since the cancellation was successful
+      if (error.message.includes('already cancelled')) {
+        return NextResponse.json(
+          { error: 'Subscription is already cancelled' },
+          { status: 400 }
+        );
       }
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Subscription cancelled. You will have access until the end of your current billing period.'
-      });
-    } catch (error) {
-      console.error('Error cancelling Razorpay subscription:', error);
-      return NextResponse.json(
-        { error: 'Failed to cancel subscription' },
-        { status: 500 }
-      );
+      if (error.message.includes('not found') || error.message.includes('permission')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 404 }
+        );
+      }
+      if (error.message.includes('Only active subscriptions')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 400 }
+        );
+      }
+      if (error.message.includes('already requested')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 400 }
+        );
+      }
     }
-  } catch (error) {
-    console.error('Error in subscription cancellation:', error);
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to cancel subscription. Please try again.' },
       { status: 500 }
     );
   }

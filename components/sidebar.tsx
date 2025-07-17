@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, CreditCard, Dumbbell, Brain, Sparkles, User, Camera, Menu, X } from "lucide-react"
+import { LayoutDashboard, CreditCard, Dumbbell, Calculator , User, Camera, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
@@ -33,6 +33,11 @@ const navItems = [
     title: "Before & After",
     href: "/photos",
     icon: Camera,
+  },
+  {
+    title: "Calculator",
+    href: "/calculator",
+    icon: Calculator,
   },
 ]
 

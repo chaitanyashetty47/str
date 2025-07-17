@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import Razorpay from 'razorpay';
+import crypto from 'crypto';
+import prisma from '@/utils/prisma/prismaClient';
+import { getAuthenticatedUserId } from '@/utils/user';
+
 
 export async function POST(request: NextRequest) {
   try {
     // Parse the request body
     const body = await request.json();
-    const { planId } = body;
+    const { razorpayPlanId, selectedCycle } = body;
     
-    if (!planId) {
+    if (!razorpayPlanId) {
       return NextResponse.json(
         { error: 'Plan ID is required' },
         { status: 400 }
@@ -16,56 +20,62 @@ export async function POST(request: NextRequest) {
     }
     
     const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    const userId = user?.id;
+
+    //const userId = await getAuthenticatedUserId();
     
     // Get the current authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
+    //const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log("userId is:\n", userId);
+    if (!userId || userError) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
     
-    // Validate that the plan exists and is active
-    const { data: plan, error: planError } = await supabase
-      .from('subscription_plans')
-      .select('id, name, price, razorpay_plan_id, category, billing_period') //had is_active column as well but removed it  
-      .eq('id', planId)
-      // .eq('is_active', true)
-      .single();
-    
-    if (planError || !plan) {
+    // Find the plan in database
+    const plan = await prisma.subscription_plans.findFirst({
+      where: { razorpay_plan_id: razorpayPlanId },
+    });
+
+    if (!plan) {
       return NextResponse.json(
         { error: 'Subscription plan not found or inactive' },
         { status: 404 }
       );
     }
     
-    // Check if user already has an active subscription of this type
-    const { data: existingSubscription, error: subscriptionError } = await supabase
-      .from('user_subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .eq('plan_id', planId)
-      .single();
-    
+    // Check if user already has an active subscription of this category
+    const existingSubscription = await prisma.user_subscriptions.findFirst({
+      where: {
+        user_id: userId,
+        status: { in: ['CREATED', 'ACTIVE', 'AUTHENTICATED', 'PENDING'] },
+        subscription_plans: {
+          category: plan.category
+        }
+      },
+      include: {
+        subscription_plans: true
+      }
+    });
+
     if (existingSubscription) {
       return NextResponse.json(
-        { error: 'You already have an active subscription of this type' },
+        { error: `You already have an active ${plan.category.toLowerCase()} subscription` },
         { status: 400 }
       );
     }
     
-    // Get user details
-    const { data: userData, error: userDataError } = await supabase
-      .from('users')
-      .select('email, name')
-      .eq('id', user.id)
-      .single();
+    // Get user details from users_profile table
+    const userData = await prisma.users_profile.findUnique({
+      where: { id: userId },
+      select: { email: true, name: true }
+    });
     
-    if (userDataError || !userData) {
+    if (!userData) {
       return NextResponse.json(
         { error: 'User details not found' },
         { status: 404 }
@@ -85,56 +95,69 @@ export async function POST(request: NextRequest) {
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
     
-    // Create a subscription
+    // Create a subscription with 30-year duration
     try {
-      // We need to use the Razorpay plan ID from our database
-      if (!plan.razorpay_plan_id) {
-        return NextResponse.json(
-          { error: 'Payment configuration error' },
-          { status: 400 }
-        );
-      }
+      // Calculate total_count for 30 years based on billing cycle
+      const totalCount = selectedCycle === 3 ? 120 : selectedCycle === 6 ? 60 : 30;
       
-      // Create the subscription in Razorpay with secure notes
       const subscription = await razorpay.subscriptions.create({
         plan_id: plan.razorpay_plan_id,
         customer_notify: 1,
-        total_count: plan.billing_period === 'yearly' ? 1 : 4, // 1 year or 4 quarters
+        total_count: totalCount, // 30 years
         notes: {
-          user_id: user.id,
+          user_id: userId,
           plan_name: plan.name,
-          plan_id: plan.id
+          plan_id: plan.id,
+          razorpay_plan_id: plan.razorpay_plan_id
+        }
+      });
+
+      // Insert in user_subscriptions table
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 30); // 30 years from now
+
+      await prisma.user_subscriptions.create({
+        data: {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          plan_id: plan.id,
+          razorpay_subscription_id: subscription.id,
+          status: 'CREATED',
+          payment_status: 'PENDING',
+          start_date: new Date(),
+          end_date: endDate,
+          total_count: totalCount,
+          paid_count: 0,
+          remaining_count: totalCount,
         }
       });
       
-      // Log the subscription creation for audit purposes
-      await supabase.from('subscription_events').insert({
-        event_type: 'subscription.created',
-        user_id: user.id,
-        plan_id: plan.id,
-        metadata: { razorpay_subscription_id: subscription.id }
-      });
-      
-      // Return only what's needed for the frontend, avoid sending sensitive data
+      // Return only what's needed for the frontend
       return NextResponse.json({
         subscriptionId: subscription.id,
         key: process.env.RAZORPAY_KEY_ID,
-        amount: plan.price * 100, // Convert to paise
+        amount: Number(plan.price) * 100, // Convert to paise
         currency: 'INR',
         name: plan.name,
         description: `${plan.category} Subscription - ${plan.name}`,
         prefill: {
           name: userData.name,
           email: userData.email,
+        },
+        notes: {
+          user_id: userId,
+          plan_id: plan.id
         }
       });
     } catch (error) {
+      console.error("Subscription creation error:", error);
       return NextResponse.json(
         { error: 'Failed to create subscription' },
         { status: 500 }
       );
     }
   } catch (error) {
+    console.error("API error:", error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

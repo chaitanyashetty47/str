@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { getUpcomingWorkouts } from "@/actions/clientworkout.action"
+import { getUpcomingWorkouts } from "@/actions/client-workout/client-workout.action"
 import { Skeleton } from "@/components/ui/skeleton"
+import { WorkoutDayOutput } from "@/actions/client-workout/client-workout.action"
 
 function UpcomingWorkoutsLoading() {
   return (
@@ -25,34 +26,34 @@ function UpcomingWorkoutsLoading() {
   )
 }
 
-interface WorkoutDay {
-  id: string;
-  day_number: number;
-  workout_type: string;
-}
+// interface WorkoutDay {
+//   id: string;
+//   dayNumber: number;
+//   title: string;
+// }
 
 export default async function UpcomingWorkouts({planId, week}: {planId: string, week: number}) {
-  const {data: workouts, error} = await getUpcomingWorkouts(planId)
+  const { data: workouts, error } = await getUpcomingWorkouts({ planId })
 
   return (
     <div className="border rounded-lg p-6">
       <h2 className="text-2xl font-bold mb-1">Upcoming Workouts</h2>
       <p className="text-muted-foreground mb-6">Your scheduled sessions for this week</p>
 
-      {error && <p className="text-red-500">{error.message}</p>}
+      {error && <p className="text-red-500">{error}</p>}
 
       <div className="space-y-6">
-        {workouts?.map((workout: WorkoutDay) => (
+        {workouts?.map((workout: WorkoutDayOutput) => (
           <div key={workout.id} className="flex items-center justify-between border-b pb-6 last:border-0 last:pb-0">
             <div>
-              <p className="font-bold text-lg">{workout.workout_type}</p>
+              <p className="font-bold text-lg">{workout.title}</p>
               <p className="text-muted-foreground">
-                Day {workout.day_number}
+                Day {workout.dayNumber}
               </p>
             </div>
             
             <Button className="bg-black hover:bg-gray-800 text-white" asChild>
-              <Link href={`/workouts/logs?planId=${planId}&week=${week}&day=${workout.day_number}`}>
+              <Link href={`/workout-plan/${planId}`}>
                 Start
               </Link>
             </Button>

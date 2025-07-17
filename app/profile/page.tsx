@@ -23,7 +23,7 @@ export default async function ProfilePage() {
 
   // Get profile data
   const { data: profile, error: profileError } = await supabase
-    .from("profiles")
+    .from("users_profile")
     .select("*")
     .eq("user_id", user.id)
     .single();
