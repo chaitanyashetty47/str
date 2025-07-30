@@ -101,17 +101,28 @@ export default function WorkoutPageHeader({
                 : "No data"}
             </span>
 
-            {planId ? (
-              <Link href={`/workout/${planId}?startDate=${getCurrentWeekRange().startDate}&endDate=${getCurrentWeekRange().endDate}`}>
-                <Button size="sm" className="w-full mt-2 bg-strentor-red text-white hover:bg-strentor-red/90 hover:text-white">
+            {/* Action Buttons */}
+            <div className="space-y-2 mt-3">
+              {planId ? (
+                <Link href={`/workout/${planId}?startDate=${getCurrentWeekRange().startDate}&endDate=${getCurrentWeekRange().endDate}`}>
+                  <Button size="sm" className="w-full bg-strentor-red text-white hover:bg-strentor-red/90 hover:text-white">
+                    Start Current Week
+                  </Button>
+                </Link>
+              ) : (
+                <Button size="sm" className="w-full bg-strentor-red text-white hover:bg-strentor-red/90 hover:text-white" disabled>
                   Start Current Week
                 </Button>
-              </Link>
-            ) : (
-              <Button size="sm" className="w-full mt-2 bg-strentor-red text-white hover:bg-strentor-red/90 hover:text-white" disabled>
-                Start Current Week
-              </Button>
-            )}
+              )}
+              
+              {planId && (
+                <Link href={`/workout-plan/${planId}/summary`}>
+                  <Button size="sm" variant="outline" className="w-full border-strentor-red text-strentor-red hover:bg-strentor-red hover:text-white">
+                    View Analytics & Progress
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>

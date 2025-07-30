@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import prisma from '@/utils/prisma/prismaClient'
 import { onboardingSchema } from '@/types/onboarding'
-
+import { v4 as uuidv4 } from 'uuid'
 
 
 export async function completeOnboardingAction(data: unknown) {
@@ -36,33 +36,34 @@ export async function completeOnboardingAction(data: unknown) {
     }
 
     // Update user profile in database (role defaults to CLIENT)
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.users_profile.update({
       where: { id: user.id },
       data: {
         name: result.data.name,
         weight: result.data.weight,
-        weightUnit: result.data.weightUnit,
+        weight_unit: result.data.weightUnit,
         height: result.data.height,
-        heightUnit: result.data.heightUnit,
-        dateOfBirth: new Date(result.data.dateOfBirth),
+        height_unit: result.data.heightUnit,
+        date_of_birth: new Date(result.data.dateOfBirth),
         gender: result.data.gender,
-        activityLevel: result.data.activityLevel,
+        activity_level: result.data.activityLevel,
         // Optional measurements
         neck: prepareMeasurement(result.data.neck),
         waist: prepareMeasurement(result.data.waist),
         hips: prepareMeasurement(result.data.hips),
-        profileCompleted: true,
-        onboardingCompleted: new Date()
+        profile_completed: true,
+        onboarding_completed: new Date()
       }
     })
 
     // Create initial weight log entry
-    await prisma.weightLog.create({
+    await prisma.weight_logs.create({
       data: {
-        userId: user.id,
+        id: uuidv4(),
+        user_id: user.id,
         weight: result.data.weight,
-        weightUnit: result.data.weightUnit,
-        dateLogged: new Date(),
+        weight_unit: result.data.weightUnit,
+        date_logged: new Date(),
         notes: 'Initial weight from onboarding'
       }
     })
@@ -79,12 +80,12 @@ export async function completeOnboardingAction(data: unknown) {
 
 export async function getUserOnboardingStatus(userId: string) {
   try {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_profile.findUnique({
       where: { id: userId },
       select: {
-        profileCompleted: true,
-        onboardingStarted: true,
-        onboardingCompleted: true,
+        profile_completed: true,
+        onboarding_started: true,
+        onboarding_completed: true,
         name: true,
         weight: true,
         height: true,

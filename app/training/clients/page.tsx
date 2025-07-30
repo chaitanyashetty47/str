@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { fetchTrainerClients } from "@/actions/trainer-clients.action";
+import { fetchTrainerClients } from "@/actions/trainer-clients/trainer-clients.action";
 import TrainerClientsPage from "@/features/training/pages/trainer-clients";
 import { redirect } from "next/navigation";
 

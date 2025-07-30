@@ -1,28 +1,49 @@
-export type WorkoutType = string;
-
 export interface TrainerDashboardStats {
   totalClients: number;
   activePlans: number;
-  completedSessions: number;
+  weekProgressPercentage: number; // Overall progress across all clients for current week
 }
 
-export interface UpcomingSession {
+export interface UpcomingWorkout {
   client: string;
-  sessionType: WorkoutType;
-  status: string;
+  workoutTitle: string;
+  scheduledDate: string; // ISO date string
+  exercises: string[]; // Exercise names as bullet points
+  status: "pending" | "completed";
 }
 
-export interface RecentUpdate {
+export interface RecentActivity {
   client: string;
-  action: string;
-  time: string;
-  weekNumber: number;
-  day: number;
-  workoutType: WorkoutType;
+  exerciseName: string;
+  weight: number;
+  reps: number;
+  loggedDate: string; // ISO date string
+}
+
+export interface OngoingPlan {
+  clientName: string;
+  planTitle: string;
+  weeklyProgressPercentage: number; // Current week progress
+  overallProgressPercentage: number; // Overall plan progress
+  currentWeek: number;
+  totalWeeks: number;
+  planId: string;
+}
+
+export interface ClientPR {
+  id: string;
+  clientName: string;
+  exerciseName: string;
+  weight: number;
+  reps: number | null;
+  oneRepMax: number | null;
+  date: string; // Formatted date string
 }
 
 export interface TrainerDashboardData {
   stats: TrainerDashboardStats;
-  upcomingSessions: UpcomingSession[];
-  recentUpdates: RecentUpdate[];
+  upcomingWorkouts: UpcomingWorkout[];
+  recentActivity: RecentActivity[];
+  ongoingPlans: OngoingPlan[];
+  clientPRs: ClientPR[];
 }

@@ -18,6 +18,10 @@ import {
   getClientCurrentWorkoutPlan,
   getUserLastFivePRs,
 } from "@/actions/client-workout/client-workout.action";
+import { getActiveSubscriptions } from "@/actions/subscriptions/get-active-subscriptions.action";
+import { NoSubscriptionCard } from "@/components/dashboard/NoSubscriptionCard";
+import { NoWorkoutPlanCard } from "@/components/dashboard/NoWorkoutPlanCard";
+import { ActiveSubscriptionCard } from "@/components/dashboard/ActiveSubscriptionCard";
 import { Suspense } from "react";
 
 export default async function DashboardPage() {
@@ -31,25 +35,20 @@ export default async function DashboardPage() {
     return redirect("/sign-in");
   }
 
-  // Fetch current workout plan
-  const {
-    data: workoutPlan,
-    error: workoutPlanError,
-  } = await getClientCurrentWorkoutPlan({});
+  // Parallel loading for better performance with caching strategy
+  const [
+    { data: activeSubscriptions, error: subscriptionError },
+    { data: workoutPlan, error: workoutPlanError },
+    { data: userPRs },
+  ] = await Promise.all([
+    getActiveSubscriptions({}),
+    getClientCurrentWorkoutPlan({}),
+    getUserLastFivePRs({}),
+  ]);
 
-  if (workoutPlanError || !workoutPlan) {
-    return redirect("/home");
-  }
-
-  const {
-    progressPercentage,
-    currentWeek,
-    totalWeeks,
-    daysRemaining,
-  } = workoutPlan.progress;
-
-  // Fetch last five PRs
-  const { data: userPRs } = await getUserLastFivePRs({});
+  // Determine states
+  const hasActiveSubscriptions = activeSubscriptions && activeSubscriptions.length > 0;
+  const hasWorkoutPlan = workoutPlan && !workoutPlanError;
 
   return (
     <div className="container py-8 space-y-8">
@@ -65,23 +64,36 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Subscription Status */}
+      <div className="grid grid-cols-1 gap-6 mb-8">
+        {hasActiveSubscriptions ? (
+          <ActiveSubscriptionCard subscriptions={activeSubscriptions} />
+        ) : (
+          <NoSubscriptionCard />
+        )}
+      </div>
+
       {/* Progress Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 border rounded-lg p-6">
-          <h2 className="text-2xl font-bold mb-1">Workout Plan Progress</h2>
+        {hasWorkoutPlan ? (
+          <div className="md:col-span-2 border rounded-lg p-6">
+            <h2 className="text-2xl font-bold mb-1">Workout Plan Progress</h2>
 
-          <Progress value={progressPercentage} className="h-2 mb-4" />
-          <p className="text-muted-foreground mb-4">
-            {daysRemaining} days left in your current plan
-          </p>
+            <Progress value={workoutPlan.progress.progressPercentage} className="h-2 mb-4" />
+            <p className="text-muted-foreground mb-4">
+              {workoutPlan.progress.daysRemaining} days left in your current plan
+            </p>
 
-          <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-md w-fit">
-            <Dumbbell className="h-5 w-5 text-gray-700" />
-            <span className="font-medium">
-              Currently on Week {currentWeek} of {totalWeeks}
-            </span>
+            <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-md w-fit">
+              <Dumbbell className="h-5 w-5 text-gray-700" />
+              <span className="font-medium">
+                Currently on Week {workoutPlan.progress.currentWeek} of {workoutPlan.progress.totalWeeks}
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <NoWorkoutPlanCard />
+        )}
 
         <div className="border rounded-lg p-6">
           <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
@@ -182,15 +194,17 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Upcoming Workouts */}
-      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-        <Suspense fallback={<UpcomingWorkoutsLoading />}>
-          <UpcomingWorkouts
-            planId={workoutPlan.id}
-            week={workoutPlan.progress.currentWeek}
-          />
-        </Suspense>
-      </div>
+      {/* Upcoming Workouts - Only show if user has a workout plan */}
+      {hasWorkoutPlan && (
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+          <Suspense fallback={<UpcomingWorkoutsLoading />}>
+            <UpcomingWorkouts
+              planId={workoutPlan.id}
+              week={workoutPlan.progress.currentWeek}
+            />
+          </Suspense>
+        </div>
+      )}
 
       {/* Progress Graphs */}
       <ProgressGraphs />

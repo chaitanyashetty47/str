@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Step 4: Call Razorpay API to cancel subscription at cycle end
-      const razorpayResponse = await razorpay.subscriptions.cancel(razorpaySubscriptionId, true);
+      const razorpayResponse = await razorpay.subscriptions.cancel(razorpaySubscriptionId, false);
 
       console.log('Razorpay cancel response:', razorpayResponse);
 
@@ -75,9 +75,11 @@ export async function POST(request: NextRequest) {
         data: {
           cancel_requested_at: new Date(),
           cancel_at_cycle_end: true,
-          // Set end_date to current cycle end - subscription will remain active until then
-          end_date: subscription.current_end,
+          // Set end_date to Today - subscription will remain active until then
+          end_date: new Date(),
+          //end_date: subscription.current_end,
           // Keep status as ACTIVE until webhook confirms actual cancellation
+          status: 'CANCELLED',
           // Webhook will update status to CANCELLED when it actually ends
         },
       });

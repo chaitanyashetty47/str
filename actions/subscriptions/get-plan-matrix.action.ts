@@ -67,6 +67,7 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       }
     });
 
+ 
     // Separate active vs scheduled for cancellation
     const activeSubscriptions = userSubscriptions.filter(sub => !sub.cancel_at_cycle_end);
     const scheduledCancellations = userSubscriptions.filter(sub => sub.cancel_at_cycle_end);
@@ -119,19 +120,10 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         // Same category, different plan - check if upgrade/downgrade is allowed
         const currentPlan = activeInCategory.subscription_plans;
         
-        if (hasMultipleActivePlans) {
-          // User has multiple active plans - must cancel one first
-          buttonState = 'keep_one_active';
-          buttonText = 'Cancel other plans first';
-          action = { 
-            type: 'cancel_first', 
-            planId: plan.id,
-            conflictSubscriptions: activeSubscriptions.filter(sub => sub.id !== activeInCategory.id).map(sub => sub.id)
-          };
-          disabled = true;
-          variant = 'destructive';
-        } else if (plan.billing_cycle > currentPlan.billing_cycle) {
-          // Single active plan - allow upgrade
+        // For same-category plans, always allow upgrade/downgrade regardless of other active plans
+        // Only block cross-category conflicts, not same-category changes
+        if (plan.billing_cycle > currentPlan.billing_cycle) {
+          // Allow upgrade within same category
           buttonState = 'upgrade';
           buttonText = `Upgrade to ${plan.billing_cycle === 3 ? 'Quarterly' : plan.billing_cycle === 6 ? 'Semi-Annual' : 'Annual'}`;
           action = { 
@@ -141,7 +133,7 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
           };
           variant = 'default';
         } else {
-          // Single active plan - allow downgrade
+          // Allow downgrade within same category
           buttonState = 'downgrade';
           buttonText = `Downgrade to ${plan.billing_cycle === 3 ? 'Quarterly' : plan.billing_cycle === 6 ? 'Semi-Annual' : 'Annual'}`;
           action = { 
@@ -152,15 +144,17 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
           variant = 'outline';
         }
       } else if (plan.category === 'ALL_IN_ONE' && activeSubscriptions.length > 1) {
-        // ALL_IN_ONE with multiple active subscriptions
+        // ALL_IN_ONE with multiple active subscriptions - show actionable cancel option
         buttonState = 'conflict_all_in_one';
-        buttonText = 'Not Available';
+        buttonText = 'Cancel other plans first';
         action = { 
+          //type: 'cancel_first',
           type: 'disabled',
-          endDate: undefined
+          planId: plan.id,
+          conflictSubscriptions: activeSubscriptions.map(sub => sub.id)
         };
-        disabled = true;
-        variant = 'secondary';
+        disabled = false; // Make it actionable
+        variant = 'destructive';
       } else if (plan.category === 'ALL_IN_ONE' && activeSubscriptions.length === 1) {
         // User has exactly 1 active plan - allow upgrade to ALL_IN_ONE
         const activeSub = activeSubscriptions[0];
@@ -182,6 +176,18 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
           conflictSubscriptions: activeSubscriptions.filter(sub => 
             sub.subscription_plans.category === 'ALL_IN_ONE'
           ).map(sub => sub.id)
+        };
+        disabled = true;
+        variant = 'destructive';
+      } else if (plan.category !== 'ALL_IN_ONE' && activeSubscriptions.length >= 2) {
+        // User already has 2+ individual plans, trying to add another category
+        // Suggest managing existing subscriptions first
+        buttonState = 'keep_one_active';
+        buttonText = 'Manage existing plans first';
+        action = { 
+          type: 'cancel_first', 
+          planId: plan.id,
+          conflictSubscriptions: activeSubscriptions.map(sub => sub.id)
         };
         disabled = true;
         variant = 'destructive';

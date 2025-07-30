@@ -31,8 +31,6 @@ type OptimisticAction = {
 
 export function WorkoutLoggerClient({ 
   workoutId, 
-  // startDate, 
-  // endDate ,
   weekNumber
 }: WorkoutLoggerClientProps) {
   const router = useRouter();

@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { SortingState, PaginationState } from "@tanstack/react-table";
 import { SubscriptionStatus } from "@prisma/client";
 import { useAction } from "./useAction";
-import { fetchTrainerClients } from "@/actions/trainer-clients.action";
+import { fetchTrainerClients } from "@/actions/trainer-clients/trainer-clients.action";
 import { 
   TrainerClientsFilters, 
   TrainerClientsResponse, 

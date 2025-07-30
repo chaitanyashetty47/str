@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Sparkles, Zap, Crown, Star } from 'lucide-react';
+import { AlertCircle, Loader2, Sparkles, Zap, Crown, Star, BadgeCheck } from 'lucide-react';
 import { SubscribeButton } from './subscribe-button';
+import { PricingHeader } from './PricingHeader';
 import { getPlanMatrix, PlanMatrixItem } from '@/actions/subscriptions/get-plan-matrix.action';
 import { updateSubscription } from '@/actions/subscriptions/update-subscription.action';
 import { cancelSubscription } from '@/actions/subscriptions/cancel-subscription.action';
@@ -20,6 +21,12 @@ interface SettingsPricingSectionProps {
   onSubscriptionSuccess?: () => void;
 }
 
+const billingOptions = [
+  { label: "Quarterly", value: 3 },
+  { label: "Semi-Annual", value: 6 },
+  { label: "Annual", value: 12 },
+];
+
 const categoryIcons = {
   FITNESS: <Zap className="h-5 w-5" />,
   PSYCHOLOGY: <Sparkles className="h-5 w-5" />,
@@ -27,34 +34,16 @@ const categoryIcons = {
   ALL_IN_ONE: <Crown className="h-5 w-5" />
 };
 
-const categoryColors = {
-  FITNESS: 'bg-blue-50 border-blue-200',
-  PSYCHOLOGY: 'bg-purple-50 border-purple-200',
-  MANIFESTATION: 'bg-yellow-50 border-yellow-200',
-  ALL_IN_ONE: 'bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200'
-};
 
-const categoryTitles = {
-  FITNESS: 'Fitness',
-  PSYCHOLOGY: 'Psychology',
-  MANIFESTATION: 'Manifestation',
-  ALL_IN_ONE: 'All-in-One'
-};
 
-const getBillingCycleLabel = (cycle: number) => {
-  switch (cycle) {
-    case 3: return 'Quarterly';
-    case 6: return 'Semi-Annual';
-    case 12: return 'Annual';
-    default: return `${cycle} months`;
-  }
-};
+
 
 export function SettingsPricingSection({ 
   userId, 
   onSubscriptionSuccess 
 }: SettingsPricingSectionProps) {
   const [plans, setPlans] = useState<PlanMatrixItem[]>([]);
+  const [selectedCycle, setSelectedCycle] = useState<number>(3);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -182,13 +171,19 @@ export function SettingsPricingSection({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading subscription plans...</span>
+      <div className="space-y-8">
+        {/* Loading Header */}
+        <div className="space-y-7 text-center">
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-64 mx-auto" />
+            <Skeleton className="h-4 w-96 mx-auto" />
+          </div>
+          <Skeleton className="h-12 w-80 mx-auto rounded-full" />
         </div>
+        
+        {/* Loading Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="min-h-[280px]">
               <CardHeader className="pb-3">
                 <Skeleton className="h-6 w-32" />
@@ -211,126 +206,162 @@ export function SettingsPricingSection({
 
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <div className="space-y-8">
+        {/* Header still shown during error */}
+        <PricingHeader
+          title="All Subscription Plans"
+          subtitle="Choose from quarterly, semi-annual, or annual billing for each category"
+          options={billingOptions}
+          selected={selectedCycle}
+          onSelect={setSelectedCycle}
+        />
+        
+        {/* Error Alert */}
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
-  // Group plans by category for better organization
-  const plansByCategory = plans.reduce((acc, plan) => {
-    if (!acc[plan.category]) {
-      acc[plan.category] = [];
+
+
+  // Get category-specific styling
+  const getCategoryBorderClass = (category: string) => {
+    switch (category) {
+      case 'FITNESS': return 'border-blue-200';
+      case 'PSYCHOLOGY': return 'border-purple-200';
+      case 'MANIFESTATION': return 'border-orange-200';
+      case 'ALL_IN_ONE': return 'border-green-200';
+      default: return 'border-gray-200';
     }
-    acc[plan.category].push(plan);
-    return acc;
-  }, {} as Record<string, PlanMatrixItem[]>);
+  };
+
+  const getButtonClassName = (plan: PlanMatrixItem) => {
+    if (plan.buttonState === 'current') {
+      return "w-full bg-green-500 hover:bg-green-600 text-white";
+    }
+    return "w-full bg-strentor-red hover:bg-strentor-red/90 text-white";
+  };
+
+  // Filter plans based on selected billing cycle
+  const filteredPlans = plans.filter(
+    (plan) => plan.billing_cycle === selectedCycle
+  );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">All Subscription Plans</h3>
-        <p className="text-sm text-muted-foreground">
-          Choose from quarterly, semi-annual, or annual billing for each category
-        </p>
-      </div>
+    <div className="space-y-8">
+      {/* Pricing Header with Billing Cycle Tabs */}
+      <PricingHeader
+        title="All Subscription Plans"
+        subtitle="Choose from quarterly, semi-annual, or annual billing for each category"
+        options={billingOptions}
+        selected={selectedCycle}
+        onSelect={setSelectedCycle}
+      />
 
-      {Object.entries(plansByCategory).map(([category, categoryPlans]) => (
-        <div key={category} className="space-y-3">
-          <div className="flex items-center gap-2">
-            {categoryIcons[category as keyof typeof categoryIcons]}
-            <h4 className="text-md font-medium">
-              {categoryTitles[category as keyof typeof categoryTitles]}
-            </h4>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categoryPlans
-              .sort((a, b) => a.billing_cycle - b.billing_cycle)
-              .map((plan) => (
-                <Card 
-                  key={plan.id} 
-                  className={`${categoryColors[category as keyof typeof categoryColors]} ${
-                    plan.buttonState === 'current' ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{plan.name}</CardTitle>
-                      {plan.buttonState === 'current' && (
-                        <Badge variant="default" className="bg-blue-500">
-                          Current
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold">₹{plan.price.toLocaleString()}</span>
-                      <Badge variant="secondary">
-                        {getBillingCycleLabel(plan.billing_cycle)}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-4">
-                    {plan.features && Array.isArray(plan.features) && (
-                      <div className="space-y-1">
-                        {plan.features.slice(0, 2).map((feature: any, index: number) => {
-                          const featureText = typeof feature === 'string' 
-                            ? feature 
-                            : feature?.name || 'Feature included';
-                          return (
-                            <div key={index} className="text-sm text-muted-foreground">
-                              • {featureText}
-                            </div>
-                          );
-                        })}
-                        {plan.features.length > 2 && (
-                          <div className="text-sm text-muted-foreground">
-                            • And {plan.features.length - 2} more features
-                          </div>
-                        )}
-                      </div>
+      {/* Single Grid Layout - No Category Grouping */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filteredPlans
+          .sort((a, b) => {
+            // Sort by category only since all plans have the same billing cycle now
+            const categoryOrder = ['FITNESS', 'PSYCHOLOGY', 'MANIFESTATION', 'ALL_IN_ONE'];
+            return categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category);
+          })
+          .map((plan) => (
+            <Card 
+              key={plan.id} 
+              className={`h-full flex flex-col overflow-hidden rounded-2xl border p-6 shadow bg-background ${getCategoryBorderClass(plan.category)} ${
+                plan.buttonState === 'current' ? 'ring-2 ring-green-500' : ''
+              }`}
+            >
+              {/* Header Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    {categoryIcons[plan.category as keyof typeof categoryIcons]}
+                    <CardTitle className="text-lg">{plan.name}</CardTitle>
+                  </div>
+                  {plan.buttonState === 'current' && (
+                    <Badge variant="default" className="bg-green-500">
+                      Current
+                    </Badge>
+                  )}
+                </div>
+                
+                {/* Price Section - Fixed Height for Alignment */}
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-medium">₹{plan.price.toLocaleString()}</span>
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Billed every {plan.billing_cycle} months
+                  </p>
+                </div>
+              </div>
+              
+              {/* Features Section - Flexible Height */}
+              <div className="flex-1 mb-6">
+                {plan.features && Array.isArray(plan.features) && (
+                  <ul className="space-y-2">
+                    {plan.features.slice(0, 3).map((feature: any, index: number) => {
+                      const featureText = typeof feature === 'string' 
+                        ? feature 
+                        : feature?.name || 'Feature included';
+                      return (
+                        <li key={index} className="flex items-center gap-2 text-sm font-medium text-foreground/60">
+                          <BadgeCheck strokeWidth={1} size={16} />
+                          {featureText}
+                        </li>
+                      );
+                    })}
+                    {plan.features.length > 3 && (
+                      <li className="flex items-center gap-2 text-sm font-medium text-foreground/60">
+                        <BadgeCheck strokeWidth={1} size={16} />
+                        And {plan.features.length - 3} more features
+                      </li>
                     )}
-                    
-                    {plan.action.type === 'subscribe' ? (
-                      <SubscribeButton
-                        razorpayPlanId={plan.razorpay_plan_id}
-                        selectedCycle={plan.billing_cycle}
-                        buttonText={plan.buttonText}
-                        className="w-full"
-                        variant={plan.variant as any}
-                        onSuccess={handleSubscriptionSuccess}
-                      />
+                  </ul>
+                )}
+              </div>
+              
+              {/* Button Section - Always at Bottom */}
+              <div className="mt-auto">
+                {plan.action.type === 'subscribe' ? (
+                  <SubscribeButton
+                    razorpayPlanId={plan.razorpay_plan_id}
+                    selectedCycle={plan.billing_cycle}
+                    buttonText={plan.buttonText}
+                    className={getButtonClassName(plan)}
+                    onSuccess={handleSubscriptionSuccess}
+                  />
+                ) : (
+                  <Button
+                    onClick={() => handlePlanAction(plan)}
+                    disabled={plan.disabled || isUpdating || isCancelling}
+                    className={getButtonClassName(plan)}
+                    title={plan.disabled && plan.action.type === 'disabled' ? 'All-In-One plan already covers this category.' : undefined}
+                  >
+                    {(isUpdating && (plan.action.type === 'upgrade' || plan.action.type === 'downgrade')) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (isCancelling && plan.action.type === 'cancel_first') ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Cancelling...
+                      </>
                     ) : (
-                                          <Button
-                      onClick={() => handlePlanAction(plan)}
-                      disabled={plan.disabled || isUpdating || isCancelling}
-                      className="w-full"
-                      variant={plan.variant as any}
-                      title={plan.disabled && plan.action.type === 'disabled' ? 'All-In-One plan already covers this category.' : undefined}
-                    >
-                      {(isUpdating && (plan.action.type === 'upgrade' || plan.action.type === 'downgrade')) ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (isCancelling && plan.action.type === 'cancel_first') ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Cancelling...
-                        </>
-                      ) : (
-                        plan.buttonText
-                      )}
-                    </Button>
+                      plan.buttonText
                     )}
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        </div>
-      ))}
+                  </Button>
+                )}
+              </div>
+            </Card>
+          ))}
+      </div>
     </div>
   );
 } 

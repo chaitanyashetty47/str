@@ -75,93 +75,94 @@ export const sidebarMenus = {
           title: "Create Plan",
           url: "/training/plans/create",
         },
-        {
-          title: "Templates",
-          url: "/training/plans/templates",
-        },
+        // {
+        //   title: "Templates",
+        //   url: "/training/plans/templates",
+        // },
       ],
     },
     {
       title: "Client Progress",
       url: "/training/progress",
       icon: LineChart,
-      items: [
-        {
-          title: "All Orders",
-          url: "/dashboard/orders",
-        },
-        {
-          title: "Pending Orders",
-          url: "/dashboard/orders/pending",
-        },
-        {
-          title: "Completed Orders",
-          url: "/dashboard/orders/completed",
-        },
-      ],
+    //   items: [
+    //     {
+    //       title: "All Orders",
+    //       url: "/dashboard/orders",
+    //     },
+    //     {
+    //       title: "Pending Orders",
+    //       url: "/dashboard/orders/pending",
+    //     },
+    //     {
+    //       title: "Completed Orders",
+    //       url: "/dashboard/orders/completed",
+    //     },
+    //   ],
+    // },
     },
 
-    {
-      title: "Invoices",
-      url: "/dashboard/invoices",
-      icon: FileText,
-      items: [
-        {
-          title: "All Invoices",
-          url: "/dashboard/invoices",
-        },
-        {
-          title: "Pending",
-          url: "/dashboard/invoices/pending",
-        },
-        {
-          title: "Paid",
-          url: "/dashboard/invoices/paid",
-        },
-      ],
-    },
-    {
-      title: "Reports",
-      url: "/dashboard/reports/sales",
-      icon: BarChart,
-      items: [
-        {
-          title: "Sales Report",
-          url: "/dashboard/reports/sales",
-        },
-        {
-          title: "Customer Insights",
-          url: "/dashboard/reports/customer-insights",
-        },
-        {
-          title: "Revenue",
-          url: "/dashboard/reports/revenue",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "/dashboard/settings/general",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "/dashboard/settings/general",
-        },
-        {
-          title: "Users & Permissions",
-          url: "/dashboard/settings/users",
-        },
-        {
-          title: "Integrations",
-          url: "/dashboard/settings/integrations",
-        },
-        {
-          title: "API Settings",
-          url: "/dashboard/settings/api",
-        },
-      ],
-    },
+    // {
+    //   title: "Invoices",
+    //   url: "/dashboard/invoices",
+    //   icon: FileText,
+    //   items: [
+    //     {
+    //       title: "All Invoices",
+    //       url: "/dashboard/invoices",
+    //     },
+    //     {
+    //       title: "Pending",
+    //       url: "/dashboard/invoices/pending",
+    //     },
+    //     {
+    //       title: "Paid",
+    //       url: "/dashboard/invoices/paid",
+    //     },
+    //   ],
+    // },
+    // {
+    //   title: "Reports",
+    //   url: "/dashboard/reports/sales",
+    //   icon: BarChart,
+    //   items: [
+    //     {
+    //       title: "Sales Report",
+    //       url: "/dashboard/reports/sales",
+    //     },
+    //     {
+    //       title: "Customer Insights",
+    //       url: "/dashboard/reports/customer-insights",
+    //     },
+    //     {
+    //       title: "Revenue",
+    //       url: "/dashboard/reports/revenue",
+    //     },
+    //   ],
+    // },
+    // {
+    //   title: "Settings",
+    //   url: "/dashboard/settings/general",
+    //   icon: Settings2,
+    //   items: [
+    //     {
+    //       title: "General",
+    //       url: "/dashboard/settings/general",
+    //     },
+    //     {
+    //       title: "Users & Permissions",
+    //       url: "/dashboard/settings/users",
+    //     },
+    //     {
+    //       title: "Integrations",
+    //       url: "/dashboard/settings/integrations",
+    //     },
+    //     {
+    //       title: "API Settings",
+    //       url: "/dashboard/settings/api",
+    //     },
+    //   ],
+    // },
   ],
   navSecondary: [
     {

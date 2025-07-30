@@ -1,21 +1,42 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { getBodyPartDisplayName } from "@/constants/workout-types";
 import prisma from "@/utils/prisma/prismaClient";
 import { unstable_cache } from 'next/cache';
 import type {
   TrainerDashboardData,
   TrainerDashboardStats,
-  UpcomingSession,
-  RecentUpdate,
+  UpcomingWorkout,
+  RecentActivity,
+  OngoingPlan,
+  ClientPR,
 } from "@/types/trainer.dashboard";
 
-// --- Helper Function for Stats ---
+// Helper function to get current week's Monday and Sunday
+function getCurrentWeekRange(): { monday: Date; sunday: Date } {
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...
+  
+  // Calculate days to subtract to get to Monday (0 = Sunday, so Sunday -> 6 days back to Monday)
+  const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
+  
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysToMonday);
+  monday.setHours(0, 0, 0, 0);
+  
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  
+  return { monday, sunday };
+}
+
+// Helper function for stats
 async function fetchTrainerStats(
   trainerId: string,
   currentDate: Date
 ): Promise<TrainerDashboardStats> {
+  // Get trainer's clients
   const clientIds = await prisma.trainer_clients
     .findMany({
       where: { trainer_id: trainerId },
@@ -23,7 +44,7 @@ async function fetchTrainerStats(
     })
     .then((clients) => clients.map((c) => c.client_id));
 
-  const [totalClients, activePlans, completedSessions] = await Promise.all([
+  const [totalClients, activePlans] = await Promise.all([
     prisma.trainer_clients.count({ where: { trainer_id: trainerId } }),
     prisma.workout_plans.count({
       where: {
@@ -32,98 +53,157 @@ async function fetchTrainerStats(
         end_date: { gte: currentDate },
       },
     }),
-    clientIds.length > 0
-      ? prisma.workout_day_completion.count({
-          where: {
-            user_id: { in: clientIds },
-          },
-        })
-      : 0,
   ]);
 
-  return { totalClients, activePlans, completedSessions };
-}
-
-// --- Helper Function for Upcoming Sessions ---
-async function fetchUpcomingSessions(
-  trainerId: string,
-  currentDate: Date
-): Promise<UpcomingSession[]> {
-  const activePlans = await prisma.workout_plans.findMany({
-    where: {
-      trainer_id: trainerId,
-      start_date: { lte: currentDate },
-      end_date: { gte: currentDate },
-    },
-    select: {
-      id: true,
-      users_workout_plans_clients: {
-        select: {
-          name: true,
-        },
-      },
-      workout_plan_weeks: {
-        where: {
-          start_date: { lte: currentDate },
-          end_date: { gte: currentDate },
-        },
-        select: {
-          id: true,
-          week_number: true,
-        },
-        take: 1,
-      },
-    },
-  });
-
-  const upcomingSessions: UpcomingSession[] = [];
-
-  for (const plan of activePlans) {
-    if (!plan.workout_plan_weeks?.[0]) continue;
-
-    const currentWeek = plan.workout_plan_weeks[0];
-
-    // Get workout days and their completion status in a single query
-    const workoutDaysWithCompletion = await prisma.workout_days.findMany({
+  // Calculate week progress percentage across all clients (plan-based weeks)
+  let weekProgressPercentage = 0;
+  
+  if (clientIds.length > 0) {
+    // Get all active plans for this trainer
+    const activePlans = await prisma.workout_plans.findMany({
       where: {
-        plan_id: plan.id,
-      },
-      select: {
-        id: true,
-        workout_type: true,
-        workout_day_completion: {
-          where: {
-            week_number: currentWeek.week_number,
-          },
-          select: {
-            id: true,
-          },
-        },
+        trainer_id: trainerId,
+        start_date: { lte: currentDate },
+        end_date: { gte: currentDate },
       },
     });
 
-    // Add pending sessions
-    for (const day of workoutDaysWithCompletion) {
-      if (day.workout_day_completion.length === 0) {
-        upcomingSessions.push({
-          client: plan.users_workout_plans_clients?.name || "Unknown User",
-          sessionType: getBodyPartDisplayName(day.workout_type),
-          status: "Pending",
-        });
+    let totalWeekSets = 0;
+    let totalWeekCompletedSets = 0;
 
-        // Break if we have 5 sessions
-        if (upcomingSessions.length >= 5) {
-          return upcomingSessions;
+    // Calculate progress for each plan's current week
+    for (const plan of activePlans) {
+      // Calculate current week for this plan
+      const elapsedMs = currentDate.getTime() - plan.start_date.getTime();
+      const currentWeek = Math.min(
+        plan.duration_in_weeks,
+        Math.max(1, Math.ceil(elapsedMs / (7 * 24 * 60 * 60 * 1000)))
+      );
+
+      // Get workout days for current week of this plan
+      const currentWeekDays = await prisma.workout_days.findMany({
+        where: {
+          plan_id: plan.id,
+          week_number: currentWeek,
+        },
+        include: {
+          workout_day_exercises: {
+            include: {
+              workout_set_instructions: {
+                include: {
+                  exercise_logs: {
+                    where: {
+                      client_id: plan.client_id, // Only logs for this specific client
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Count sets for this plan's current week
+      for (const day of currentWeekDays) {
+        for (const exercise of day.workout_day_exercises) {
+          for (const setInstruction of exercise.workout_set_instructions) {
+            totalWeekSets++;
+            if (setInstruction.exercise_logs.length > 0) {
+              totalWeekCompletedSets++;
+            }
+          }
         }
       }
     }
+
+    weekProgressPercentage = totalWeekSets > 0 ? Math.round((totalWeekCompletedSets / totalWeekSets) * 100) : 0;
   }
 
-  return upcomingSessions;
+  return { totalClients, activePlans, weekProgressPercentage };
 }
 
-// --- Helper Function for Recent Updates ---
-async function fetchRecentUpdates(trainerId: string): Promise<RecentUpdate[]> {
+// Helper function for upcoming workouts
+async function fetchUpcomingWorkouts(
+  trainerId: string,
+  currentDate: Date
+): Promise<UpcomingWorkout[]> {
+  const nextWeek = new Date(currentDate);
+  nextWeek.setDate(currentDate.getDate() + 7);
+
+  const upcomingDays = await prisma.workout_days.findMany({
+    where: {
+      workout_plans: {
+        trainer_id: trainerId,
+        start_date: { lte: currentDate },
+        end_date: { gte: currentDate },
+      },
+      day_date: {
+        gte: currentDate,
+        lte: nextWeek,
+      },
+    },
+    include: {
+      workout_plans: {
+        select: {
+          client: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+      workout_day_exercises: {
+        include: {
+          workout_exercise_lists: {
+            select: {
+              name: true,
+            },
+          },
+          workout_set_instructions: {
+            include: {
+              exercise_logs: {
+                where: {
+                  performed_date: {
+                    gte: new Date(new Date().setHours(0, 0, 0, 0)),
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      day_date: 'asc',
+    },
+    take: 5,
+  });
+
+  return upcomingDays.map((day) => {
+    const exercises = day.workout_day_exercises.map((ex) => ex.workout_exercise_lists.name);
+    
+    // Check if workout is completed (all sets have logs)
+    const totalSets = day.workout_day_exercises.reduce(
+      (sum, ex) => sum + ex.workout_set_instructions.length,
+      0
+    );
+    const completedSets = day.workout_day_exercises.reduce(
+      (sum, ex) => sum + ex.workout_set_instructions.filter(set => set.exercise_logs.length > 0).length,
+      0
+    );
+
+    return {
+      client: day.workout_plans.client?.name || "Unknown User",
+      workoutTitle: day.title,
+      scheduledDate: day.day_date.toISOString().split('T')[0],
+      exercises,
+      status: (totalSets > 0 && completedSets === totalSets) ? "completed" : "pending",
+    };
+  });
+}
+
+// Helper function for recent activity
+async function fetchRecentActivity(trainerId: string): Promise<RecentActivity[]> {
   const clientIds = await prisma.trainer_clients
     .findMany({
       where: { trainer_id: trainerId },
@@ -135,40 +215,195 @@ async function fetchRecentUpdates(trainerId: string): Promise<RecentUpdate[]> {
     return [];
   }
 
-  const recentCompletions = await prisma.workout_day_completion.findMany({
+  const recentLogs = await prisma.exercise_logs.findMany({
     where: {
-      user_id: { in: clientIds },
+      client_id: { in: clientIds },
     },
-    select: {
-      completed_at: true,
-      week_number: true,
-      users: {
+    include: {
+      users_profile: {
+        select: {
+          name: true,
+        },
+      },
+      workout_set_instructions: {
+        include: {
+          workout_day_exercises: {
+            include: {
+              workout_exercise_lists: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      performed_date: "desc",
+    },
+    take: 5,
+  });
+
+  return recentLogs.map((log) => ({
+    client: log.users_profile?.name || "Unknown User",
+    exerciseName: log.workout_set_instructions.workout_day_exercises.workout_exercise_lists.name,
+    weight: log.weight_used || 0,
+    reps: log.reps_done || 0,
+    loggedDate: log.performed_date?.toISOString().split('T')[0] || "N/A",
+  }));
+}
+
+// Helper function for ongoing plans
+async function fetchOngoingPlans(
+  trainerId: string,
+  currentDate: Date
+): Promise<OngoingPlan[]> {
+  const activePlans = await prisma.workout_plans.findMany({
+    where: {
+      trainer_id: trainerId,
+      start_date: { lte: currentDate },
+      end_date: { gte: currentDate },
+    },
+    include: {
+      client: {
         select: {
           name: true,
         },
       },
       workout_days: {
+        include: {
+          workout_day_exercises: {
+            include: {
+              workout_set_instructions: {
+                include: {
+                  exercise_logs: true, // Get all logs, we'll filter by client_id later
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return activePlans.map((plan) => {
+    // Calculate current week for this plan
+    const elapsedMs = currentDate.getTime() - plan.start_date.getTime();
+    const currentWeek = Math.min(
+      plan.duration_in_weeks,
+      Math.max(1, Math.ceil(elapsedMs / (7 * 24 * 60 * 60 * 1000)))
+    );
+
+    // Calculate weekly progress (current week only, plan-based)
+    const currentWeekDays = plan.workout_days.filter((day) => 
+      day.week_number === currentWeek
+    );
+
+    let weeklyTotalSets = 0;
+    let weeklyCompletedSets = 0;
+
+    for (const day of currentWeekDays) {
+      for (const exercise of day.workout_day_exercises) {
+        for (const setInstruction of exercise.workout_set_instructions) {
+          weeklyTotalSets++;
+          // Check if this specific client has logged this set
+          const hasLog = setInstruction.exercise_logs.some(log => 
+            log.client_id === plan.client_id
+          );
+          if (hasLog) {
+            weeklyCompletedSets++;
+          }
+        }
+      }
+    }
+
+    // Calculate overall progress (weeks 1 to current week, set-based)
+    const overallWeekDays = plan.workout_days.filter((day) => 
+      day.week_number <= currentWeek
+    );
+
+    let overallTotalSets = 0;
+    let overallCompletedSets = 0;
+
+    for (const day of overallWeekDays) {
+      for (const exercise of day.workout_day_exercises) {
+        for (const setInstruction of exercise.workout_set_instructions) {
+          overallTotalSets++;
+          // Check if this specific client has logged this set
+          const hasLog = setInstruction.exercise_logs.some(log => 
+            log.client_id === plan.client_id
+          );
+          if (hasLog) {
+            overallCompletedSets++;
+          }
+        }
+      }
+    }
+
+    const weeklyProgressPercentage = weeklyTotalSets > 0 
+      ? Math.round((weeklyCompletedSets / weeklyTotalSets) * 100) 
+      : 0;
+
+    const overallProgressPercentage = overallTotalSets > 0 
+      ? Math.round((overallCompletedSets / overallTotalSets) * 100) 
+      : 0;
+
+    return {
+      clientName: plan.client?.name || "Unknown Client",
+      planTitle: plan.title,
+      weeklyProgressPercentage,
+      overallProgressPercentage,
+      currentWeek,
+      totalWeeks: plan.duration_in_weeks,
+      planId: plan.id,
+    };
+  });
+}
+
+// Helper function for client PRs
+async function fetchClientPRs(trainerId: string): Promise<ClientPR[]> {
+  const clientIds = await prisma.trainer_clients
+    .findMany({
+      where: { trainer_id: trainerId },
+      select: { client_id: true },
+    })
+    .then((clients) => clients.map((c) => c.client_id));
+
+  if (clientIds.length === 0) {
+    return [];
+  }
+
+  const recentPRs = await prisma.client_max_lifts.findMany({
+    where: {
+      client_id: { in: clientIds },
+    },
+    include: {
+      users_profile: {
         select: {
-          day_number: true,
-          workout_type: true,
+          name: true,
+        },
+      },
+      workout_exercise_lists: {
+        select: {
+          name: true,
         },
       },
     },
     orderBy: {
-      completed_at: "desc",
+      last_updated: "desc",
     },
-    take: 3,
+    take: 10, // Get last 10 PRs across all clients
   });
 
-  return recentCompletions.map((update) => ({
-    client: update.users?.name || "Unknown User",
-    action: "Completed workout",
-    time: update.completed_at
-      ? new Date(update.completed_at).toISOString().split('T')[0]
-      : "N/A",
-    weekNumber: update.week_number || 1,
-    day: update.workout_days?.day_number || 1,
-    workoutType: getBodyPartDisplayName(update.workout_days?.workout_type || "unknown"),
+  return recentPRs.map((pr) => ({
+    id: pr.id,
+    clientName: pr.users_profile?.name || "Unknown Client",
+    exerciseName: pr.workout_exercise_lists.name,
+    weight: pr.max_weight,
+    reps: null, // Max lifts don't store reps, they're calculated 1RMs
+    oneRepMax: pr.max_weight, // This is already the calculated 1RM
+    date: pr.date_achieved.toISOString().split('T')[0],
   }));
 }
 
@@ -178,16 +413,20 @@ const getCachedTrainerDashboardData = unstable_cache(
     const currentDate = new Date();
 
     try {
-      const [stats, upcomingSessions, recentUpdates] = await Promise.all([
+      const [stats, upcomingWorkouts, recentActivity, ongoingPlans, clientPRs] = await Promise.all([
         fetchTrainerStats(trainerId, currentDate),
-        fetchUpcomingSessions(trainerId, currentDate),
-        fetchRecentUpdates(trainerId),
+        fetchUpcomingWorkouts(trainerId, currentDate),
+        fetchRecentActivity(trainerId),
+        fetchOngoingPlans(trainerId, currentDate),
+        fetchClientPRs(trainerId),
       ]);
 
       return {
         stats,
-        upcomingSessions,
-        recentUpdates,
+        upcomingWorkouts,
+        recentActivity,
+        ongoingPlans,
+        clientPRs,
       };
     } catch (error) {
       console.error("Error fetching trainer dashboard data:", error);
@@ -196,7 +435,7 @@ const getCachedTrainerDashboardData = unstable_cache(
   },
   ['trainer-dashboard-data'],
   {
-    revalidate: 300, // Cache for 5 minutes (300 seconds)
+    revalidate: 300, // Cache for 5 minutes
     tags: ['trainer-dashboard']
   }
 );

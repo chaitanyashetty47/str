@@ -48,7 +48,11 @@ const WeekSchema = z.object({
 const MetaSchema = z.object({
   title: z.string(),
   description: z.string(),
-  startDate: z.coerce.date(),
+  startDate: z.coerce.date().transform(date => {
+    // Ensure we always work with UTC dates at midnight
+    const utcDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    return utcDate;
+  }),
   durationWeeks: z.number().int().positive(),
   category: z.nativeEnum(WorkoutCategory),
   clientId: z.string().uuid(),
@@ -71,6 +75,7 @@ export type CreateWorkoutPlanOutput = { id: string };
 async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
   try {
     // Normalize start date to Monday and compute end date to Sunday
+    // meta.startDate is already normalized to UTC midnight by the schema transform
     const mondayStart = startOfWeek(meta.startDate, { weekStartsOn: 1 });
     const endDate = addDays(mondayStart, meta.durationWeeks * 7 - 1); // Sunday of last week
 

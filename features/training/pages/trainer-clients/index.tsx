@@ -58,10 +58,10 @@ export default function TrainerClientsPage({ initialData }: TrainerClientsPagePr
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold">My Clients</h2>
-        <Button onClick={handleAddClient}>
+        {/* <Button onClick={handleAddClient}>
           <Plus className="mr-2 h-4 w-4" />
           Add New Client
-        </Button>
+        </Button> */}
       </div>
 
       <Card>
