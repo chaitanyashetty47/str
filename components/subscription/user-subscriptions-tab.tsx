@@ -11,9 +11,11 @@ import { Button } from '@/components/ui/button';
 
 interface UserSubscriptionsTabProps {
   userId: string;
+  initialData?: any; // Optional pre-loaded subscription data
+  onDataUpdate?: () => void; // Callback to refresh parent data
 }
 
-export function UserSubscriptionsTab({ userId }: UserSubscriptionsTabProps) {
+export function UserSubscriptionsTab({ userId, initialData, onDataUpdate }: UserSubscriptionsTabProps) {
   const [subscriptions, setSubscriptions] = useState<SubscriptionWithPlan[]>([]);
 
   // Memoize the callbacks to prevent unnecessary re-renders
@@ -38,14 +40,34 @@ export function UserSubscriptionsTab({ userId }: UserSubscriptionsTabProps) {
   } = useAction(getUserSubscriptions, actionOptions);
 
   useEffect(() => {
+    // If initialData is provided, use it instead of fetching
+    if (initialData) {
+      setSubscriptions(initialData);
+      return;
+    }
+
+    // Otherwise, fetch subscription data as before
     fetchSubscriptions({ userId });
-  }, [userId, fetchSubscriptions]);
+  }, [userId, fetchSubscriptions, initialData]);
+
+  // Update subscriptions when initialData changes (parent refresh)
+  useEffect(() => {
+    if (initialData) {
+      setSubscriptions(initialData);
+    }
+  }, [initialData]);
 
   const handleRefresh = useCallback(() => {
-    fetchSubscriptions({ userId });
-  }, [fetchSubscriptions, userId]);
+    if (initialData) {
+      // If using cached data, notify parent to refresh
+      onDataUpdate?.();
+    } else {
+      // Otherwise, fetch directly
+      fetchSubscriptions({ userId });
+    }
+  }, [fetchSubscriptions, userId, initialData, onDataUpdate]);
 
-  if (isLoading && subscriptions.length === 0) {
+  if (isLoading && subscriptions.length === 0 && !initialData) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">

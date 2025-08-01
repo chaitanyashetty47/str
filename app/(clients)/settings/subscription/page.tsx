@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { signOutAction } from "@/app/actions";
 import { SettingsContent } from "@/components/settings/settings-content";
 
-export default async function SettingsPage() {
+export default async function SettingsSubscriptionPage() {
   const supabase = await createClient();
 
   // Get user data
