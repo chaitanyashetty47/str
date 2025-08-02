@@ -1,14 +1,15 @@
-import { UseFormReturn } from 'react-hook-form'
+import { useFormContext } from 'react-hook-form'
 import { OnboardingData } from '@/types/onboarding'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-interface MeasurementsStepProps {
-  form: UseFormReturn<OnboardingData>
-}
+export default function MeasurementsStep() {
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<OnboardingData>()
 
-export default function MeasurementsStep({ form }: MeasurementsStepProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -43,7 +44,7 @@ export default function MeasurementsStep({ form }: MeasurementsStepProps) {
             Neck Circumference (cm)
           </Label>
           <Input
-            {...form.register('neck')}
+            {...register('neck')}
             id="neck"
             type="number"
             step="0.1"
@@ -53,9 +54,9 @@ export default function MeasurementsStep({ form }: MeasurementsStepProps) {
           <p className="text-xs text-gray-500">
             Measure around the base of your neck
           </p>
-          {form.formState.errors.neck && (
+          {errors.neck && (
             <p className="text-strentor-red text-sm">
-              {form.formState.errors.neck.message}
+              {errors.neck.message}
             </p>
           )}
         </div>
@@ -66,7 +67,7 @@ export default function MeasurementsStep({ form }: MeasurementsStepProps) {
             Waist Circumference (cm)
           </Label>
           <Input
-            {...form.register('waist')}
+            {...register('waist')}
             id="waist"
             type="number"
             step="0.1"
@@ -76,9 +77,9 @@ export default function MeasurementsStep({ form }: MeasurementsStepProps) {
           <p className="text-xs text-gray-500">
             Measure around your natural waistline
           </p>
-          {form.formState.errors.waist && (
+          {errors.waist && (
             <p className="text-strentor-red text-sm">
-              {form.formState.errors.waist.message}
+              {errors.waist.message}
             </p>
           )}
         </div>
@@ -89,7 +90,7 @@ export default function MeasurementsStep({ form }: MeasurementsStepProps) {
             Hip Circumference (cm)
           </Label>
           <Input
-            {...form.register('hips')}
+            {...register('hips')}
             id="hips"
             type="number"
             step="0.1"
@@ -99,9 +100,9 @@ export default function MeasurementsStep({ form }: MeasurementsStepProps) {
           <p className="text-xs text-gray-500">
             Measure around the widest part of your hips
           </p>
-          {form.formState.errors.hips && (
+          {errors.hips && (
             <p className="text-strentor-red text-sm">
-              {form.formState.errors.hips.message}
+              {errors.hips.message}
             </p>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import OnboardingWizard from '@/components/onboarding/OnboardingWizard'
+import OnboardingWizard from '@/components/onboarding'
 
 export default async function OnboardingPage() {
   const supabase = await createClient()

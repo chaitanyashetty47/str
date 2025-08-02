@@ -1,17 +1,22 @@
-import { UseFormReturn } from 'react-hook-form'
+import { useFormContext, Controller } from 'react-hook-form'
 import { OnboardingData } from '@/types/onboarding'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { DatePickerForm } from '@/components/ui/date-picker'
 
-interface BodyMetricsStepProps {
-  form: UseFormReturn<OnboardingData>
-}
+export default function BodyMetricsStep() {
+  const {
+    register,
+    watch,
+    setValue,
+    control,
+    formState: { errors },
+  } = useFormContext<OnboardingData>()
 
-export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
-  const weightUnit = form.watch('weightUnit')
-  const heightUnit = form.watch('heightUnit')
+  const weightUnit = watch('weightUnit')
+  const heightUnit = watch('heightUnit')
 
   return (
     <div className="space-y-6">
@@ -32,15 +37,15 @@ export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
             Current Weight *
           </Label>
           <Input
-            {...form.register('weight')}
+            {...register('weight')}
             id="weight"
             type="number"
             placeholder={weightUnit === 'KG' ? '70' : '154'}
             className="w-full"
           />
-          {form.formState.errors.weight && (
+          {errors.weight && (
             <p className="text-strentor-red text-sm">
-              {form.formState.errors.weight.message}
+              {errors.weight.message}
             </p>
           )}
         </div>
@@ -48,7 +53,7 @@ export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
           <Label className="text-sm font-medium text-gray-700">Unit</Label>
           <Select
             value={weightUnit}
-            onValueChange={(value) => form.setValue('weightUnit', value as 'KG' | 'LB')}
+            onValueChange={(value) => setValue('weightUnit', value as 'KG' | 'LB')}
           >
             <SelectTrigger>
               <SelectValue />
@@ -68,15 +73,15 @@ export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
             Height *
           </Label>
           <Input
-            {...form.register('height')}
+            {...register('height')}
             id="height"
             type="number"
             placeholder={heightUnit === 'CM' ? '175' : '69'}
             className="w-full"
           />
-          {form.formState.errors.height && (
+          {errors.height && (
             <p className="text-strentor-red text-sm">
-              {form.formState.errors.height.message}
+              {errors.height.message}
             </p>
           )}
         </div>
@@ -84,7 +89,7 @@ export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
           <Label className="text-sm font-medium text-gray-700">Unit</Label>
           <Select
             value={heightUnit}
-            onValueChange={(value) => form.setValue('heightUnit', value as 'CM' | 'INCHES')}
+            onValueChange={(value) => setValue('heightUnit', value as 'CM' | 'INCHES')}
           >
             <SelectTrigger>
               <SelectValue />
@@ -98,22 +103,22 @@ export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
       </div>
 
       {/* Date of Birth */}
-      <div className="space-y-2">
-        <Label htmlFor="dateOfBirth" className="text-sm font-medium text-gray-700">
-          Date of Birth *
-        </Label>
-        <Input
-          {...form.register('dateOfBirth')}
-          id="dateOfBirth"
-          type="date"
-          className="w-full md:w-1/2"
-        />
-        {form.formState.errors.dateOfBirth && (
-          <p className="text-strentor-red text-sm">
-            {form.formState.errors.dateOfBirth.message}
-          </p>
+      <Controller
+        name="dateOfBirth"
+        control={control}
+        rules={{ required: "Date of birth is required" }}
+        render={({ field: { onChange, value, onBlur }, fieldState: { error } }) => (
+          <DatePickerForm
+            label="Date of Birth"
+            value={value}
+            onChange={onChange}
+            onBlur={onBlur}
+            error={error?.message}
+            required
+            placeholder="Select your date of birth"
+          />
         )}
-      </div>
+      />
 
       {/* Gender */}
       <div className="space-y-3">
@@ -121,8 +126,8 @@ export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
           Gender *
         </Label>
         <RadioGroup
-          value={form.watch('gender')}
-          onValueChange={(value) => form.setValue('gender', value as 'MALE' | 'FEMALE')}
+          value={watch('gender')}
+          onValueChange={(value) => setValue('gender', value as 'MALE' | 'FEMALE')}
           className="flex gap-6"
         >
           <div className="flex items-center space-x-2">
@@ -134,9 +139,9 @@ export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
             <Label htmlFor="female" className="cursor-pointer">Female</Label>
           </div>
         </RadioGroup>
-        {form.formState.errors.gender && (
+        {errors.gender && (
           <p className="text-strentor-red text-sm">
-            {form.formState.errors.gender.message}
+            {errors.gender.message}
           </p>
         )}
       </div>
@@ -147,8 +152,8 @@ export default function BodyMetricsStep({ form }: BodyMetricsStepProps) {
           Activity Level
         </Label>
         <Select
-          value={form.watch('activityLevel')}
-          onValueChange={(value) => form.setValue('activityLevel', value as any)}
+          value={watch('activityLevel')}
+          onValueChange={(value) => setValue('activityLevel', value as any)}
         >
           <SelectTrigger>
             <SelectValue />

@@ -1,4 +1,17 @@
 import { z } from 'zod'
+import { ONBOARDING_FORM_KEYS } from '@/components/onboarding/constants/onboarding-constants'
+
+// Generate form field keys type from constants
+export type OnboardingFormKeysType = 
+  (typeof ONBOARDING_FORM_KEYS)[keyof typeof ONBOARDING_FORM_KEYS][number];
+
+// Enhanced form values type with conditional typing
+export type OnboardingFormValues = {
+  [FieldName in OnboardingFormKeysType]: FieldName extends 
+    | "weight" | "height" | "neck" | "waist" | "hips"
+    ? number 
+    : string;
+};
 
 // Onboarding schema without role field (users are CLIENT by default)
 export const onboardingSchema = z.object({
@@ -70,4 +83,18 @@ export interface OnboardingState {
   data: Partial<OnboardingData>
   isSubmitting: boolean
   errors: Record<string, string>
+}
+
+// Enhanced error handling types
+export interface OnboardingError {
+  field?: string
+  message: string
+  step?: number
+}
+
+export interface OnboardingFormState {
+  activeStep: number
+  erroredInputName: string
+  isSubmitting: boolean
+  errors: Record<string, OnboardingError>
 } 

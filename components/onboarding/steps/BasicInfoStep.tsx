@@ -1,13 +1,15 @@
-import { UseFormReturn } from 'react-hook-form'
+import { useFormContext } from 'react-hook-form'
 import { OnboardingData } from '@/types/onboarding'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-interface BasicInfoStepProps {
-  form: UseFormReturn<OnboardingData>
-}
+export default function BasicInfoStep() {
+  const {
+    register,
+    watch,
+    formState: { errors },
+  } = useFormContext<OnboardingData>()
 
-export default function BasicInfoStep({ form }: BasicInfoStepProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -26,14 +28,14 @@ export default function BasicInfoStep({ form }: BasicInfoStepProps) {
           Full Name *
         </Label>
         <Input
-          {...form.register('name')}
+          {...register('name')}
           id="name"
           placeholder="Enter your full name"
           className="w-full"
         />
-        {form.formState.errors.name && (
+        {errors.name && (
           <p className="text-strentor-red text-sm">
-            {form.formState.errors.name.message}
+            {errors.name.message}
           </p>
         )}
       </div>
@@ -44,7 +46,7 @@ export default function BasicInfoStep({ form }: BasicInfoStepProps) {
           Email Address
         </Label>
         <Input
-          value={form.watch('email') || 'Loading...'}
+          value={watch('email') || 'Loading...'}
           disabled
           className="bg-gray-50 text-gray-600"
         />

@@ -1,17 +1,18 @@
-import { UseFormReturn } from 'react-hook-form'
+import { useFormContext } from 'react-hook-form'
 import { OnboardingData } from '@/types/onboarding'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { format } from 'date-fns'
 
 interface ReviewStepProps {
-  form: UseFormReturn<OnboardingData>
   onConfirmationChange: (confirmed: boolean) => void
   isConfirmed: boolean
 }
 
-export default function ReviewStep({ form, onConfirmationChange, isConfirmed }: ReviewStepProps) {
-  const data = form.watch()
+export default function ReviewStep({ onConfirmationChange, isConfirmed }: ReviewStepProps) {
+  const { watch } = useFormContext<OnboardingData>()
+  const data = watch()
   
   const calculateAge = (dateOfBirth: string) => {
     const today = new Date()
@@ -24,6 +25,15 @@ export default function ReviewStep({ form, onConfirmationChange, isConfirmed }: 
     }
     
     return age
+  }
+
+  const formatDateOfBirth = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return format(date, "dd/MM/yyyy")
+    } catch {
+      return dateString
+    }
   }
 
   const formatActivityLevel = (level: string) => {
@@ -61,6 +71,12 @@ export default function ReviewStep({ form, onConfirmationChange, isConfirmed }: 
               <div className="flex justify-between">
                 <span className="text-gray-600 font-medium">Email:</span>
                 <span className="font-semibold text-sm">{data.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">Date of Birth:</span>
+                <span className="font-semibold">
+                  {data.dateOfBirth ? formatDateOfBirth(data.dateOfBirth) : 'N/A'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 font-medium">Age:</span>
