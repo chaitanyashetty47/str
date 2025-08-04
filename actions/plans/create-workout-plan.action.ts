@@ -7,9 +7,11 @@ import {
   WorkoutPlanStatus,
   WorkoutCategory,
   BodyPart,
+  WeightUnit,
 } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import { addDays, startOfWeek } from "date-fns";
+import { convertToKg } from "@/utils/weight";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Zod schemas mirroring editor-state types for runtime validation
@@ -74,6 +76,14 @@ export type CreateWorkoutPlanOutput = { id: string };
 // ────────────────────────────────────────────────────────────────────────────
 async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
   try {
+    // Get trainer's weight unit preference
+    const trainer = await prisma.users_profile.findUnique({
+      where: { id: trainerId },
+      select: { weight_unit: true }
+    });
+
+    const trainerWeightUnit = trainer?.weight_unit || WeightUnit.KG;
+
     // Normalize start date to Monday and compute end date to Sunday
     // meta.startDate is already normalized to UTC midnight by the schema transform
     const mondayStart = startOfWeek(meta.startDate, { weekStartsOn: 1 });
@@ -121,15 +131,21 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
                   youtube_link: null,
                   notes: "",
                   workout_set_instructions: {
-                    create: ex.sets.map((s) => ({
-                      id: uuidv4(),
-                      set_number: s.setNumber,
-                      reps: s.reps ? parseInt(s.reps, 10) || null : null,
-                      intensity: meta.intensityMode,
-                      weight_prescribed: s.weight ? parseFloat(s.weight) || null : null,
-                      rest_time: s.rest || null,
-                      notes: s.notes,
-                    })),
+                    create: ex.sets.map((s) => {
+                      // Convert weight to KG before storing
+                      const weightValue = s.weight ? parseFloat(s.weight) : null;
+                      const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
+                      
+                      return {
+                        id: uuidv4(),
+                        set_number: s.setNumber,
+                        reps: s.reps ? parseInt(s.reps, 10) || null : null,
+                        intensity: meta.intensityMode,
+                        weight_prescribed: weightInKg,
+                        rest_time: s.rest || null,
+                        notes: s.notes,
+                      };
+                    }),
                   },
                 })),
               },

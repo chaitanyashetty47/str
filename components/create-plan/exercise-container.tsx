@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import { GripVertical, MoreHorizontal, Plus, Trash2, AlertCircle } from "lucide-react";
 import { ExerciseInPlan } from "@/types/workout-plans-create/editor-state";
 import { usePlanDispatch, usePlanMeta } from "@/contexts/PlanEditorContext";
@@ -107,6 +108,28 @@ export function ExerciseContainer({ exercise, weekNumber, dayNumber, dragHandleP
             intensityMode={meta.intensityMode}
           />
         ))}
+
+        {/* Exercise Notes */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-muted-foreground">
+            Exercise Notes
+          </label>
+          <Textarea
+            placeholder="Add notes or instructions for this exercise..."
+            value={exercise.instructions || ""}
+            onChange={(e) =>
+              dispatch({
+                type: "UPDATE_EXERCISE_FIELD",
+                week: weekNumber,
+                day: dayNumber,
+                uid: exercise.uid,
+                field: "instructions",
+                value: e.target.value,
+              })
+            }
+            className="min-h-[80px] text-sm"
+          />
+        </div>
 
         {/* Add set button */}
         <Button

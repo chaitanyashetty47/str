@@ -1,67 +1,63 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect } from "react";
+import { WeightUnit } from "@prisma/client";
+import { convertFromKg } from "@/utils/weight";
+import { getWeightUnit } from "@/actions/profile/get-weight-unit.action";
 
-export type WeightUnit = 'kg' | 'lb';
-
-interface UseWeightConversionReturn {
-  preferredUnit: WeightUnit;
-  setPreferredUnit: (unit: WeightUnit) => void;
-  convertToKg: (weight: number, fromUnit: WeightUnit) => number;
-  convertFromKg: (weightKg: number, toUnit: WeightUnit) => number;
-  formatWeight: (weightKg: number, unit?: WeightUnit) => string;
-  parseWeight: (input: string, fromUnit: WeightUnit) => number;
+interface WeightConversionHook {
+  userWeightUnit: WeightUnit;
+  convertWeightForDisplay: (weightInKg: number | null) => string;
+  getWeightUnitLabel: () => string;
+  isLoading: boolean;
 }
 
 /**
- * Hook for weight conversion between kg and lb
- * Always stores weights in kg in the database
- * Converts for display based on user preference
+ * Hook to get user's weight unit preference and provide conversion utilities
+ * @param initialWeightUnit - Optional weight unit to avoid server call if already known
  */
-export function useWeightConversion(defaultUnit: WeightUnit = 'kg'): UseWeightConversionReturn {
-  const [preferredUnit, setPreferredUnit] = useState<WeightUnit>(defaultUnit);
+export function useWeightConversion(initialWeightUnit?: WeightUnit): WeightConversionHook {
+  const [userWeightUnit, setUserWeightUnit] = useState<WeightUnit>(
+    initialWeightUnit || WeightUnit.KG
+  );
+  const [isLoading, setIsLoading] = useState(!initialWeightUnit);
 
-  const convertToKg = useCallback((weight: number, fromUnit: WeightUnit): number => {
-    if (fromUnit === 'kg') return weight;
-    // Convert from lb to kg (1 lb = 0.453592 kg)
-    return weight * 0.453592;
-  }, []);
-
-  const convertFromKg = useCallback((weightKg: number, toUnit: WeightUnit): number => {
-    if (toUnit === 'kg') return weightKg;
-    // Convert from kg to lb (1 kg = 2.20462 lb)
-    return weightKg * 2.20462;
-  }, []);
-
-  const formatWeight = useCallback((weightKg: number, unit?: WeightUnit): string => {
-    const targetUnit = unit || preferredUnit;
-    const convertedWeight = convertFromKg(weightKg, targetUnit);
-    
-    if (targetUnit === 'kg') {
-      return `${convertedWeight.toFixed(1)}kg`;
-    } else {
-      return `${convertedWeight.toFixed(1)}lb`;
+  useEffect(() => {
+    // Skip server call if initial weight unit is provided
+    if (initialWeightUnit) {
+      setIsLoading(false);
+      return;
     }
-  }, [preferredUnit, convertFromKg]);
 
-  const parseWeight = useCallback((input: string, fromUnit: WeightUnit): number => {
-    const numericValue = parseFloat(input);
-    if (isNaN(numericValue)) return 0;
-    return convertToKg(numericValue, fromUnit);
-  }, [convertToKg]);
+    // Fetch user's weight unit preference using server action
+    async function fetchWeightUnit() {
+      try {
+        const weightUnit = await getWeightUnit();
+        setUserWeightUnit(weightUnit);
+      } catch (error) {
+        console.error('Failed to fetch weight unit preference:', error);
+        // Default to KG if fetch fails
+        setUserWeightUnit(WeightUnit.KG);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchWeightUnit();
+  }, [initialWeightUnit]);
+
+  const convertWeightForDisplay = (weightInKg: number | null): string => {
+    if (!weightInKg) return "";
+    const convertedWeight = convertFromKg(weightInKg, userWeightUnit);
+    return convertedWeight.toFixed(1);
+  };
+
+  const getWeightUnitLabel = (): string => {
+    return userWeightUnit === WeightUnit.KG ? "kg" : "lbs";
+  };
 
   return {
-    preferredUnit,
-    setPreferredUnit,
-    convertToKg,
-    convertFromKg,
-    formatWeight,
-    parseWeight,
+    userWeightUnit,
+    convertWeightForDisplay,
+    getWeightUnitLabel,
+    isLoading,
   };
-}
-
-// Utility functions for direct conversion (no hook needed)
-export const weightUtils = {
-  kgToLb: (kg: number): number => kg * 2.20462,
-  lbToKg: (lb: number): number => lb * 0.453592,
-  formatKg: (kg: number): string => `${kg.toFixed(1)}kg`,
-  formatLb: (kg: number): string => `${(kg * 2.20462).toFixed(1)}lb`,
-}; 
+} 

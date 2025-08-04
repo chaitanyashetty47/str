@@ -85,11 +85,14 @@ async function fetchTrainerStats(
         where: {
           plan_id: plan.id,
           week_number: currentWeek,
+          is_deleted: false, // Filter out soft-deleted days
         },
         include: {
           workout_day_exercises: {
+            where: { is_deleted: false }, // Filter out soft-deleted exercises
             include: {
               workout_set_instructions: {
+                where: { is_deleted: false }, // Filter out soft-deleted sets
                 include: {
                   exercise_logs: {
                     where: {
@@ -132,6 +135,7 @@ async function fetchUpcomingWorkouts(
 
   const upcomingDays = await prisma.workout_days.findMany({
     where: {
+      is_deleted: false, // Filter out soft-deleted days
       workout_plans: {
         trainer_id: trainerId,
         start_date: { lte: currentDate },
@@ -153,6 +157,7 @@ async function fetchUpcomingWorkouts(
         },
       },
       workout_day_exercises: {
+        where: { is_deleted: false }, // Filter out soft-deleted exercises
         include: {
           workout_exercise_lists: {
             select: {
@@ -160,6 +165,7 @@ async function fetchUpcomingWorkouts(
             },
           },
           workout_set_instructions: {
+            where: { is_deleted: false }, // Filter out soft-deleted sets
             include: {
               exercise_logs: {
                 where: {

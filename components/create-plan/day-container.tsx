@@ -108,7 +108,7 @@ export function DayContainer({weekNumber, dayNumber}: {weekNumber: number, dayNu
               type: "ADD_EXERCISE",
               week: weekNumber,
               day: dayNumber,
-              exercise: { uid: uuidv4(), sets: [{ setNumber: 1, weight: "", reps: "", rest: 0, notes: "" }], ...ex },
+              exercise: { uid: uuidv4(), sets: [{ setNumber: 1, weight: "", reps: "", rest: 60, notes: "" }], ...ex },
             })
           }
         />

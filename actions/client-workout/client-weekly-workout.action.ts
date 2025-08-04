@@ -114,6 +114,7 @@ async function weeklyWorkoutHandler({
         workout_days: {
           where: {
             week_number: weekNumber,
+            is_deleted: false, // Filter out soft-deleted days
             // day_date: {
             //   gte: startDateTime,
             //   lte: endDateTime,
@@ -122,10 +123,12 @@ async function weeklyWorkoutHandler({
           orderBy: { day_number: "asc" },
           include: {
             workout_day_exercises: {
+              where: { is_deleted: false }, // Filter out soft-deleted exercises
               orderBy: { order: "asc" },
               include: {
                 workout_exercise_lists: true,
                 workout_set_instructions: {
+                  where: { is_deleted: false }, // Filter out soft-deleted sets
                   orderBy: { set_number: "asc" },
                   include: {
                     exercise_logs: {

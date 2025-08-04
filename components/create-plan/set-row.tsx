@@ -5,10 +5,10 @@ import { Button } from "../ui/button";
 import { MessageSquare, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Textarea } from "../ui/textarea";
-import { usePlanDispatch } from "@/contexts/PlanEditorContext";
+import { usePlanDispatch, usePlanWeightUnit } from "@/contexts/PlanEditorContext";
 import { useState } from "react";
 import { getDisplayWeight } from "@/utils/weight";
-import { IntensityMode } from "@prisma/client";
+import { IntensityMode, WeightUnit } from "@prisma/client";
 
 interface SetRowProps {
   weekNumber: number;
@@ -37,6 +37,11 @@ export function SetRow({
 }: SetRowProps) {
   const dispatch = usePlanDispatch();
   const [isOpen, setIsOpen] = useState(false);
+  const userWeightUnit = usePlanWeightUnit();
+  
+  const getWeightUnitLabel = () => {
+    return userWeightUnit === WeightUnit.KG ? "kg" : "lbs";
+  };
 
   const update = (field: "weight" | "reps" | "rest" | "notes", value: string | number) =>
     dispatch({
@@ -62,14 +67,14 @@ export function SetRow({
             className="h-8"
           />
           <span className="text-xs text-muted-foreground">
-            {intensityMode === IntensityMode.ABSOLUTE ? "kg" : "%"}
+            {intensityMode === IntensityMode.ABSOLUTE ? getWeightUnitLabel() : "%"}
           </span>
         </div>
         {/* Display absolute conversion when in % mode and numeric weight */}
         {intensityMode === IntensityMode.PERCENT && !!Number(weight) && (
           <span className="text-[10px] text-muted-foreground ml-1">
             {oneRM
-              ? getDisplayWeight(Number(weight), intensityMode, oneRM)
+              ? getDisplayWeight(Number(weight), intensityMode, oneRM, userWeightUnit)
               : "No 1-RM"}
           </span>
         )}

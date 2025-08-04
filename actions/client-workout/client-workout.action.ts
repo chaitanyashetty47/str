@@ -185,6 +185,7 @@ async function upcomingHandler({ planId }: z.infer<typeof upcomingInput>) {
     where: { 
       plan_id: planId,
       week_number: progress.currentWeek,
+      is_deleted: false // Filter out soft-deleted days
      },
     orderBy: [
       { week_number: "asc" },

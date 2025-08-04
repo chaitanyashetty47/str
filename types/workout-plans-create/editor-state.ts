@@ -3,7 +3,7 @@
 // These purely describe *shape* of data while the plan is being
 // built on the client.  Nothing here contains React or UI code.
 
-import { BodyPart, WorkoutCategory, IntensityMode, WorkoutPlanStatus } from "@prisma/client";
+import { BodyPart, WorkoutCategory, IntensityMode, WorkoutPlanStatus, WeightUnit } from "@prisma/client";
 
 // ─── Per-set information inside an exercise ─────────────────────────
 export interface SetInPlan {
@@ -30,6 +30,7 @@ export interface ExerciseInPlan {
    */
   order?: number;
   instructions?: string;
+  notes?: string; // Exercise-level notes for trainers
   sets: SetInPlan[];
 }
 
@@ -64,6 +65,10 @@ export interface PlanEditorMeta {
    * Workflow status of the plan (draft → published → archived).
    */
   status: WorkoutPlanStatus;
+  /**
+   * Trainer's weight unit preference (affects input display).
+   */
+  weightUnit: WeightUnit;
 }
 
 export interface PlanEditorState {

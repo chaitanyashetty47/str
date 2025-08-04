@@ -131,7 +131,7 @@ model user_subscriptions {
   paid_count               Int?
   remaining_count          Int?
   retry_attempts           Int?                @default(0)
-   // 🆕 NEW FIELDS FOR CANCEL FUNCTIONALITY
+   //  NEW FIELDS FOR CANCEL FUNCTIONALITY
   cancel_requested_at      DateTime?           // When user requested cancellation
   cancel_at_cycle_end      Boolean?            @default(false) // Whether to cancel at cycle end
   subscription_plans       subscription_plans  @relation(fields: [plan_id], references: [id], onDelete: NoAction, map: "UserSubscription_planId_fkey")
@@ -219,8 +219,13 @@ model workout_day_exercises {
   notes                    String?
   workout_exercise_lists   workout_exercise_lists     @relation(fields: [list_exercise_id], references: [id], onDelete: NoAction, map: "WorkoutDayExercise_listExerciseId_fkey")
   workout_days             workout_days               @relation(fields: [workout_day_id], references: [id], onDelete: Cascade, map: "WorkoutDayExercise_workoutDayId_fkey")
+  frontend_uid            String?                    // NEW: For stable matching
+  is_deleted               Boolean                    @default(false)
+  deleted_at               DateTime?
   workout_set_instructions workout_set_instructions[]
 
+  @@index([frontend_uid])
+  @@index([workout_day_id, is_deleted])
   @@schema("public")
 }
 
@@ -236,12 +241,15 @@ model workout_days {
 
   title                 String
   workout_type          String?
+  is_deleted            Boolean                 @default(false) // NEW: Soft delete
+  deleted_at            DateTime?               // NEW: Soft delete timestamp
   workout_day_exercises workout_day_exercises[]
   workout_plans         workout_plans           @relation(fields: [plan_id], references: [id], onDelete: Cascade, map: "WorkoutDay_planId_fkey")
 
   @@schema("public")
   @@unique([plan_id, day_date])              // never two days on the same date in one plan
   @@index([plan_id, day_date])
+  @@index([plan_id, is_deleted])             // NEW: Index for filtering soft-deleted days
 }
 
 model workout_exercise_lists {
@@ -288,9 +296,12 @@ model workout_set_instructions {
   weight_prescribed     Float?
   rest_time             Int?
   notes                 String?
+   is_deleted            Boolean               @default(false) // NEW: Soft delete
+  deleted_at            DateTime?             // NEW: Soft delete timestamp
   exercise_logs         exercise_logs[]
   workout_day_exercises workout_day_exercises @relation(fields: [exercise_id], references: [id], onDelete: Cascade, map: "WorkoutSetInstruction_exerciseId_fkey")
-
+  
+  @@index([exercise_id, is_deleted])
   @@schema("public")
 }
 

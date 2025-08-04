@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { type PlanEditorState, type WeekInPlan, type DayInPlan, PlanEditorMeta } from "@/types/workout-plans-create/editor-state";
-import { WorkoutCategory, WorkoutPlanStatus } from "@prisma/client";
+import { WorkoutCategory, WorkoutPlanStatus, WeightUnit } from "@prisma/client";
 import { ExerciseInPlan, SetInPlan } from "@/types/workout-plans-create/editor-state";
 import { v4 as uuidv4 } from "uuid";
 import { produce } from "immer";
@@ -36,6 +36,13 @@ export type PlanEditorAction =
       set: number;      // setNumber (1-based)
       field: "weight" | "reps" | "rest" | "notes";
       value: string | number;
+    }
+  | {type: "UPDATE_EXERCISE_FIELD";
+      week: number;
+      day: number;
+      uid: string;      // exercise uid
+      field: "instructions" | "notes";
+      value: string;
     }
 
   //Future action
@@ -184,7 +191,7 @@ function reducer(state: PlanEditorState, action: PlanEditorAction): PlanEditorSt
                     setNumber: 1,
                     weight: "",
                     reps: "",
-                    rest: 0,
+                    rest: 60,  // Default to 60 seconds instead of 0
                     notes: "",
                   },
                 ],
@@ -225,12 +232,15 @@ function reducer(state: PlanEditorState, action: PlanEditorAction): PlanEditorSt
         if (!day) break;
         const exercise = day.exercises.find((e) => e.uid === action.exercise.uid);
         if (!exercise) break;
+        
+        // Smart set duplication - copy values from previous set
+        const lastSet = exercise.sets[exercise.sets.length - 1];
         exercise.sets.push({
           setNumber: exercise.sets.length + 1,
-          weight: "",
-          reps: "",
-          rest: 0,
-          notes: "",
+          weight: lastSet?.weight || "",        // Copy previous weight or empty
+          reps: lastSet?.reps || "",            // Copy previous reps or empty
+          rest: lastSet?.rest || 60,            // Copy previous rest or default 60
+          notes: "",                            // Keep notes empty (set-specific)
         });
         break;
       }
@@ -265,6 +275,19 @@ function reducer(state: PlanEditorState, action: PlanEditorAction): PlanEditorSt
         break;
       }
 
+      case "UPDATE_EXERCISE_FIELD": {
+        const { week, day, uid, field, value } = action;
+        const weekObj = draft.weeks.find((w) => w.weekNumber === week);
+        if (!weekObj) break;
+        const dayObj = weekObj.days.find((d) => d.dayNumber === day);
+        if (!dayObj) break;
+        const ex = dayObj.exercises.find((e) => e.uid === uid);
+        if (!ex) break;
+        // @ts-ignore – dynamic field
+        ex[field] = value;
+        break;
+      }
+
       case "TOGGLE_INTENSITY_MODE": {
         draft.meta.intensityMode =
           draft.meta.intensityMode === IntensityMode.ABSOLUTE ? IntensityMode.PERCENT : IntensityMode.ABSOLUTE;
@@ -288,6 +311,7 @@ function reducer(state: PlanEditorState, action: PlanEditorAction): PlanEditorSt
 // ------------------------------------------------------------------
 const StateCtx = createContext<PlanEditorState | undefined>(undefined);
 const DispatchCtx = createContext<React.Dispatch<PlanEditorAction> | undefined>(undefined);
+const WeightUnitCtx = createContext<WeightUnit | undefined>(undefined);
 
 // ------------------------------------------------------------------
 // Provider with temporary hard-coded initial state
@@ -302,6 +326,7 @@ const initialState: PlanEditorState = {
     durationWeeks: 1,
     intensityMode: IntensityMode.ABSOLUTE,
     status: WorkoutPlanStatus.DRAFT,
+    weightUnit: WeightUnit.KG, // Default weight unit
   },
   weeks: [createBlankWeek(1)],
   selectedWeek: 1,
@@ -311,13 +336,20 @@ const initialState: PlanEditorState = {
 interface PlanEditorProviderProps {
   children: ReactNode;
   initial?: PlanEditorState;
+  trainerWeightUnit?: WeightUnit;
 }
 
-export function PlanEditorProvider({ children, initial }: PlanEditorProviderProps) {
+export function PlanEditorProvider({ children, initial, trainerWeightUnit }: PlanEditorProviderProps) {
   const [state, dispatch] = useReducer(reducer, initial ?? initialState);
+  const weightUnit = trainerWeightUnit ?? WeightUnit.KG;
+  
   return (
     <StateCtx.Provider value={state}>
-      <DispatchCtx.Provider value={dispatch}>{children}</DispatchCtx.Provider>
+      <DispatchCtx.Provider value={dispatch}>
+        <WeightUnitCtx.Provider value={weightUnit}>
+          {children}
+        </WeightUnitCtx.Provider>
+      </DispatchCtx.Provider>
     </StateCtx.Provider>
   );
 }
@@ -333,6 +365,12 @@ export function usePlanState() {
 export function usePlanDispatch() {
   const ctx = useContext(DispatchCtx);
   if (!ctx) throw new Error("usePlanDispatch must be inside PlanEditorProvider");
+  return ctx;
+}
+
+export function usePlanWeightUnit() {
+  const ctx = useContext(WeightUnitCtx);
+  if (!ctx) throw new Error("usePlanWeightUnit must be inside PlanEditorProvider");
   return ctx;
 }
 

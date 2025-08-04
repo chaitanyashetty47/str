@@ -11,7 +11,7 @@ import {
   SetInPlan,
 } from "@/types/workout-plans-create/editor-state";
 import { v4 as uuidv4 } from "uuid";
-import { IntensityMode } from "@prisma/client";
+import { IntensityMode, WeightUnit } from "@prisma/client";
 
 export const metadata = {
   title: "Edit Workout Plan",
@@ -38,13 +38,16 @@ export default async function EditPlanPage({
     where: { id },
     include: {
       workout_days: {
+        where: { is_deleted: false }, // Filter out soft-deleted days
         orderBy: [{ week_number: "asc" }, { day_number: "asc" }],
         include: {
           workout_day_exercises: {
+            where: { is_deleted: false }, // Filter out soft-deleted exercises
             orderBy: { order: "asc" },
             include: {
               workout_exercise_lists: true,
               workout_set_instructions: {
+                where: { is_deleted: false }, // Filter out soft-deleted sets
                 orderBy: { set_number: "asc" },
               },
             },
@@ -56,6 +59,16 @@ export default async function EditPlanPage({
 
   if (!plan || plan.trainer_id !== user.id) {
     redirect("/training/plans?error=Plan%20not%20found");
+  }
+
+  // Fetch trainer's weight unit
+  const trainer = await prisma.users_profile.findUnique({
+    where: { id: user.id },
+    select: { weight_unit: true },
+  });
+
+  if (!trainer) {
+    redirect("/training/plans?error=Trainer%20not%20found");
   }
 
   // Convert DB shape to PlanEditorState
@@ -80,7 +93,7 @@ export default async function EditPlanPage({
       }));
 
       return {
-        uid: uuidv4(), // generate new UID for client editing
+        uid: ex.frontend_uid || uuidv4(), // Use stored UID or generate new one
         listExerciseId: ex.list_exercise_id,
         name: ex.workout_exercise_lists.name,
         bodyPart: ex.workout_exercise_lists.type,
@@ -128,6 +141,7 @@ export default async function EditPlanPage({
       clientId: plan.client_id,
       intensityMode: plan.intensity_mode as IntensityMode,
       status: plan.status,
+      weightUnit: trainer.weight_unit as WeightUnit,
     },
     weeks: weeks.length > 0 ? weeks : [{
       weekNumber: 1,
@@ -138,7 +152,7 @@ export default async function EditPlanPage({
   };
 
   return (
-    <PlanEditorProvider initial={editorState}>
+    <PlanEditorProvider initial={editorState} trainerWeightUnit={trainer.weight_unit || WeightUnit.KG}>
       <CreatePlanMain mode="edit" planId={plan.id} />
     </PlanEditorProvider>
   );

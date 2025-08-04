@@ -7,9 +7,11 @@ import {
   WorkoutPlanStatus,
   WorkoutCategory,
   BodyPart,
+  WeightUnit,
 } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import { addDays, startOfWeek } from "date-fns";
+import { convertToKg } from "@/utils/weight";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Zod schemas (shared with create action)
@@ -78,6 +80,7 @@ interface ExistingDay {
   day_number: number;
   day_date: Date;
   title: string;
+  is_deleted?: boolean;
   workout_day_exercises: ExistingExercise[];
 }
 
@@ -89,6 +92,8 @@ interface ExistingExercise {
   order: number;
   youtube_link: string | null;
   notes: string | null;
+  frontend_uid: string | null;
+  is_deleted?: boolean;
   workout_set_instructions: ExistingSet[];
 }
 
@@ -101,6 +106,7 @@ interface ExistingSet {
   weight_prescribed: number | null;
   rest_time: number | null;
   notes: string | null;
+  is_deleted?: boolean;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -108,6 +114,23 @@ interface ExistingSet {
 // ────────────────────────────────────────────────────────────────────────────
 async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
   try {
+    // Get trainer's weight unit preference
+    const existingPlan = await prisma.workout_plans.findUnique({
+      where: { id },
+      select: { trainer_id: true }
+    });
+
+    if (!existingPlan) {
+      throw new Error("Plan not found");
+    }
+
+    const trainer = await prisma.users_profile.findUnique({
+      where: { id: existingPlan.trainer_id },
+      select: { weight_unit: true }
+    });
+
+    const trainerWeightUnit = trainer?.weight_unit || WeightUnit.KG;
+
     // meta.startDate is already normalized to UTC midnight by the schema transform
     const mondayStart = startOfWeek(meta.startDate, { weekStartsOn: 1 });
     const endDate = addDays(mondayStart, meta.durationWeeks * 7 - 1);
@@ -130,11 +153,17 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
 
       // 2. Get existing structure for comparison
       const existingDays = await tx.workout_days.findMany({
-        where: { plan_id: id },
+        where: { 
+          plan_id: id,
+          is_deleted: false // Only get active days
+        },
         include: {
           workout_day_exercises: {
+            where: { is_deleted: false }, // Only get active exercises
             include: {
-              workout_set_instructions: true,
+              workout_set_instructions: {
+                where: { is_deleted: false }, // Only get active sets
+              },
             },
             orderBy: { order: 'asc' },
           },
@@ -178,7 +207,7 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
             });
 
             // Process exercises for this day
-            await processExercisesForDay(tx, existingDay, day.exercises, meta.intensityMode);
+            await processExercisesForDay(tx, existingDay, day.exercises, meta.intensityMode, trainerWeightUnit);
           } else {
             // Create new day
             const dayId = uuidv4();
@@ -198,16 +227,23 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
                     instructions: ex.instructions || "",
                     youtube_link: null,
                     notes: "",
+                    frontend_uid: ex.uid, // Store UID for future matching
                     workout_set_instructions: {
-                      create: ex.sets.map((s) => ({
-                        id: uuidv4(),
-                        set_number: s.setNumber,
-                        reps: s.reps ? parseInt(s.reps, 10) || null : null,
-                        intensity: meta.intensityMode,
-                        weight_prescribed: s.weight ? parseFloat(s.weight) || null : null,
-                        rest_time: s.rest || null,
-                        notes: s.notes,
-                      })),
+                      create: ex.sets.map((s) => {
+                        // Convert weight to KG before storing
+                        const weightValue = s.weight ? parseFloat(s.weight) : null;
+                        const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
+                        
+                        return {
+                          id: uuidv4(),
+                          set_number: s.setNumber,
+                          reps: s.reps ? parseInt(s.reps, 10) || null : null,
+                          intensity: meta.intensityMode,
+                          weight_prescribed: weightInKg,
+                          rest_time: s.rest || null,
+                          notes: s.notes,
+                        };
+                      }),
                     },
                   })),
                 },
@@ -239,17 +275,21 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
           });
 
           if (hasLogs) {
-            // Can't delete - has logs. You might want to add a soft delete field
-            console.warn(`Cannot delete day ${dayKey} - has exercise logs`);
-            // For now, we'll leave it as is. In production, you'd want to:
-            // 1. Add an `is_deleted` field to workout_days
-            // 2. Set it to true here
-            // 3. Filter out deleted days in your queries
+            // Soft delete the day - preserves data integrity
+            await tx.workout_days.update({
+              where: { id: existingDay.id },
+              data: { 
+                is_deleted: true, 
+                deleted_at: new Date() 
+              }
+            });
+            console.log(`Soft deleted day ${dayKey} - has exercise logs`);
           } else {
-            // Safe to delete - no logs
+            // Safe to hard delete - no logs
             await tx.workout_days.delete({
               where: { id: existingDay.id },
             });
+            console.log(`Hard deleted day ${dayKey} - no exercise logs`);
           }
         }
       }
@@ -268,36 +308,52 @@ async function processExercisesForDay(
   tx: any,
   existingDay: ExistingDay,
   incomingExercises: z.infer<typeof ExerciseSchema>[],
-  intensityMode: IntensityMode
+  intensityMode: IntensityMode,
+  trainerWeightUnit: WeightUnit
 ) {
-  // Create maps for easier lookup
-  const existingExercisesMap = new Map<string, ExistingExercise>();
+  // Create maps for easier lookup - now using UID-based matching
+  const existingExercisesByUid = new Map<string, ExistingExercise>();
+  const existingExercisesByListId = new Map<string, ExistingExercise>();
+  
   existingDay.workout_day_exercises.forEach(ex => {
-    // Use a composite key of listExerciseId + order for matching
-    const key = `${ex.list_exercise_id}-${ex.order}`;
-    existingExercisesMap.set(key, ex);
+    // Primary: Map by frontend UID (for exercises created/edited via new system)
+    if (ex.frontend_uid) {
+      existingExercisesByUid.set(ex.frontend_uid, ex);
+    }
+    // Fallback: Map by list_exercise_id (for legacy exercises without UID)
+    existingExercisesByListId.set(ex.list_exercise_id, ex);
   });
 
   // Process incoming exercises
   for (let i = 0; i < incomingExercises.length; i++) {
     const exercise = incomingExercises[i];
-    const exerciseKey = `${exercise.listExerciseId}-${i + 1}`;
-    const existingExercise = existingExercisesMap.get(exerciseKey);
+    
+    // Try to match by UID first, then fallback to listExerciseId
+    let existingExercise = existingExercisesByUid.get(exercise.uid);
+    if (!existingExercise) {
+      // Fallback matching for legacy data or new exercises
+      existingExercise = existingExercisesByListId.get(exercise.listExerciseId);
+      // Remove from fallback map to prevent duplicate matching
+      if (existingExercise) {
+        existingExercisesByListId.delete(exercise.listExerciseId);
+      }
+    }
 
     if (existingExercise) {
-      // Update existing exercise
+      // Update existing exercise - preserve ID, update all other fields
       await tx.workout_day_exercises.update({
         where: { id: existingExercise.id },
         data: {
           list_exercise_id: exercise.listExerciseId,
-          order: i + 1,
+          order: i + 1, // Update order based on current position
           instructions: exercise.instructions || "",
           notes: "",
+          frontend_uid: exercise.uid, // Ensure UID is stored for future updates
         },
       });
 
       // Process sets for this exercise
-      await processSetsForExercise(tx, existingExercise, exercise.sets, intensityMode);
+      await processSetsForExercise(tx, existingExercise, exercise.sets, intensityMode, trainerWeightUnit);
     } else {
       // Create new exercise
       await tx.workout_day_exercises.create({
@@ -309,30 +365,39 @@ async function processExercisesForDay(
           instructions: exercise.instructions || "",
           youtube_link: null,
           notes: "",
+          frontend_uid: exercise.uid, // Store UID for future matching
           workout_set_instructions: {
-            create: exercise.sets.map((s) => ({
-              id: uuidv4(),
-              set_number: s.setNumber,
-              reps: s.reps ? parseInt(s.reps, 10) || null : null,
-              intensity: intensityMode,
-              weight_prescribed: s.weight ? parseFloat(s.weight) || null : null,
-              rest_time: s.rest || null,
-              notes: s.notes,
-            })),
+            create: exercise.sets.map((s) => {
+              // Convert weight to KG before storing
+              const weightValue = s.weight ? parseFloat(s.weight) : null;
+              const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
+              
+              return {
+                id: uuidv4(),
+                set_number: s.setNumber,
+                reps: s.reps ? parseInt(s.reps, 10) || null : null,
+                intensity: intensityMode,
+                weight_prescribed: weightInKg,
+                rest_time: s.rest || null,
+                notes: s.notes,
+              };
+            }),
           },
         },
       });
     }
   }
 
-  // Handle removed exercises (check for logs before deletion)
-  const incomingExerciseKeys = new Set<string>();
-  incomingExercises.forEach((ex, idx) => {
-    incomingExerciseKeys.add(`${ex.listExerciseId}-${idx + 1}`);
-  });
+  // Handle removed exercises - use soft delete when logs exist
+  const incomingExerciseUids = new Set(incomingExercises.map(ex => ex.uid));
+  
+  for (const existingExercise of existingDay.workout_day_exercises) {
+    // Check if this exercise is still present in incoming data
+    const isStillPresent = existingExercise.frontend_uid 
+      ? incomingExerciseUids.has(existingExercise.frontend_uid)
+      : incomingExercises.some(ex => ex.listExerciseId === existingExercise.list_exercise_id);
 
-  for (const [exerciseKey, existingExercise] of existingExercisesMap) {
-    if (!incomingExerciseKeys.has(exerciseKey)) {
+    if (!isStillPresent) {
       // Check if any sets in this exercise have logs
       const hasLogs = await tx.exercise_logs.findFirst({
         where: {
@@ -343,12 +408,21 @@ async function processExercisesForDay(
       });
 
       if (hasLogs) {
-        console.warn(`Cannot delete exercise ${exerciseKey} - has exercise logs`);
-        // In production: soft delete
+        // Soft delete - preserves data integrity
+        await tx.workout_day_exercises.update({
+          where: { id: existingExercise.id },
+          data: { 
+            is_deleted: true, 
+            deleted_at: new Date() 
+          }
+        });
+        console.log(`Soft deleted exercise ${existingExercise.id} - has exercise logs`);
       } else {
+        // Hard delete - completely removes
         await tx.workout_day_exercises.delete({
           where: { id: existingExercise.id },
         });
+        console.log(`Hard deleted exercise ${existingExercise.id} - no exercise logs`);
       }
     }
   }
@@ -361,7 +435,8 @@ async function processSetsForExercise(
   tx: any,
   existingExercise: ExistingExercise,
   incomingSets: z.infer<typeof SetSchema>[],
-  intensityMode: IntensityMode
+  intensityMode: IntensityMode,
+  trainerWeightUnit: WeightUnit
 ) {
   // Create map for existing sets by set_number
   const existingSetsMap = new Map<number, ExistingSet>();
@@ -375,19 +450,27 @@ async function processSetsForExercise(
 
     if (existingSet) {
       // Update existing set
+      // Convert weight to KG before storing
+      const weightValue = set.weight ? parseFloat(set.weight) : null;
+      const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
+      
       await tx.workout_set_instructions.update({
         where: { id: existingSet.id },
         data: {
           set_number: set.setNumber,
           reps: set.reps ? parseInt(set.reps, 10) || null : null,
           intensity: intensityMode,
-          weight_prescribed: set.weight ? parseFloat(set.weight) || null : null,
+          weight_prescribed: weightInKg,
           rest_time: set.rest || null,
           notes: set.notes,
         },
       });
     } else {
       // Create new set
+      // Convert weight to KG before storing
+      const weightValue = set.weight ? parseFloat(set.weight) : null;
+      const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
+      
       await tx.workout_set_instructions.create({
         data: {
           id: uuidv4(),
@@ -395,7 +478,7 @@ async function processSetsForExercise(
           set_number: set.setNumber,
           reps: set.reps ? parseInt(set.reps, 10) || null : null,
           intensity: intensityMode,
-          weight_prescribed: set.weight ? parseFloat(set.weight) || null : null,
+          weight_prescribed: weightInKg,
           rest_time: set.rest || null,
           notes: set.notes,
         },
@@ -414,13 +497,21 @@ async function processSetsForExercise(
       });
 
       if (hasLogs) {
-        console.warn(`Cannot delete set ${setNumber} - has exercise logs`);
-        // In production: soft delete
+        // Soft delete - preserves data integrity
+        await tx.workout_set_instructions.update({
+          where: { id: existingSet.id },
+          data: { 
+            is_deleted: true, 
+            deleted_at: new Date() 
+          }
+        });
+        console.log(`Soft deleted set ${setNumber} (ID: ${existingSet.id}) - has exercise logs`);
       } else {
-        console.log(`Deleting set ${setNumber} `, `which has existingSet.id`, existingSet.id);
+        // Hard delete - completely removes
         await tx.workout_set_instructions.delete({
           where: { id: existingSet.id },
         });
+        console.log(`Hard deleted set ${setNumber} (ID: ${existingSet.id}) - no exercise logs`);
       }
     }
   }
