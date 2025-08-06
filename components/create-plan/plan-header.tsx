@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import { useTrainerClientOptions } from "@/hooks/use-trainer-client-options";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { ChevronsUpDown, Check } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { usePlanMeta, usePlanDispatch } from "@/contexts/PlanEditorContext";
+import { usePlanMeta, usePlanDispatch, usePlanValidation } from "@/contexts/PlanEditorContext";
 import { Switch } from "@/components/ui/switch";
 import { WorkoutPlanStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,12 @@ import { updateWorkoutPlan } from "@/actions/plans/update-workout-plan.action";
 import { usePlanState } from "@/contexts/PlanEditorContext";
 import { useAction } from "@/hooks/useAction";
 import { archiveWorkoutPlan } from "@/actions/plans/archive-workout-plan.action";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useForm, FormProvider } from "react-hook-form";
+import { toast } from "sonner";
+import { PlanHeaderSchema, type PlanHeaderFormData, validatePlanHeader } from "@/lib/schemas/plan-validation";
 
 interface PlanHeaderProps {
   mode: "create" | "edit" | "archive";
@@ -35,16 +42,39 @@ interface PlanHeaderProps {
 export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
   const router = useRouter();
   const state = usePlanState();
+  
   const { meta, toggleIntensity, setStatus } = usePlanMeta();
   const dispatch = usePlanDispatch();
+  const { validateAllSets, hasValidationErrors } = usePlanValidation();
 
   const startMonday = startOfWeek(meta.startDate, { weekStartsOn: 1 });
   const endDate = addDays(startMonday, meta.durationWeeks * 7 - 1);
 
+  // Initialize React Hook Form with validation
+  const form = useForm<PlanHeaderFormData>({
+    resolver: zodResolver(PlanHeaderSchema),
+    mode: "onTouched", // Validate on blur, then on change
+    values: {
+      title: meta.title,
+      description: meta.description,
+      startDate: meta.startDate,
+      durationWeeks: meta.durationWeeks,
+      category: meta.category,
+      clientId: meta.clientId,
+      intensityMode: meta.intensityMode,
+      status: meta.status,
+    },
+  });
+
+  const { handleSubmit, setValue, watch, formState: { errors, isValid, isSubmitting } } = form;
+
+  // Get current form values for client selection display
+  const formValues = watch();
+
   const handleStartDateChange = (date: Date | undefined) => {
     if (!date) return;
     const monday = startOfWeek(date, { weekStartsOn: 1 });
-    dispatch({ type: "UPDATE_META", payload: { startDate: monday } });
+    setValue("startDate", monday, { shouldValidate: true });
   };
 
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
@@ -56,180 +86,325 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
     opt.name.toLowerCase().includes(clientSearchQuery.toLowerCase()),
   );
 
-  const selectedClient = clientOptions.find((opt) => opt.id === meta.clientId);
+  const selectedClient = clientOptions.find((opt) => opt.id === formValues.clientId);
 
   // Setup useAction based on mode
   const createAction = useAction(createWorkoutPlan, {
-    onSuccess: ({ id }) => router.push(`/training/plans/${id}`),
+    onSuccess: ({ id }) => {
+      toast.success("Workout plan created successfully!");
+      router.push(`/training/plans/${id}`);
+    },
     onError: (error) => {
       console.error("Error creating plan:", error);
+      toast.error("Failed to create workout plan. Please try again.");
     },
   });
 
   const updateAction = useAction(updateWorkoutPlan, {
-    onSuccess: () => router.refresh(),
+    onSuccess: () => {
+      toast.success("Workout plan updated successfully!");
+      router.refresh();
+    },
     onError: (error) => {
       console.error("Error updating plan:", error);
+      toast.error("Failed to update workout plan. Please try again.");
     },
   });
 
   const archiveAction = useAction(archiveWorkoutPlan, {
-    onSuccess: () => router.refresh(),
+    onSuccess: () => {
+      toast.success("Workout plan archived successfully!");
+      router.refresh();
+    },
+    onError: (error) => {
+      console.error("Error archiving plan:", error);
+      toast.error("Failed to archive workout plan. Please try again.");
+    },
   });
 
-  const handleSave = async () => {
-    if (mode === "create" && trainerId) {
-      await createAction.execute({ trainerId, meta: state.meta, weeks: state.weeks });
-    } else if (mode === "edit" && planId) {
-      await updateAction.execute({ id: planId, meta: state.meta, weeks: state.weeks });
+  // Validated form submission
+  const onValidatedSubmit = async (validatedData: PlanHeaderFormData) => {
+    // Validate exercise sets before submission
+    const exerciseValidation = validateAllSets();
+    
+    if (!exerciseValidation.isValid) {
+      const errorCount = exerciseValidation.totalErrors;
+      const exerciseCount = exerciseValidation.exerciseErrors.length;
+      
+      toast.error(
+        `Please fix ${errorCount} validation error${errorCount !== 1 ? 's' : ''} in ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''} before saving.`,
+        {
+          description: "All exercise sets must have weight, reps, and rest time filled.",
+          duration: 5000,
+        }
+      );
+      return; // Stop submission
+    }
+
+    // Show loading toast
+    const loadingToast = toast.loading(
+      mode === "create" ? "Creating workout plan..." : "Updating workout plan..."
+    );
+
+    try {
+      // Update the context state with validated data
+      dispatch({ 
+        type: "UPDATE_META", 
+        payload: {
+          ...validatedData,
+          // Ensure startDate is set to Monday
+          startDate: startOfWeek(validatedData.startDate, { weekStartsOn: 1 })
+        }
+      });
+
+      // Execute the action with the current state (will be updated by the time this runs)
+      if (mode === "create" && trainerId) {
+        await createAction.execute({ 
+          trainerId, 
+          meta: { ...state.meta, ...validatedData }, 
+          weeks: state.weeks 
+        });
+      } else if (mode === "edit" && planId) {
+        await updateAction.execute({ 
+          id: planId, 
+          meta: { ...state.meta, ...validatedData }, 
+          weeks: state.weeks 
+        });
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      toast.dismiss(loadingToast);
     }
   };
 
+  // Handle form submission with validation
+  const handleValidatedSave = async (status: WorkoutPlanStatus) => {
+    // Update status in form
+    setValue("status", status, { shouldValidate: true });
+    setStatus(status);
+
+    // Trigger form validation and submission
+    await handleSubmit(onValidatedSubmit)();
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      
-      <Label>Plan Name</Label>
-      <Input 
-      type="text" 
-      placeholder="Enter plan name" 
-      value={meta.title}
-      onChange={(e) => dispatch({ type: "UPDATE_META", payload: { title: e.target.value } })}
-      />
+    <FormProvider {...form}>
+      <form className="flex flex-col gap-4">
+        
+        {/* Plan Name Field */}
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Plan Name</FormLabel>
+              <FormControl>
+                <Input 
+                  type="text" 
+                  placeholder="Enter plan name" 
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       <div className="grid grid-cols-3 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label>Start Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-              variant="outline" 
-              className={cn( "w-full justify-start text-left font-normal",
-                !meta.startDate && "text-muted-foreground"
-              )}>
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {meta.startDate? format(meta.startDate, "PPP") : "Select a date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={meta.startDate} onSelect={handleStartDateChange} initialFocus />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label>Duration(in weeks)</Label>
-          <Input
-          type="number"
-          readOnly
-          value={meta.durationWeeks}
-          onChange={(e) => dispatch({ type: "UPDATE_META", payload: { durationWeeks: parseInt(e.target.value) } })}
-          /> 
-        </div>
+        {/* Start Date Field */}
+        <FormField
+          control={form.control}
+          name="startDate"
+          render={({ field }) => (
+            <FormItem className="flex flex-col gap-2">
+              <FormLabel>Start Date</FormLabel>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button 
+                      variant="outline" 
+                      className={cn( 
+                        "w-full justify-start text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {field.value ? format(field.value, "PPP") : "Select a date"}
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar 
+                    mode="single" 
+                    selected={field.value} 
+                    onSelect={(date) => {
+                      if (date) {
+                        handleStartDateChange(date);
+                      }
+                    }} 
+                    initialFocus 
+                  />
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* Duration Field */}
+        <FormField
+          control={form.control}
+          name="durationWeeks"
+          render={({ field }) => (
+            <FormItem className="flex flex-col gap-2">
+              <FormLabel>Duration (in weeks)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  readOnly
+                  {...field}
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        {/* End Date (Read-only calculated field) */}
         <div className="flex flex-col gap-2">
           <Label>End Date</Label>
           <Label className="text-sm text-muted-foreground">
-            {endDate? format(endDate, "PPP") : "Select a date"}
+            {endDate ? format(endDate, "PPP") : "Select a date"}
           </Label>
-          
         </div>
-        <div className="flex flex-col gap-2">
-            <Label>Category</Label>
-            <Select
-            value={meta.category}
-            onValueChange={(value) => dispatch({ type: "UPDATE_META", payload: { category: value as WorkoutCategory } })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-                {/* what should be default value */}
-                
-              </SelectTrigger>
-              <SelectContent>
-                {Object.values(WorkoutCategory).map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category.split("_").join(" ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-        </div>
-        <div className="flex flex-col gap-2">
-            <Label>Select a client</Label>
-            {isClientsLoading ? (
-              <Button variant="outline" className="w-full justify-between" disabled>
-                Loading clients...
-              </Button>
-            ) : clientOptions.length === 0 ? (
-              <Alert className="w-full">
-                <AlertTitle>No clients found</AlertTitle>
-                <AlertDescription>
-                  You have no assigned clients. Add a client before creating a plan.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Popover open={isClientDropdownOpen} onOpenChange={setIsClientDropdownOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={isClientDropdownOpen}
-                    className="w-full justify-between font-normal bg-background"
-                  >
-                    <span className={cn("truncate", !selectedClient && "text-muted-foreground")}> 
-                      {selectedClient ? selectedClient.name : "Select a client..."}
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-muted-foreground/80" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full min-w-[var(--radix-popper-anchor-width)] border-input p-0" align="start">
-                  <Command>
-                    {clientOptions.length > 10 && (
-                      <CommandInput
-                        placeholder="Search clients..."
-                        value={clientSearchQuery}
-                        onValueChange={setClientSearchQuery}
-                      />
-                    )}
-                    <CommandList>
-                      <CommandEmpty>No clients found.</CommandEmpty>
-                      <CommandGroup>
-                        {(clientOptions.length > 10 ? filteredClientOptions : clientOptions).map((client) => (
-                          <CommandItem
-                            key={client.id}
-                            value={client.name}
-                            onSelect={() => {
-                              dispatch({ type: "UPDATE_META", payload: { clientId: client.id } });
-                              setIsClientDropdownOpen(false);
-                            }}
-                          >
-                            {client.name}
-                            {client.id === meta.clientId && (
-                              <Check size={16} strokeWidth={2} className="ml-auto" />
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            )}
-        </div>
+        {/* Category Field */}
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem className="flex flex-col gap-2">
+              <FormLabel>Category</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.values(WorkoutCategory).map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category.split("_").join(" ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* Client Selection Field */}
+        <FormField
+          control={form.control}
+          name="clientId"
+          render={({ field }) => (
+            <FormItem className="flex flex-col gap-2">
+              <FormLabel>Select a client</FormLabel>
+              {isClientsLoading ? (
+                <Button variant="outline" className="w-full justify-between" disabled>
+                  Loading clients...
+                </Button>
+              ) : clientOptions.length === 0 ? (
+                <Alert className="w-full">
+                  <AlertTitle>No clients found</AlertTitle>
+                  <AlertDescription>
+                    You have no assigned clients. Add a client before creating a plan.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Popover open={isClientDropdownOpen} onOpenChange={setIsClientDropdownOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isClientDropdownOpen}
+                        className="w-full justify-between font-normal bg-background"
+                      >
+                        <span className={cn("truncate", !selectedClient && "text-muted-foreground")}> 
+                          {selectedClient ? selectedClient.name : "Select a client..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-muted-foreground/80" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full min-w-[var(--radix-popper-anchor-width)] border-input p-0" align="start">
+                    <Command>
+                      {clientOptions.length > 10 && (
+                        <CommandInput
+                          placeholder="Search clients..."
+                          value={clientSearchQuery}
+                          onValueChange={setClientSearchQuery}
+                        />
+                      )}
+                      <CommandList>
+                        <CommandEmpty>No clients found.</CommandEmpty>
+                        <CommandGroup>
+                          {(clientOptions.length > 10 ? filteredClientOptions : clientOptions).map((client) => (
+                            <CommandItem
+                              key={client.id}
+                              value={client.name}
+                              onSelect={() => {
+                                field.onChange(client.id);
+                                setIsClientDropdownOpen(false);
+                              }}
+                            >
+                              {client.name}
+                              {client.id === field.value && (
+                                <Check size={16} strokeWidth={2} className="ml-auto" />
+                              )}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
-      <Label>Description</Label>
-      <Textarea
-        value={meta.description}
-        onChange={(e) => dispatch({ type: "UPDATE_META", payload: { description: e.target.value } })}
-        placeholder="Enter plan description"
-        className={cn(
-          "resize-none",                      // disable manual resizing
-          "rounded-2xl",                      // more circular corners
-          "p-4",                              // increase padding for size
-          "h-40",                             // custom height (can be changed)
-          "focus-visible:outline-none",       // remove default blue outline
-          "focus-visible:ring-2",             // enable ring
-          "focus-visible:ring-black",         // black ring color
-          "focus-visible:ring-offset-2",      // spacing around the ring
-          !meta.description && "text-muted-foreground"
+      
+      {/* Description Field */}
+      <FormField
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Description</FormLabel>
+            <FormControl>
+              <Textarea
+                {...field}
+                placeholder="Enter plan description"
+                className={cn(
+                  "resize-none",                      // disable manual resizing
+                  "rounded-2xl",                      // more circular corners
+                  "p-4",                              // increase padding for size
+                  "h-40",                             // custom height (can be changed)
+                  "focus-visible:outline-none",       // remove default blue outline
+                  "focus-visible:ring-2",             // enable ring
+                  "focus-visible:ring-black",         // black ring color
+                  "focus-visible:ring-offset-2",      // spacing around the ring
+                  !field.value && "text-muted-foreground"
+                )}
+                rows={4}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
         )}
-        rows={4}
       />
 
       {/* Intensity toggle & status buttons */}
@@ -248,33 +423,28 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
         <div className="flex gap-2 w-full md:w-auto">
           <Button
             size="sm"
+            type="button"
             variant={meta.status === WorkoutPlanStatus.DRAFT ? "default" : "outline"}
-            onClick={() => {
-              setStatus(WorkoutPlanStatus.DRAFT);
-              console.log("Draft button clicked");
-              handleSave();
-            }}
-            disabled={createAction.isLoading || updateAction.isLoading}
+            onClick={() => handleValidatedSave(WorkoutPlanStatus.DRAFT)}
+            disabled={createAction.isLoading || updateAction.isLoading || isSubmitting}
           >
             {mode === "create" ? "Save Draft" : "Update Draft"}
           </Button>
           <Button
             size="sm"
+            type="button"
             variant={meta.status === WorkoutPlanStatus.PUBLISHED ? "default" : "secondary"}
-            onClick={() => {
-              setStatus(WorkoutPlanStatus.PUBLISHED);
-              console.log("Published button clicked");
-              handleSave();
-            }}
-            disabled={createAction.isLoading || updateAction.isLoading}
+            onClick={() => handleValidatedSave(WorkoutPlanStatus.PUBLISHED)}
+            disabled={createAction.isLoading || updateAction.isLoading || isSubmitting}
           >
             {mode === "create" ? "Publish" : "Republish"}
           </Button>
           {mode === "edit" && (
             <Button
               size="sm"
+              type="button"
               variant="destructive"
-              disabled={archiveAction.isLoading || createAction.isLoading || updateAction.isLoading}
+              disabled={archiveAction.isLoading || createAction.isLoading || updateAction.isLoading || isSubmitting}
               onClick={() => {
                 archiveAction.execute({ id: planId!, archive: meta.status !== WorkoutPlanStatus.ARCHIVED });
               }}
@@ -285,6 +455,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
         </div>
       </div>
 
-    </div>
+      </form>
+    </FormProvider>
   );
-  }
+}

@@ -140,6 +140,7 @@ async function fetchUpcomingWorkouts(
         trainer_id: trainerId,
         start_date: { lte: currentDate },
         end_date: { gte: currentDate },
+        status: "PUBLISHED",
       },
       day_date: {
         gte: currentDate,
@@ -270,6 +271,7 @@ async function fetchOngoingPlans(
       trainer_id: trainerId,
       start_date: { lte: currentDate },
       end_date: { gte: currentDate },
+      status: "PUBLISHED",
     },
     include: {
       client: {

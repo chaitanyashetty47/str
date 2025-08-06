@@ -11,6 +11,13 @@ import { ExerciseInPlan, SetInPlan } from "@/types/workout-plans-create/editor-s
 import { v4 as uuidv4 } from "uuid";
 import { produce } from "immer";
 import { IntensityMode } from "@prisma/client";
+import { 
+  validateExerciseSet, 
+  validateExercise, 
+  type ExerciseValidationError, 
+  type SetValidationError, 
+  type ValidationSummary 
+} from "@/lib/schemas/plan-validation";
 
 // ------------------------------------------------------------------
 // Action types (expand incrementally)
@@ -355,6 +362,116 @@ export function PlanEditorProvider({ children, initial, trainerWeightUnit }: Pla
 }
 
 // ------------------------------------------------------------------
+// Validation Helper Functions
+// ------------------------------------------------------------------
+export function validateAllSets(state: PlanEditorState): ValidationSummary {
+  const exerciseErrors: ExerciseValidationError[] = [];
+  let totalErrors = 0;
+
+  state.weeks.forEach((week) => {
+    week.days.forEach((day) => {
+      day.exercises.forEach((exercise) => {
+        const validation = validateExercise({
+          uid: exercise.uid,
+          listExerciseId: exercise.listExerciseId,
+          name: exercise.name,
+          instructions: exercise.instructions,
+          sets: exercise.sets.map(set => ({
+            setNumber: set.setNumber,
+            weight: set.weight,
+            reps: set.reps,
+            rest: set.rest,
+            notes: set.notes,
+          })),
+        });
+
+        if (!validation.isValid) {
+          exerciseErrors.push({
+            uid: exercise.uid,
+            name: exercise.name,
+            weekNumber: week.weekNumber,
+            dayNumber: day.dayNumber,
+            errors: validation.errors,
+            setErrors: validation.setErrors,
+          });
+          totalErrors += validation.errors.length + validation.setErrors.length;
+        }
+      });
+    });
+  });
+
+  return {
+    isValid: exerciseErrors.length === 0,
+    planHeaderErrors: {}, // This will be populated by plan header validation
+    exerciseErrors,
+    totalErrors,
+  };
+}
+
+export function getSetValidationErrors(state: PlanEditorState): Map<string, SetValidationError[]> {
+  const setErrorsMap = new Map<string, SetValidationError[]>();
+
+  state.weeks.forEach((week) => {
+    week.days.forEach((day) => {
+      day.exercises.forEach((exercise) => {
+        const exerciseSetErrors: SetValidationError[] = [];
+
+        exercise.sets.forEach((set) => {
+          const setValidation = validateExerciseSet({
+            setNumber: set.setNumber,
+            weight: set.weight,
+            reps: set.reps,
+            rest: set.rest,
+            notes: set.notes,
+          });
+
+          if (!setValidation.isValid) {
+            exerciseSetErrors.push({
+              exerciseUid: exercise.uid,
+              exerciseName: exercise.name,
+              setNumber: set.setNumber,
+              errors: setValidation.errors,
+            });
+          }
+        });
+
+        if (exerciseSetErrors.length > 0) {
+          setErrorsMap.set(exercise.uid, exerciseSetErrors);
+        }
+      });
+    });
+  });
+
+  return setErrorsMap;
+}
+
+export function hasValidationErrors(state: PlanEditorState): boolean {
+  return !validateAllSets(state).isValid;
+}
+
+export function getExerciseValidationStatus(exercise: ExerciseInPlan): {
+  isValid: boolean;
+  hasEmptySets: boolean;
+  emptySetNumbers: number[];
+} {
+  const emptySetNumbers: number[] = [];
+  let hasEmptySets = false;
+
+  exercise.sets.forEach((set) => {
+    if (!set.weight || !set.reps || set.rest < 0) {
+      hasEmptySets = true;
+      emptySetNumbers.push(set.setNumber);
+    }
+  });
+
+  return {
+    isValid: !hasEmptySets && exercise.sets.length > 0,
+    hasEmptySets,
+    emptySetNumbers,
+  };
+}
+
+// ------------------------------------------------------------------
 // Hooks – throw helpful error if mis-used outside provider
 // ------------------------------------------------------------------
 export function usePlanState() {
@@ -384,5 +501,19 @@ export function usePlanMeta() {
     meta: state.meta,
     toggleIntensity: () => dispatch({ type: "TOGGLE_INTENSITY_MODE" }),
     setStatus: (status: WorkoutPlanStatus) => dispatch({ type: "SET_STATUS", status }),
+  } as const;
+}
+
+// ------------------------------------------------------------------
+// Validation hook for easy access to validation functions
+// ------------------------------------------------------------------
+export function usePlanValidation() {
+  const state = usePlanState();
+  
+  return {
+    validateAllSets: () => validateAllSets(state),
+    getSetValidationErrors: () => getSetValidationErrors(state),
+    hasValidationErrors: () => hasValidationErrors(state),
+    getExerciseValidationStatus,
   } as const;
 } 

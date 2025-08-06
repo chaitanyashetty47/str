@@ -5,8 +5,9 @@ import { Button } from "../ui/button";
 import { MessageSquare, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Textarea } from "../ui/textarea";
-import { usePlanDispatch, usePlanWeightUnit } from "@/contexts/PlanEditorContext";
-import { useState } from "react";
+import { usePlanDispatch, usePlanWeightUnit, usePlanValidation } from "@/contexts/PlanEditorContext";
+import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { getDisplayWeight } from "@/utils/weight";
 import { IntensityMode, WeightUnit } from "@prisma/client";
 
@@ -38,9 +39,39 @@ export function SetRow({
   const dispatch = usePlanDispatch();
   const [isOpen, setIsOpen] = useState(false);
   const userWeightUnit = usePlanWeightUnit();
+  const { getSetValidationErrors } = usePlanValidation();
   
   const getWeightUnitLabel = () => {
     return userWeightUnit === WeightUnit.KG ? "kg" : "lbs";
+  };
+
+  // Get validation errors for this specific set
+  const setValidationErrors = useMemo(() => {
+    const allErrors = getSetValidationErrors();
+    const exerciseErrors = allErrors.get(exerciseUid) || [];
+    return exerciseErrors.find(error => error.setNumber === setNumber);
+  }, [getSetValidationErrors, exerciseUid, setNumber]);
+
+  // Individual field validation status
+  const hasWeightError = !weight || weight.trim() === '';
+  const hasRepsError = !reps || reps.trim() === '';
+  const hasRestError = rest < 0;
+
+  const getErrorMessage = (field: string) => {
+    if (setValidationErrors?.errors[field as keyof typeof setValidationErrors.errors]) {
+      return setValidationErrors.errors[field as keyof typeof setValidationErrors.errors];
+    }
+    // Fallback simple validation messages
+    switch (field) {
+      case 'weight':
+        return hasWeightError ? 'Weight is required' : '';
+      case 'reps':
+        return hasRepsError ? 'Reps is required' : '';
+      case 'rest':
+        return hasRestError ? 'Rest cannot be negative' : '';
+      default:
+        return '';
+    }
   };
 
   const update = (field: "weight" | "reps" | "rest" | "notes", value: string | number) =>
@@ -55,7 +86,7 @@ export function SetRow({
     });
 
   return (
-    <div className="grid grid-cols-12 gap-2 items-center text-sm">
+    <div className="grid grid-cols-12 gap-2 items-start text-sm">
       <span className="col-span-1 text-center">{setNumber}</span>
 
       {/* Weight */}
@@ -64,7 +95,11 @@ export function SetRow({
           <Input
             value={weight}
             onChange={(e) => update("weight", e.target.value)}
-            className="h-8"
+            className={cn(
+              "h-8",
+              hasWeightError && "border-destructive focus-visible:ring-destructive"
+            )}
+            placeholder="0"
           />
           <span className="text-xs text-muted-foreground">
             {intensityMode === IntensityMode.ABSOLUTE ? getWeightUnitLabel() : "%"}
@@ -78,21 +113,52 @@ export function SetRow({
               : "No 1-RM"}
           </span>
         )}
+        {/* Weight validation error */}
+        {hasWeightError && (
+          <span className="text-[10px] text-destructive ml-1">
+            {getErrorMessage('weight')}
+          </span>
+        )}
       </div>
 
       {/* Reps */}
-      <Input
-        value={reps}
-        onChange={(e) => update("reps", e.target.value)}
-        className="col-span-2 h-8"
-      />
+      <div className="col-span-2 flex flex-col gap-0.5">
+        <Input
+          value={reps}
+          onChange={(e) => update("reps", e.target.value)}
+          className={cn(
+            "h-8",
+            hasRepsError && "border-destructive focus-visible:ring-destructive"
+          )}
+          placeholder="0"
+        />
+        {/* Reps validation error */}
+        {hasRepsError && (
+          <span className="text-[10px] text-destructive">
+            {getErrorMessage('reps')}
+          </span>
+        )}
+      </div>
 
       {/* Rest */}
-      <Input
-        value={rest}
-        onChange={(e) => update("rest", Number(e.target.value) || 0)}
-        className="col-span-2 h-8"
-      />
+      <div className="col-span-2 flex flex-col gap-0.5">
+        <Input
+          type="number"
+          value={rest}
+          onChange={(e) => update("rest", Number(e.target.value) || 0)}
+          className={cn(
+            "h-8",
+            hasRestError && "border-destructive focus-visible:ring-destructive"
+          )}
+          placeholder="60"
+        />
+        {/* Rest validation error */}
+        {hasRestError && (
+          <span className="text-[10px] text-destructive">
+            {getErrorMessage('rest')}
+          </span>
+        )}
+      </div>
 
       {/* Notes */}
       <Popover open={isOpen} onOpenChange={setIsOpen}>

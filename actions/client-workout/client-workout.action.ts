@@ -103,6 +103,7 @@ async function currentPlanHandler(_: z.infer<typeof currentPlanInput>) {
       client_id: userId,
       start_date: { lte: today },
       end_date: { gte: today },
+      status: "PUBLISHED",
     },
     select: {
       id: true,
@@ -157,11 +158,17 @@ async function upcomingHandler({ planId }: z.infer<typeof upcomingInput>) {
     return { error: "User not authenticated" };
   }
 
+  const currentDate = new Date();
+  console.log("currentDate", currentDate);
+
   // Ensure the user owns this plan (cheap guard)
   const ownsPlan = await prisma.workout_plans.findFirst({
     where: {
       id: planId,
       client_id: userId,
+      status: "PUBLISHED",
+      start_date: { lte: currentDate },
+      end_date: { gte: currentDate },
     },
     select: { 
       id: true,
@@ -170,6 +177,8 @@ async function upcomingHandler({ planId }: z.infer<typeof upcomingInput>) {
       duration_in_weeks: true,
     },
   });
+
+  console.log("ownsPlan", ownsPlan);
 
   if (!ownsPlan) {
     return { error: "Plan not found" };

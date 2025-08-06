@@ -16,9 +16,10 @@ import {
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
-import { GripVertical, MoreHorizontal, Plus, Trash2, AlertCircle } from "lucide-react";
+import { GripVertical, MoreHorizontal, Plus, Trash2, AlertCircle, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ExerciseInPlan } from "@/types/workout-plans-create/editor-state";
-import { usePlanDispatch, usePlanMeta } from "@/contexts/PlanEditorContext";
+import { usePlanDispatch, usePlanMeta, usePlanValidation } from "@/contexts/PlanEditorContext";
 import { useClientMaxLifts } from "@/hooks/use-client-max-lifts";
 import { IntensityMode } from "@prisma/client";
 import { SetRow } from "./set-row";
@@ -35,26 +36,49 @@ export function ExerciseContainer({ exercise, weekNumber, dayNumber, dragHandleP
   const { meta } = usePlanMeta();
   const { oneRMMap } = useClientMaxLifts(meta.clientId);
   const oneRM = oneRMMap[exercise.listExerciseId];
+  const { getExerciseValidationStatus } = usePlanValidation();
+
+  // Get validation status for this exercise
+  const validationStatus = getExerciseValidationStatus(exercise);
 
   return (
-    <Card className="border-muted-foreground/20">
+    <Card className={cn(
+      "border-muted-foreground/20",
+      !validationStatus.isValid && "border-destructive/50 bg-destructive/5"
+    )}>
       <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
         <div className="flex items-center gap-3 min-w-0">
           <div {...dragHandleProps}>
             <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-sm truncate max-w-xs">
-              {exercise.name}
-            </span>
-            <Badge variant="secondary" className="w-fit text-[10px] mt-1 flex items-center gap-1">
-              {exercise.bodyPart}
-              {meta.intensityMode === IntensityMode.PERCENT && !oneRM && (
-                
-                <span className="text-xs text-destructive flex flex-row flex-nowrap" 
-                > <AlertCircle className="w-3 h-3 text-destructivem mr-1" /> No 1-RM data</span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm truncate max-w-xs">
+                {exercise.name}
+              </span>
+              {/* Validation Status Indicator */}
+              {!validationStatus.isValid && (
+                <div className="flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-destructive" />
+                  <span className="text-[10px] text-destructive font-medium">
+                    {validationStatus.emptySetNumbers.length} incomplete set{validationStatus.emptySetNumbers.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
               )}
-            </Badge>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="secondary" className="w-fit text-[10px] flex items-center gap-1">
+                {exercise.bodyPart}
+                {meta.intensityMode === IntensityMode.PERCENT && !oneRM && (
+                  <span className="text-xs text-destructive flex flex-row flex-nowrap" 
+                  > <AlertCircle className="w-3 h-3 text-destructivem mr-1" /> No 1-RM data</span>
+                )}
+              </Badge>
+              {/* Sets Count Badge */}
+              <Badge variant="outline" className="text-[10px]">
+                {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
+              </Badge>
+            </div>
           </div>
         </div>
 
