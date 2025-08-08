@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { decodeJWT, canAccessRoute } from "@/lib/auth-utils";
+import { decodeJWT, canAccessRoute, getDefaultRouteForRole } from "@/lib/auth-utils";
 
 export const updateSession = async (request: NextRequest) => {
   // This `try/catch` block is only here for the interactive tutorial.
@@ -59,7 +59,7 @@ export const updateSession = async (request: NextRequest) => {
 
 
      // Protected routes that require authentication
-     const protectedRoutes = ['/protected', '/training', '/profile', '/workouts', '/admin'];
+     const protectedRoutes = ['/protected', '/training', '/fitness', '/psychological', '/manifestation', '/profile', '/workouts', '/admin'];
      const isProtectedRoute = protectedRoutes.some(route => 
        pathname.startsWith(route)
      );
@@ -134,43 +134,34 @@ export const updateSession = async (request: NextRequest) => {
 
         // Redirect completed profiles away from onboarding
         if (claims.profile_completed && pathname.startsWith('/onboarding')) {
-          if (claims.user_role === "TRAINER") {
-            return NextResponse.redirect(new URL('/training', request.url));
-          }7
-          if (claims.user_role === "ADMIN") {
-            return NextResponse.redirect(new URL('/admin', request.url));
+          const defaultRoute = getDefaultRouteForRole(claims.user_role);
+          return NextResponse.redirect(new URL(defaultRoute, request.url));
+        }
+
+        // Handle legacy /training route - redirect to /fitness
+        if (pathname.startsWith('/training')) {
+          if (claims.user_role === 'FITNESS_TRAINER' || claims.user_role === 'FITNESS_TRAINER_ADMIN' || claims.user_role === 'TRAINER') {
+            const newPath = pathname.replace('/training', '/fitness');
+            return NextResponse.redirect(new URL(newPath, request.url));
           }
-          return NextResponse.redirect(new URL('/dashboard', request.url));
         }
 
         // Enhanced role-based redirects from root
         if (pathname === "/") {
-          switch (claims.user_role) {
-            case "TRAINER":
-              return NextResponse.redirect(new URL("/training", request.url));
-            case "ADMIN":
-              return NextResponse.redirect(new URL("/admin", request.url));
-            default:
-              return NextResponse.redirect(new URL("/dashboard", request.url));
-          }
+          const defaultRoute = getDefaultRouteForRole(claims.user_role);
+          return NextResponse.redirect(new URL(defaultRoute, request.url));
         }
       } else {
         // Fallback to database query if JWT claims not available
         const { data: userData, error: roleError } = await supabase
-          .from("User")
+          .from("users_profile")
           .select("role")
           .eq("id", user.id)
           .single();
         
         if (!roleError && userData && pathname === "/") {
-          switch (userData.role) {
-            case "TRAINER":
-              return NextResponse.redirect(new URL("/test", request.url));
-            case "ADMIN":
-              return NextResponse.redirect(new URL("/admin", request.url));
-            default:
-              return NextResponse.redirect(new URL("/dashboard", request.url));
-          }
+          const defaultRoute = getDefaultRouteForRole(userData.role);
+          return NextResponse.redirect(new URL(defaultRoute, request.url));
         }
       }
     }

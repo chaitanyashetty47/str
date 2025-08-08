@@ -45,7 +45,7 @@ export const sidebarMenus = {
     },
     {
       title: "My Clients",
-      url: "/training/clients",
+      url: "/fitness/clients",
       icon: Users,
       // items: [
       //   {
@@ -64,26 +64,26 @@ export const sidebarMenus = {
     },
     {
       title: "Workout Plans",
-      url: "/training/plans",
+      url: "/fitness/plans",
       icon: Dumbbell,
       items: [
         {
           title: "All Plans",
-          url: "/training/plans/all",
+          url: "/fitness/plans/all",
         },
         {
           title: "Create Plan",
-          url: "/training/plans/create",
+          url: "/fitness/plans/create",
         },
         // {
         //   title: "Templates",
-        //   url: "/training/plans/templates",
+        //   url: "/fitness/plans/templates",
         // },
       ],
     },
     {
       title: "Client Progress",
-      url: "/training/progress",
+      url: "/fitness/progress",
       icon: LineChart,
     //   items: [
     //     {

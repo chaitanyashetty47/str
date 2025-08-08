@@ -1,5 +1,12 @@
 import {jwtDecode} from 'jwt-decode';
-import type { CustomClaims, UserRole, SubscriptionCategory, UserSubscriptions} from '@/types/auth';
+import type { 
+  CustomClaims, 
+  UserRole, 
+  SubscriptionCategory, 
+  UserSubscriptions, 
+  TrainerCategory,
+  PlatformAccess 
+} from '@/types/auth';
 import { ROLE_PERMISSIONS } from '@/types/auth';
 
 export function decodeJWT(accessToken: string): CustomClaims | null {
@@ -7,7 +14,8 @@ export function decodeJWT(accessToken: string): CustomClaims | null {
     const decoded = jwtDecode<any>(accessToken);
     return {
       user_role: decoded.user_role || 'CLIENT',
-      subscriptions: decoded.subscriptions || {},
+      subscriptions: decoded.subscriptions || undefined,
+      platform_access: decoded.platform_access || undefined,
       profile_completed: decoded.profile_completed || false,
       auth_user_id: decoded.auth_user_id || '',
     };
@@ -18,7 +26,7 @@ export function decodeJWT(accessToken: string): CustomClaims | null {
 }
 
 
-// Helper functions for subscription checks
+// Helper functions for subscription checks (CLIENT only)
 export function hasActiveSubscription(
   subscriptions: UserSubscriptions, 
   category: SubscriptionCategory
@@ -39,10 +47,6 @@ export function hasAnyActiveSubscription(subscriptions: UserSubscriptions): bool
   );
 }
 
-export function hasPlatformAccess(subscriptions: UserSubscriptions): boolean {
-  return subscriptions.platform_access === 'full';
-}
-
 export function getActiveSubscriptionCategories(subscriptions: UserSubscriptions): SubscriptionCategory[] {
   const categories: SubscriptionCategory[] = [];
   if (subscriptions.ALL_IN_ONE) {
@@ -55,6 +59,48 @@ export function getActiveSubscriptionCategories(subscriptions: UserSubscriptions
   if (subscriptions.PSYCHOLOGY) categories.push('PSYCHOLOGY');
   if (subscriptions.MANIFESTATION) categories.push('MANIFESTATION');
   return categories;
+}
+
+// Helper functions for trainer/admin platform access
+export function getTrainerCategory(userRole: UserRole): TrainerCategory | undefined {
+  switch (userRole) {
+    case 'FITNESS_TRAINER':
+    case 'FITNESS_TRAINER_ADMIN':
+    case 'TRAINER': // Legacy
+      return 'FITNESS';
+    case 'PSYCHOLOGY_TRAINER':
+      return 'PSYCHOLOGY';
+    case 'MANIFESTATION_TRAINER':
+      return 'MANIFESTATION';
+    default:
+      return undefined;
+  }
+}
+
+export function hasAdminAccess(userRole: UserRole): boolean {
+  return userRole === 'ADMIN' || userRole === 'FITNESS_TRAINER_ADMIN';
+}
+
+export function hasFitnessTrainerAccess(userRole: UserRole): boolean {
+  return userRole === 'FITNESS_TRAINER' || userRole === 'FITNESS_TRAINER_ADMIN' || userRole === 'TRAINER';
+}
+
+export function hasPsychologyTrainerAccess(userRole: UserRole): boolean {
+  return userRole === 'PSYCHOLOGY_TRAINER';
+}
+
+export function hasManifestationTrainerAccess(userRole: UserRole): boolean {
+  return userRole === 'MANIFESTATION_TRAINER';
+}
+
+export function isTrainerRole(userRole: UserRole): boolean {
+  return [
+    'TRAINER',
+    'FITNESS_TRAINER', 
+    'PSYCHOLOGY_TRAINER', 
+    'MANIFESTATION_TRAINER',
+    'FITNESS_TRAINER_ADMIN'
+  ].includes(userRole);
 }
 
 export function hasPermission(
@@ -83,13 +129,19 @@ export function canAccessRoute(
   userRole: UserRole, 
   pathname: string
 ): boolean {
-  // Define route access rules
+  // Define route access rules with new role structure
   const routeRules = {
-    '/training': ['TRAINER', 'ADMIN'],
-    '/admin': ['ADMIN'],
-    '/profile': ['CLIENT', 'TRAINER', 'ADMIN'],
-    '/workouts': ['CLIENT', 'TRAINER', 'ADMIN'],
-    '/subscriptions': ['CLIENT', 'TRAINER', 'ADMIN'],
+    '/fitness': ['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN', 'TRAINER'], // Legacy TRAINER maps to fitness
+    '/psychological': ['PSYCHOLOGY_TRAINER'],
+    '/manifestation': ['MANIFESTATION_TRAINER'],
+    '/admin': ['ADMIN', 'FITNESS_TRAINER_ADMIN'],
+    '/profile': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
+    '/workouts': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
+    '/subscriptions': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
+    '/dashboard': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
+    '/home': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
+    // Legacy /training route - redirect to /fitness
+    '/training': ['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN', 'TRAINER'],
   };
 
   for (const [route, allowedRoles] of Object.entries(routeRules)) {
@@ -99,4 +151,48 @@ export function canAccessRoute(
   }
 
   return true; // Allow access to public routes
+}
+
+// Helper function to get the appropriate redirect route based on role
+export function getDefaultRouteForRole(userRole: UserRole): string {
+  switch (userRole) {
+    case 'FITNESS_TRAINER':
+    case 'TRAINER': // Legacy
+      return '/fitness';
+    case 'PSYCHOLOGY_TRAINER':
+      return '/psychological';
+    case 'MANIFESTATION_TRAINER':
+      return '/manifestation';
+    case 'FITNESS_TRAINER_ADMIN':
+      return '/fitness'; // Default to fitness, can switch to admin
+    case 'ADMIN':
+      return '/admin';
+    case 'CLIENT':
+    default:
+      return '/dashboard';
+  }
+}
+
+// Helper function to determine if user should see role switcher
+export function shouldShowRoleSwitcher(userRole: UserRole): boolean {
+  return userRole === 'FITNESS_TRAINER_ADMIN';
+}
+
+// Helper function to get available routes for role switcher
+export function getAvailableRoutesForRole(userRole: UserRole): Array<{label: string, href: string, description: string}> {
+  if (userRole === 'FITNESS_TRAINER_ADMIN') {
+    return [
+      {
+        label: 'Fitness Trainer',
+        href: '/fitness/clients',
+        description: 'Manage fitness clients and workouts'
+      },
+      {
+        label: 'Admin Panel', 
+        href: '/admin',
+        description: 'System administration'
+      }
+    ];
+  }
+  return [];
 }

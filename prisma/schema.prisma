@@ -308,6 +308,10 @@ model workout_set_instructions {
 enum Role {
   CLIENT
   TRAINER
+  FITNESS_TRAINER
+  PSYCHOLOGY_TRAINER
+  MANIFESTATION_TRAINER
+  FITNESS_TRAINER_ADMIN
   ADMIN
 
   @@schema("public")

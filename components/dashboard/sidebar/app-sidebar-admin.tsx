@@ -4,13 +4,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, ChevronDown, Users, Shield } from "lucide-react";
+import { ChevronDown, Users, Shield, LayoutDashboard } from "lucide-react";
 import Image from "next/image";
 
 // Internal components
-import { NavMain } from "@/components/dashboard/sidebar/nav-main";
-import { NavWorkspace } from "@/components/dashboard/sidebar/nav-workspace";
-import { NavSecondary } from "@/components/dashboard/sidebar/nav-secondary";
 import { NavUser } from "@/components/dashboard/sidebar/nav-user";
 import {
   DropdownMenu,
@@ -29,20 +26,38 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { sidebarMenus } from "@/data/sidebar-data/sidebar-menus";
 import { useAuth } from "@/hooks/useAuth";
 
+// Admin-specific navigation items
+const adminNavItems = [
+  {
+    title: "Dashboard",
+    url: "/admin",
+    icon: LayoutDashboard,
+    isActive: true,
+  },
+  {
+    title: "Clients",
+    url: "/admin/clients",
+    icon: Users,
+    isActive: false,
+  },
+];
+
 /**
- * AppSidebar Component
+ * AppSidebar Component - Admin Version
  *
- * Main application sidebar with navigation sections for the dashboard.
- * Includes app logo/header, main navigation, workspace selection,
- * secondary links, and user profile.
+ * Admin-specific sidebar with limited navigation options.
+ * Shows dropdown for FITNESS_TRAINER_ADMIN role to switch between admin and fitness.
+ * Only displays Dashboard and Clients options for admin interface.
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { open } = useSidebar();
-  const { user, isTrainer } = useAuth();
+  const { user } = useAuth();
   const pathname = usePathname();
+  
+  // Check if user has FITNESS_TRAINER_ADMIN role (can switch between admin and fitness)
+  const canSwitchRoles = user?.role === 'FITNESS_TRAINER_ADMIN';
 
   // Persist sidebar open state in localStorage
   React.useEffect(() => {
@@ -51,14 +66,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Determine current page context for dropdown
   const getCurrentPageTitle = () => {
-    if (pathname.startsWith('/training')) return 'Trainer';
     if (pathname.startsWith('/admin')) return 'Admin';
+    if (pathname.startsWith('/fitness')) return 'Fitness Trainer';
     return 'Strentor';
   };
 
   const getCurrentIcon = () => {
-    // if (pathname.startsWith('/training')) return <Users className="size-4" />;
-    // if (pathname.startsWith('/admin')) return <Shield className="size-4" />;
     return (
       <Image
         src="/strentorfav.png"
@@ -75,19 +88,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       variant="inset"
       collapsible="icon"
       {...props}
-      aria-label="Main navigation"
+      aria-label="Admin navigation"
     >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            {isTrainer ? (
-              // Dropdown for TRAINER role
+            {canSwitchRoles ? (
+              // Dropdown for FITNESS_TRAINER_ADMIN role only
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton 
                     size="lg" 
                     className="hover:bg-accent/50 data-[state=open]:bg-accent"
-                    aria-label="Switch between trainer and admin views"
+                    aria-label="Switch between admin and fitness trainer views"
                   >
                     <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                       {getCurrentIcon()}
@@ -108,21 +121,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <DropdownMenuItem asChild>
                     <Link 
-                      href="/training/clients" 
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <Users className="size-4" />
-                      <div className="flex flex-col">
-                        <span className="font-medium">Trainer Dashboard</span>
-                        <span className="text-xs text-muted-foreground">
-                          Manage clients and workouts
-                        </span>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link 
                       href="/admin" 
                       className="flex items-center gap-2 cursor-pointer"
                     >
@@ -135,27 +133,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </div>
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link 
+                      href="/fitness/clients" 
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Users className="size-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Fitness Trainer Dashboard</span>
+                        <span className="text-xs text-muted-foreground">
+                          Manage fitness clients and workouts
+                        </span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              // Regular link for other roles
+              // Regular link for ADMIN role (no switching)
               <SidebarMenuButton size="lg" asChild>
                 <Link
-                  href={user?.role === 'ADMIN' ? '/admin' : '/home'}
+                  href="/admin"
                   className="hover:bg-transparent"
-                  aria-label="Go to dashboard home"
+                  aria-label="Go to admin dashboard"
                 >
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <Image
-                      src="/strentorfav.png"
-                      alt="Logo"
-                      width={16}
-                      height={16}
-                      className="rounded"
-                    />
+                    {getCurrentIcon()}
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">Strentor</span>
+                    <span className="truncate text-xs text-sidebar-foreground/70">
+                      Admin
+                    </span>
                   </div>
                 </Link>
               </SidebarMenuButton>
@@ -164,9 +174,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={sidebarMenus.navMain} />
-        {/* <NavWorkspace workspaces={sidebarMenus.workspaces} /> */}
-        {/* <NavSecondary items={sidebarMenus.navSecondary} className="mt-auto" /> */}
+        {/* Admin-specific navigation - Dashboard and Clients only */}
+        <SidebarMenu>
+          {adminNavItems.map((item) => {
+            const isActive = pathname === item.url || 
+              (item.url === '/admin' && pathname === '/admin') ||
+              (item.url !== '/admin' && pathname.startsWith(item.url));
+            
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton 
+                  asChild 
+                  isActive={isActive}
+                  className="hover:bg-accent/50"
+                >
+                  <Link href={item.url} className="flex items-center gap-2">
+                    <item.icon className="size-4" />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
@@ -174,3 +204,4 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     </Sidebar>
   );
 }
+

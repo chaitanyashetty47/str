@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client'; // Use your existing path
-import { decodeJWT } from '@/lib/auth-utils';
-import type { AuthUser, UserRole } from '@/types/auth';
+import { decodeJWT, getTrainerCategory, hasAdminAccess, isTrainerRole } from '@/lib/auth-utils';
+import type { AuthUser, UserRole, TrainerCategory } from '@/types/auth';
 import type { User, Session } from '@supabase/supabase-js';
 
 export function useAuth() {
@@ -46,7 +46,9 @@ export function useAuth() {
           email: user.email!,
           role: claims.user_role,
           subscriptions: claims.subscriptions,
+          platformAccess: claims.platform_access,
           profileCompleted: claims.profile_completed,
+          trainerCategory: getTrainerCategory(claims.user_role),
         });
       }
     } else {
@@ -61,7 +63,13 @@ export function useAuth() {
     loading,
     isAuthenticated: !!authUser,
     isClient: authUser?.role === 'CLIENT',
-    isTrainer: authUser?.role === 'TRAINER', 
+    isTrainer: authUser ? isTrainerRole(authUser.role) : false,
+    isFitnessTrainer: authUser?.role === 'FITNESS_TRAINER' || authUser?.role === 'FITNESS_TRAINER_ADMIN' || authUser?.role === 'TRAINER',
+    isPsychologyTrainer: authUser?.role === 'PSYCHOLOGY_TRAINER',
+    isManifestationTrainer: authUser?.role === 'MANIFESTATION_TRAINER',
     isAdmin: authUser?.role === 'ADMIN',
+    hasAdminAccess: authUser ? hasAdminAccess(authUser.role) : false,
+    trainerCategory: authUser?.trainerCategory,
+    platformAccess: authUser?.platformAccess,
   };
 }

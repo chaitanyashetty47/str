@@ -6,7 +6,7 @@ import { useIsClient } from "@uidotdev/usehooks";
 
 // Internal components
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "./sidebar/app-sidebar";
+import { AppSidebar } from "./sidebar/app-sidebar-admin";
 import { DashboardHeader } from "./dashboard-header";
 import { Separator } from "@/components/ui/separator";
 import { DashboardSkeleton } from "./dashboard-skeleton";

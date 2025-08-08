@@ -1,7 +1,23 @@
-export type UserRole = 'CLIENT' | 'TRAINER' | 'ADMIN';
+export type UserRole = 
+  | 'CLIENT' 
+  | 'TRAINER' // Legacy - will be removed
+  | 'FITNESS_TRAINER'
+  | 'PSYCHOLOGY_TRAINER' 
+  | 'MANIFESTATION_TRAINER'
+  | 'FITNESS_TRAINER_ADMIN'
+  | 'ADMIN';
+
+export type TrainerCategory = 'FITNESS' | 'PSYCHOLOGY' | 'MANIFESTATION';
+export type PlatformAccess = 
+  | 'fitness_trainer'
+  | 'psychology_trainer'
+  | 'manifestation_trainer'
+  | 'fitness_trainer_admin'
+  | 'admin'
+  | 'none';
+
 export type SubscriptionCategory = 'FITNESS' | 'PSYCHOLOGY' | 'MANIFESTATION' | 'ALL_IN_ONE';
 export type PlanType = 'ONLINE' | 'IN_PERSON' | 'SELF_PACED';
-
 
 export interface UserSubscription {
   plan_id: string;
@@ -10,6 +26,7 @@ export interface UserSubscription {
   status: string;
   start_date: string;
   end_date: string | null;
+  razorpay_subscription_id?: string;
 }
 
 export interface UserSubscriptions {
@@ -17,14 +34,13 @@ export interface UserSubscriptions {
   PSYCHOLOGY?: UserSubscription;
   MANIFESTATION?: UserSubscription;
   ALL_IN_ONE?: UserSubscription;
-  platform_access?: 'full'; // For TRAINER/ADMIN
 }
 
 export interface CustomClaims {
   user_role: UserRole;
-  subscriptions: UserSubscriptions;
+  subscriptions?: UserSubscriptions; // Only for CLIENT
+  platform_access?: PlatformAccess; // Only for TRAINER/ADMIN roles
   profile_completed: boolean;
-  // user_internal_id: string;
   auth_user_id: string; // Matches public.User.id
 }
 
@@ -32,14 +48,19 @@ export interface AuthUser {
   id: string; // Supabase auth ID and User ID
   email: string;
   role: UserRole;
-  subscriptions: UserSubscriptions;
+  subscriptions?: UserSubscriptions; // Only for CLIENT
+  platformAccess?: PlatformAccess; // Only for TRAINER/ADMIN roles
   profileCompleted: boolean;
-  //internalId: string; // Your User table ID
+  trainerCategory?: TrainerCategory; // Derived from role
 }
 
 export interface RolePermissions {
   CLIENT: string[];
-  TRAINER: string[];
+  TRAINER: string[]; // Legacy
+  FITNESS_TRAINER: string[];
+  PSYCHOLOGY_TRAINER: string[];
+  MANIFESTATION_TRAINER: string[];
+  FITNESS_TRAINER_ADMIN: string[];
   ADMIN: string[];
 }
 
@@ -64,37 +85,75 @@ export const PERMISSIONS = {
   PROFILE_VIEW_OWN: 'profile.view_own',
   PROFILE_EDIT_OWN: 'profile.edit_own',
   
+  // Fitness trainer specific
+  FITNESS_CLIENTS_MANAGE: 'fitness.clients.manage',
+  FITNESS_PLANS_CREATE: 'fitness.plans.create',
+  FITNESS_PROGRESS_VIEW: 'fitness.progress.view',
+  
+  // Psychology trainer specific
+  PSYCHOLOGY_CLIENTS_MANAGE: 'psychology.clients.manage',
+  PSYCHOLOGY_SESSIONS_CREATE: 'psychology.sessions.create',
+  PSYCHOLOGY_ASSESSMENTS_VIEW: 'psychology.assessments.view',
+  
+  // Manifestation trainer specific
+  MANIFESTATION_CLIENTS_MANAGE: 'manifestation.clients.manage',
+  MANIFESTATION_GOALS_CREATE: 'manifestation.goals.create',
+  MANIFESTATION_TRACKING_VIEW: 'manifestation.tracking.view',
+  
   // Admin permissions
   ADMIN_USER_MANAGEMENT: 'admin.user_management',
   ADMIN_SYSTEM_CONFIG: 'admin.system_config',
   ADMIN_VIEW_ALL: 'admin.view_all',
 } as const;
 
+const CLIENT_PERMISSIONS = [
+  PERMISSIONS.WORKOUTS_LOG,
+  PERMISSIONS.WORKOUTS_VIEW_OWN,
+  PERMISSIONS.PLANS_VIEW_OWN,
+  PERMISSIONS.PROFILE_VIEW_OWN,
+  PERMISSIONS.PROFILE_EDIT_OWN,
+];
+
+const FITNESS_TRAINER_PERMISSIONS = [
+  ...CLIENT_PERMISSIONS,
+  PERMISSIONS.FITNESS_CLIENTS_MANAGE,
+  PERMISSIONS.FITNESS_PLANS_CREATE,
+  PERMISSIONS.FITNESS_PROGRESS_VIEW,
+  PERMISSIONS.PLANS_CREATE,
+  PERMISSIONS.PLANS_ASSIGN,
+  PERMISSIONS.PLANS_VIEW_CREATED,
+  PERMISSIONS.CLIENTS_MANAGE,
+  PERMISSIONS.CLIENTS_VIEW_PROGRESS,
+  PERMISSIONS.WORKOUTS_VIEW_CLIENTS,
+];
+
+const PSYCHOLOGY_TRAINER_PERMISSIONS = [
+  ...CLIENT_PERMISSIONS,
+  PERMISSIONS.PSYCHOLOGY_CLIENTS_MANAGE,
+  PERMISSIONS.PSYCHOLOGY_SESSIONS_CREATE,
+  PERMISSIONS.PSYCHOLOGY_ASSESSMENTS_VIEW,
+  PERMISSIONS.CLIENTS_MANAGE,
+  PERMISSIONS.CLIENTS_VIEW_PROGRESS,
+];
+
+const MANIFESTATION_TRAINER_PERMISSIONS = [
+  ...CLIENT_PERMISSIONS,
+  PERMISSIONS.MANIFESTATION_CLIENTS_MANAGE,
+  PERMISSIONS.MANIFESTATION_GOALS_CREATE,
+  PERMISSIONS.MANIFESTATION_TRACKING_VIEW,
+  PERMISSIONS.CLIENTS_MANAGE,
+  PERMISSIONS.CLIENTS_VIEW_PROGRESS,
+];
+
 export const ROLE_PERMISSIONS: RolePermissions = {
-  CLIENT: [
-    PERMISSIONS.WORKOUTS_LOG,
-    PERMISSIONS.WORKOUTS_VIEW_OWN,
-    PERMISSIONS.PLANS_VIEW_OWN,
-    PERMISSIONS.PROFILE_VIEW_OWN,
-    PERMISSIONS.PROFILE_EDIT_OWN,
+  CLIENT: CLIENT_PERMISSIONS,
+  TRAINER: FITNESS_TRAINER_PERMISSIONS, // Legacy - map to fitness trainer
+  FITNESS_TRAINER: FITNESS_TRAINER_PERMISSIONS,
+  PSYCHOLOGY_TRAINER: PSYCHOLOGY_TRAINER_PERMISSIONS,
+  MANIFESTATION_TRAINER: MANIFESTATION_TRAINER_PERMISSIONS,
+  FITNESS_TRAINER_ADMIN: [
+    ...FITNESS_TRAINER_PERMISSIONS,
+    ...Object.values(PERMISSIONS).filter(p => p.startsWith('admin.')),
   ],
-  TRAINER: [
-    // All CLIENT permissions
-    PERMISSIONS.WORKOUTS_LOG,
-    PERMISSIONS.WORKOUTS_VIEW_OWN,
-    PERMISSIONS.PLANS_VIEW_OWN,
-    PERMISSIONS.PROFILE_VIEW_OWN,
-    PERMISSIONS.PROFILE_EDIT_OWN,
-    // Plus trainer-specific
-    PERMISSIONS.PLANS_CREATE,
-    PERMISSIONS.PLANS_ASSIGN,
-    PERMISSIONS.PLANS_VIEW_CREATED,
-    PERMISSIONS.CLIENTS_MANAGE,
-    PERMISSIONS.CLIENTS_VIEW_PROGRESS,
-    PERMISSIONS.WORKOUTS_VIEW_CLIENTS,
-  ],
-  ADMIN: [
-    // All permissions
-    ...Object.values(PERMISSIONS),
-  ],
+  ADMIN: Object.values(PERMISSIONS),
 };
