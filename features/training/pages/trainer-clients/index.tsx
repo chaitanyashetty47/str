@@ -1,6 +1,6 @@
 "use client";
 
-import { useTrainerClients } from "@/hooks/use-trainer-clients";
+import { useTrainerClients } from "@/hooks/trainer-clients-table/use-fitness-trainer-clients";
 import { TrainerClientsTable } from "@/components/trainer-clients/table";
 import { TrainerClientsFilters } from "@/components/trainer-clients/filters";
 import { TrainerClientsResponse } from "@/types/trainer-clients.types";

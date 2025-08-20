@@ -6,26 +6,44 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export const signUpAction = async (formData: FormData) => {
+  const { signUpSchema } = await import("@/lib/schemas/auth");
+  
+  // Extract form data
+  const fullName = formData.get("fullName")?.toString();
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
-  const supabase = await createClient();
-  const origin = (await headers()).get("origin");
+  const confirmPassword = formData.get("confirmPassword")?.toString();
+  
+  // Validate with Zod
+  const validationResult = signUpSchema.safeParse({
+    fullName,
+    email,
+    password,
+    confirmPassword,
+  });
 
-  if (!email || !password) {
+  if (!validationResult.success) {
+    const errors = validationResult.error.errors;
+    // Return the first validation error
+    const firstError = errors[0];
     return encodedRedirect(
       "error",
       "/sign-up",
-      "Email and password are required",
+      firstError.message,
     );
   }
 
+  const { fullName: validFullName, email: validEmail, password: validPassword } = validationResult.data;
+  const supabase = await createClient();
+  const origin = (await headers()).get("origin");
+
   const { error } = await supabase.auth.signUp({
-    email,
-    password,
+    email: validEmail,
+    password: validPassword,
     options: {
       emailRedirectTo: `${origin}/auth/callback`,
       data: {
-        full_name: 'Chaitanya Shetty',
+        full_name: validFullName,
       },
     },
   });
@@ -43,14 +61,35 @@ export const signUpAction = async (formData: FormData) => {
 };
 
 export const signInAction = async (formData: FormData) => {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const { signInSchema } = await import("@/lib/schemas/auth");
+  
+  // Extract form data
+  const email = formData.get("email")?.toString();
+  const password = formData.get("password")?.toString();
+  
+  // Validate with Zod
+  const validationResult = signInSchema.safeParse({
+    email,
+    password,
+  });
+
+  if (!validationResult.success) {
+    const errors = validationResult.error.errors;
+    // Return the first validation error
+    const firstError = errors[0];
+    return encodedRedirect(
+      "error",
+      "/sign-in",
+      firstError.message,
+    );
+  }
+
+  const { email: validEmail, password: validPassword } = validationResult.data;
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-    
+    email: validEmail,
+    password: validPassword,
   });
 
   if (error) {
@@ -62,16 +101,33 @@ export const signInAction = async (formData: FormData) => {
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {
+  const { forgotPasswordSchema } = await import("@/lib/schemas/auth");
+  
+  // Extract form data
   const email = formData.get("email")?.toString();
+  
+  // Validate with Zod
+  const validationResult = forgotPasswordSchema.safeParse({
+    email,
+  });
+
+  if (!validationResult.success) {
+    const errors = validationResult.error.errors;
+    // Return the first validation error
+    const firstError = errors[0];
+    return encodedRedirect(
+      "error",
+      "/forgot-password",
+      firstError.message,
+    );
+  }
+
+  const { email: validEmail } = validationResult.data;
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
   const callbackUrl = formData.get("callbackUrl")?.toString();
 
-  if (!email) {
-    return encodedRedirect("error", "/forgot-password", "Email is required");
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(validEmail, {
     redirectTo: `${origin}/auth/callback?redirect_to=/protected/reset-password`,
   });
 

@@ -21,9 +21,10 @@ import StepperIndicator from './shared/stepper-indicator'
 
 interface OnboardingWizardProps {
   userEmail: string
+  userName: string
 }
 
-export default function OnboardingWizard({ userEmail }: OnboardingWizardProps) {
+export default function OnboardingWizard({ userEmail, userName }: OnboardingWizardProps) {
   const router = useRouter()
   const [activeStep, setActiveStep] = useState(1)
   const [erroredInputName, setErroredInputName] = useState("")
@@ -39,6 +40,7 @@ export default function OnboardingWizard({ userEmail }: OnboardingWizardProps) {
     mode: 'onTouched',
     defaultValues: {
       email: userEmail,
+      name: userName,
       weightUnit: 'KG',
       heightUnit: 'CM', 
       activityLevel: 'SEDENTARY',
@@ -142,7 +144,7 @@ export default function OnboardingWizard({ userEmail }: OnboardingWizardProps) {
         setSavedStep(1)
         
         toast.success('Welcome to Strentor! Your profile is now complete.')
-        router.push('/home1')
+        router.push('/')
       } else {
         // Handle server errors with automatic navigation
         if (result.error) {

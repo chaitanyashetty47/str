@@ -53,10 +53,12 @@ function DashboardLayoutWrapper({ children }: Props) {
         <DashboardHeader />
         <Separator className="bg-secondary" aria-hidden="true" />
         <div
-          className="flex-1 overflow-auto p-4"
+          className="flex-1 overflow-auto p-4 flex justify-center"
           aria-label="Dashboard content"
         >
-          {children}
+          <div className="w-full max-w-7xl">
+            {children}
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

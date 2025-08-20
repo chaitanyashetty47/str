@@ -91,7 +91,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       aria-label="Admin navigation"
     >
       <SidebarHeader>
-        <SidebarMenu>
+        <SidebarMenu className="items-center">
           <SidebarMenuItem>
             {canSwitchRoles ? (
               // Dropdown for FITNESS_TRAINER_ADMIN role only
@@ -186,11 +186,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton 
                   asChild 
                   isActive={isActive}
-                  className="hover:bg-accent/50"
+                  className="hover:bg-accent/50 data-[state=open]:bg-accent"
                 >
-                  <Link href={item.url} className="flex items-center gap-2">
-                    <item.icon className="size-4" />
-                    <span>{item.title}</span>
+                  <Link href={item.url} className="flex items-center gap-3">
+                    <item.icon className="size-4 flex-shrink-0" />
+                    <span className="text-sm">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -204,4 +204,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     </Sidebar>
   );
 }
+
+
 

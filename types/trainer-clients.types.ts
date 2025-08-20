@@ -11,14 +11,20 @@ export type TrainerClientRow = {
 
 export type TrainerClientsFilters = {
   search: string;
-  status: SubscriptionStatus | "all";
+  dateRange: {
+    from: Date | undefined;
+    to: Date | undefined;
+  };
 };
 
 export type TrainerClientsQuery = {
   page: number;
   pageSize: number;
   search?: string;
-  status?: SubscriptionStatus;
+  dateRange?: {
+    from: Date | undefined;
+    to: Date | undefined;
+  };
   sort?: Array<{
     id: string;
     desc: boolean;

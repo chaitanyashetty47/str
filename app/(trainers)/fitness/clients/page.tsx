@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
-import { fetchTrainerClients } from "@/actions/trainer-clients/trainer-clients.action";
-import TrainerClientsPage from "@/features/training/pages/trainer-clients";
+import { fetchTrainerClients } from "@/actions/trainer-clients/fitness/fitness-trainer-clients.action";
+import { TrainerClientsPage } from "@/components/trainer/clients/fitness";
 import { redirect } from "next/navigation";
 
 export default async function ClientsPage() {

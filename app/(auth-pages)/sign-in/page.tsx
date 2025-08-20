@@ -1,115 +1,133 @@
-import { signInAction, signInWithGoogle } from "@/app/actions";
+import { signInAction } from "@/app/actions";
 import { FormMessage, Message } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { GoogleSignInButton } from "@/components/google-signin-button";
+import { AppleSignInButton } from "@/components/apple-signin-button";
 import Link from "next/link";
+import Image from "next/image";
+import { Check } from "lucide-react";
 
 export default async function Login(props: { searchParams: Promise<Message> }) {
   const searchParams = await props.searchParams;
   
+  if ("message" in searchParams) {
+    return (
+      <div className="w-full flex-1 flex items-center h-screen justify-center gap-2 p-4">
+        <div className="bg-white/90 backdrop-blur-sm border rounded-2xl shadow-xl p-8 max-w-md w-full">
+          <FormMessage message={searchParams} />
+          <Link href="/sign-in" className="w-full mt-6 bg-[#F31818] hover:bg-[#F31818]/90 rounded-full font-bold inline-block text-center py-3 text-white">
+            Try Again
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
-      <div className="w-full max-w-5xl p-4 md:p-8 grid md:grid-cols-2 gap-8 items-center">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">
-            Welcome to <span className="text-primary">STRENTOR</span>
-          </h1>
-          <p className="text-lg text-muted-foreground mb-6">
-            Your catalyst for total transformation. We blend physical power, mental strength, and personal growth to help you become unstoppable.
-          </p>
-          <div className="flex flex-col space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="bg-green-100 p-1.5 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </div>
-              <span>90 day satisfaction guarantee</span>
+    <div className="relative min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#F31818]/5 via-[#00D115]/5 to-[#0D97FF]/5">
+      
+      <div className="relative w-full max-w-6xl grid md:grid-cols-2 gap-8 items-start">
+        {/* Left Section - Brand & Benefits (Mobile Second) */}
+        <div className="p-8 space-y-8 order-2 md:order-1">
+          <div className="text-center md:text-left space-y-6">
+            <div className="flex justify-center md:justify-start">
+              <Image src="/strentor.png" alt="Strentor Logo" width={150} height={120} className="w-32 h-24" />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="bg-green-100 p-1.5 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
+            <h1 className="text-4xl md:text-6xl font-bold">
+              WELCOME BACK TO <span className="text-[#F31818]">STRENTOR</span>
+            </h1>
+            <p className="text-xl md:text-2xl font-medium text-gray-700">
+              Your catalyst for total transformation. Continue your journey to become unstoppable.
+            </p>
+          </div>
+
+          {/* Benefits */}
+          <div className="space-y-4">
+            {[
+              "90 day satisfaction guarantee",
+              "Instant Access to Our Personalised Services", 
+              "Instant Access to Our Community"
+            ].map((benefit, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D115] flex items-center justify-center">
+                  <Check className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-base font-bold text-gray-800">{benefit}</span>
               </div>
-              <span>Instant Access to Our Personalized Services</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="bg-green-100 p-1.5 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </div>
-              <span>Instant Access to Our Community</span>
-            </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-card border rounded-lg shadow-sm p-6">
-          <h2 className="text-2xl font-bold mb-2">Sign in</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Don't have an account?{" "}
-            <Link className="text-primary font-medium underline" href="/sign-up">
-              Sign up
-            </Link>
-          </p>
-          
-          {/* Email/Password Form */}
-          <form className="flex flex-col gap-4 mb-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input name="email" placeholder="you@example.com" required />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  className="text-xs text-muted-foreground underline"
-                  href="/forgot-password"
-                >
-                  Forgot Password?
-                </Link>
-              </div>
-              <Input
-                type="password"
-                name="password"
-                placeholder="Your password"
-                required
-              />
-            </div>
-            <SubmitButton pendingText="Signing In..." formAction={signInAction}>
-              Sign in
-            </SubmitButton>
-            
-            <FormMessage message={searchParams} />
-          </form>
-          
+        {/* Right Section - Sign In Form (Mobile First) */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 space-y-8 order-1 md:order-2">
+          <div className="text-center space-y-4">
+            <h2 className="text-3xl font-bold">Welcome back</h2>
+            <p className="text-gray-600">
+              Don't have an account?{" "}
+              <Link href="/sign-up" className="text-[#F31818] hover:underline font-semibold">
+                Sign up
+              </Link>
+            </p>
+          </div>
+
+          {/* Social Sign In Options */}
+          <div className="space-y-4">
+            <GoogleSignInButton />
+            <AppleSignInButton />
+          </div>
+
           {/* Divider */}
-          <div className="relative my-4">
+          <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <div className="w-full border-t border-gray-300"></div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500 font-medium">Or continue with email</span>
             </div>
           </div>
-          
-          {/* Google Sign-in Button */}
-          <form action={signInWithGoogle}>
-            <Button type="submit" variant="outline" className="w-full flex items-center gap-2">
-              <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Sign in with Google
-            </Button>
+
+          {/* Email Sign In Form */}
+          <form className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="font-semibold">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                required
+                className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="font-semibold">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Your password"
+                required
+                className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+              />
+            </div>
+            <SubmitButton
+              formAction={signInAction}
+              pendingText="Signing in..."
+              className="w-full bg-[#F31818] hover:bg-[#F31818]/90 text-white font-bold py-3 rounded-full text-lg transform hover:scale-105 transition-all"
+            >
+              Sign In
+            </SubmitButton>
+            <FormMessage message={searchParams} />
           </form>
+
+          {/* Forgot Password Link */}
+          <div className="text-center">
+            <Link href="/forgot-password" className="text-[#F31818] hover:underline font-semibold text-sm">
+              Forgot your password?
+            </Link>
+          </div>
         </div>
       </div>
     </div>

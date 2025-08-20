@@ -4,24 +4,25 @@ import prisma from "@/utils/prisma/prismaClient";
 import { getAuthenticatedUserId } from "@/utils/user";
 import { z } from "zod";
 
-// No input needed
-const IsTodayLoggedSchema = z.void();
+// Accept client date to avoid timezone issues
+const IsTodayLoggedSchema = z.object({
+  clientDate: z.string(), // Client sends current date in YYYY-MM-DD format
+});
 
 export const isTodayLogged = createSafeAction(
   IsTodayLoggedSchema,
-  async () => {
+  async ({ clientDate }) => {
     const userId = await getAuthenticatedUserId();
     if (!userId) return { error: "Unauthorized" };
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayISO = today.toISOString().split("T")[0];
+    // Use the client's date directly - no timezone conversion needed
+    const today = new Date(clientDate);
 
     const entry = await prisma.calculator_sessions.findFirst({
       where: {
         user_id: userId,
         category: "BMI",
-        date: new Date(todayISO),
+        date: today, // Use client's date directly
       },
       select: { id: true },
     });

@@ -2,6 +2,131 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-satoshi), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+:root {
+  --strentor-red: #F31818;
+  --strentor-green: #00D115;
+  --strentor-orange: #FFBD22;
+  --strentor-blue: #0D97FF;
+}
+
+/* Calendly Embed Modal Styles */
+.calendly-embed-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  position: relative;
+  background: #ffffff;
+}
+
+/* Ensure Calendly iframe respects container bounds */
+.calendly-embed-container iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  border: none;
+  display: block;
+}
+
+/* Hide Calendly's default container issues */
+.calendly-embed-container .calendly-inline-widget {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  position: relative;
+}
+
+/* Ensure calendly badge doesn't interfere */
+.calendly-embed-container .calendly-badge-widget {
+  display: none !important;
+}
+
+/* Custom scrollbar for better UX */
+.calendly-embed-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.calendly-embed-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.calendly-embed-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.calendly-embed-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Firefox scrollbar */
+.calendly-embed-container {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+/* Ensure modal backdrop doesn't scroll */
+.calendly-modal-open {
+  overflow: hidden !important;
+}
+
+/* Responsive adjustments for different screen sizes */
+@media (max-width: 1024px) {
+  .calendly-embed-container {
+    min-height: calc(100vh - 80px);
+  }
+}
+
+@media (max-width: 768px) {
+  .calendly-embed-container {
+    min-height: calc(100vh - 60px);
+  }
+  
+  .calendly-embed-container iframe {
+    min-height: calc(100vh - 60px);
+  }
+}
+
+@media (max-width: 480px) {
+  .calendly-embed-container {
+    min-height: calc(100vh - 50px);
+  }
+  
+  .calendly-embed-container iframe {
+    min-height: calc(100vh - 50px);
+  }
+}
+
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -10,7 +135,7 @@
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
+    --primary: 0 84% 56%;
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
@@ -22,13 +147,13 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --radius: 0.5rem;
+      --ring: 0 0% 3.9%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
     --sidebar: 52 100% 56%;
     --sidebar-background: 52 100% 56%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -47,7 +172,7 @@
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
+    --primary: 0 84% 67%;
     --primary-foreground: 0 0% 9%;
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;

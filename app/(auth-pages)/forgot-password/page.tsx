@@ -3,78 +3,110 @@ import { FormMessage, Message } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import Image from "next/image";
+import { Check } from "lucide-react";
 
 export default async function ForgotPassword(props: {
   searchParams: Promise<Message>;
 }) {
   const searchParams = await props.searchParams;
   
+  if ("message" in searchParams) {
+    return (
+      <div className="w-full flex-1 flex items-center h-screen justify-center gap-2 p-4">
+        <div className="bg-white/90 backdrop-blur-sm border rounded-2xl shadow-xl p-8 max-w-md w-full">
+          <FormMessage message={searchParams} />
+          <Link href="/forgot-password" className="w-full mt-6 bg-[#F31818] hover:bg-[#F31818]/90 rounded-full font-bold inline-block text-center py-3 text-white">
+            Try Again
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="w-full flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
-      <div className="w-full max-w-5xl p-4 md:p-8 grid md:grid-cols-2 gap-8 items-center">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">
-            Welcome to <span className="text-primary">STRENTOR</span>
-          </h1>
-          <p className="text-lg text-muted-foreground mb-6">
-            No worries! We'll help you reset your password and get back on track to your transformation journey.
-          </p>
-          <div className="flex flex-col space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="bg-green-100 p-1.5 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </div>
-              <span>Quick and secure password reset</span>
+    <div className="relative min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#F31818]/5 via-[#00D115]/5 to-[#0D97FF]/5">
+      
+      <div className="relative w-full max-w-6xl grid md:grid-cols-2 gap-8 items-start">
+        {/* Left Section - Brand & Benefits (Mobile Second) */}
+        <div className="p-8 space-y-8 order-2 md:order-1">
+          <div className="text-center md:text-left space-y-6">
+            <div className="flex justify-center md:justify-start">
+              <Image src="/strentor.png" alt="Strentor Logo" width={150} height={120} className="w-32 h-24" />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="bg-green-100 p-1.5 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
+            <h1 className="text-4xl md:text-6xl font-bold">
+              RESET YOUR <span className="text-[#F31818]">PASSWORD</span>
+            </h1>
+            <p className="text-xl md:text-2xl font-medium text-gray-700">
+              No worries! We'll help you reset your password and get back on track to your transformation journey.
+            </p>
+          </div>
+
+          {/* Benefits */}
+          <div className="space-y-4">
+            {[
+              "Quick and secure password reset",
+              "Instant email delivery", 
+              "24/7 support available"
+            ].map((benefit, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D115] flex items-center justify-center">
+                  <Check className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-base font-bold text-gray-800">{benefit}</span>
               </div>
-              <span>Instant email delivery</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="bg-green-100 p-1.5 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </div>
-              <span>24/7 support available</span>
-            </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-card border rounded-lg shadow-sm p-6">
-          <h2 className="text-2xl font-bold mb-2">Reset Password</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Remember your password?{" "}
-            <Link className="text-primary font-medium underline" href="/sign-in">
-              Sign in
-            </Link>
-          </p>
-          
-          <form className="flex flex-col gap-4">
+        {/* Right Section - Reset Password Form (Mobile First) */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 space-y-8 order-1 md:order-2">
+          <div className="text-center space-y-4">
+            <h2 className="text-3xl font-bold">Reset Password</h2>
+            <p className="text-gray-600">
+              Remember your password?{" "}
+              <Link href="/sign-in" className="text-[#F31818] hover:underline font-semibold">
+                Sign in
+              </Link>
+            </p>
+          </div>
+
+          {/* Reset Password Form */}
+          <form className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input name="email" placeholder="you@example.com" required />
+              <Label htmlFor="email" className="font-semibold">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                required
+                className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+              />
             </div>
-            <SubmitButton formAction={forgotPasswordAction} pendingText="Sending reset link...">
-              Reset Password
+            <SubmitButton
+              formAction={forgotPasswordAction}
+              pendingText="Sending reset link..."
+              className="w-full bg-[#F31818] hover:bg-[#F31818]/90 text-white font-bold py-3 rounded-full text-lg transform hover:scale-105 transition-all"
+            >
+              Send Reset Link
             </SubmitButton>
             <FormMessage message={searchParams} />
           </form>
-          
-          <p className="text-xs text-muted-foreground mt-6 text-center">
-            If you don't receive an email within a few minutes, please check your spam folder or{" "}
-            <Link href="/contact" className="underline">
-              contact support
-            </Link>
-          </p>
+
+          {/* Help Text */}
+          <div className="text-center space-y-2">
+            <p className="text-xs text-gray-500 leading-relaxed">
+              If you don't receive an email within a few minutes, please check your spam folder.
+            </p>
+            <p className="text-xs text-gray-500">
+              Need help?{" "}
+              <Link href="/contact" className="text-[#F31818] hover:underline">
+                Contact support
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

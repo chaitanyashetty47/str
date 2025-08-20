@@ -17,7 +17,7 @@ model calculator_sessions {
   inputs        Json
   result        Float
   result_unit   String?
-  date    DateTime       @default(now())
+  date    DateTime      @db.Date
   users_profile users_profile  @relation(fields: [user_id], references: [id], onDelete: NoAction, map: "CalculatorSession_userId_fkey")
 
   @@index([date], map: "CalculatorSession_date_idx")
@@ -93,11 +93,12 @@ model trainer_clients {
   id                                                      String        @id(map: "TrainerClient_pkey") @db.Uuid
   trainer_id                                              String        @db.Uuid
   client_id                                               String        @db.Uuid
+  category                                                SubscriptionCategory? // New field for category-specific assignments
   assigned_at                                             DateTime      @default(now())
   client  users_profile @relation("TrainerClient_Client", fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "TrainerClient_clientId_fkey")
   trainer users_profile @relation("TrainerClient_Trainer", fields: [trainer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "TrainerClient_trainerId_fkey")
 
-  @@unique([trainer_id, client_id], map: "TrainerClient_trainerId_clientId_key")
+  @@unique([trainer_id, client_id, category], map: "TrainerClient_trainerId_clientId_category_key")
   @@schema("public")
 }
 
