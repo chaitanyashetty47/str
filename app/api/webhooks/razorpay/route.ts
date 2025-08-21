@@ -299,9 +299,7 @@ async function handleSubscriptionActivated(subscriptionData: any, tx: any) {
   );
 
   // Build update data
-  const updateData = {
-    // Conservative approach: Always set PENDING, only charged event sets COMPLETED
-    payment_status: 'PENDING',
+  const updateData: any = {
     next_charge_at: (subscriptionData.remaining_count > 0 && subscriptionData.charge_at) 
       ? new Date(subscriptionData.charge_at * 1000) 
       : null,
@@ -310,6 +308,11 @@ async function handleSubscriptionActivated(subscriptionData: any, tx: any) {
     // Only include billing cycle dates if they're safe to update
     ...(safeBillingUpdate || {})
   };
+
+  // Only set payment_status to PENDING if it's not already COMPLETED
+  if (subscription.payment_status !== 'COMPLETED') {
+    updateData.payment_status = 'PENDING';
+  }
 
   await safeUpdateSubscriptionStatus(
     tx,
@@ -331,17 +334,20 @@ async function handleSubscriptionAuthenticated(subscriptionData: any, tx: any) {
     throw new Error(`Subscription not found: ${subscriptionData.id}`);
   }
 
+  // Only set payment_status to PENDING if it's not already COMPLETED
+  const updateData: any = {};
+  if (subscription.payment_status !== 'COMPLETED') {
+    updateData.payment_status = 'PENDING';
+  }
+
   await safeUpdateSubscriptionStatus(
     tx,
     subscription.id,
     'AUTHENTICATED' as SubscriptionStatus,
-    {
-      // Set payment status to PENDING - authenticated but no payment processed yet
-      payment_status: 'PENDING'
-    }
+    updateData
   );
 
-  console.log(`Subscription authenticated: ${subscriptionData.id}`);
+  console.log(`Subscription authenticated: ${subscriptionData.id}${subscription.payment_status === 'COMPLETED' ? ' (payment already completed)' : ''}`);
 }
 
 // Handle subscription.pending event
@@ -370,9 +376,7 @@ async function handleSubscriptionPending(subscriptionData: any, tx: any) {
   );
 
   // Build update data
-  const updateData = {
-    // Set payment status to FAILED since payment attempt failed
-    payment_status: 'FAILED',
+  const updateData: any = {
     // Increment retry attempts
     retry_attempts: { increment: 1 },
     // Keep next_charge_at as provided by Razorpay (daily retry schedule)
@@ -384,6 +388,11 @@ async function handleSubscriptionPending(subscriptionData: any, tx: any) {
     // Only include billing cycle dates if they're safe to update
     ...(safeBillingUpdate || {})
   };
+
+  // Only set payment_status to FAILED if it's not already COMPLETED
+  if (subscription.payment_status !== 'COMPLETED') {
+    updateData.payment_status = 'FAILED';
+  }
 
   await safeUpdateSubscriptionStatus(
     tx,
@@ -421,9 +430,7 @@ async function handleSubscriptionHalted(subscriptionData: any, tx: any) {
   );
 
   // Build update data
-  const updateData = {
-    // Set payment status to FAILED since multiple payment attempts failed
-    payment_status: 'FAILED',
+  const updateData: any = {
     // Keep retry_attempts as-is (should be 4 or more at this point)
     // Keep next_charge_at intact for when customer fixes payment method
     next_charge_at: subscriptionData.charge_at ? new Date(subscriptionData.charge_at * 1000) : null,
@@ -434,6 +441,11 @@ async function handleSubscriptionHalted(subscriptionData: any, tx: any) {
     // Only include billing cycle dates if they're safe to update
     ...(safeBillingUpdate || {})
   };
+
+  // Only set payment_status to FAILED if it's not already COMPLETED
+  if (subscription.payment_status !== 'COMPLETED') {
+    updateData.payment_status = 'FAILED';
+  }
 
   await safeUpdateSubscriptionStatus(
     tx,

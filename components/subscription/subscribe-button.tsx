@@ -13,6 +13,8 @@ interface SubscribeButtonProps {
   className?: string;
   variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link';
   onSuccess?: () => void;
+  retryMode?: boolean;
+  existingSubscriptionId?: string;
 }
 
 export function SubscribeButton({
@@ -21,7 +23,9 @@ export function SubscribeButton({
   buttonText = 'Subscribe',
   className = '',
   variant = 'default',
-  onSuccess
+  onSuccess,
+  retryMode = false,
+  existingSubscriptionId
 }: SubscribeButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentSubscriptionId, setCurrentSubscriptionId] = useState<string | null>(null);
@@ -38,12 +42,57 @@ export function SubscribeButton({
         return;
       }
 
-      // Make an API call to /api/subscriptions/create
-      const response = await fetch('/api/subscriptions/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ razorpayPlanId, selectedCycle }),
-      });
+      //Check to see if the user has an active subscription (only for new subscriptions, not retries)
+      if (!retryMode) {
+        try {
+          const checkResponse = await fetch('/api/subscriptions/check-existing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ razorpayPlanId }),
+          });
+
+          if (checkResponse.ok) {
+            const checkData = await checkResponse.json();
+            if (checkData.hasExistingSubscription) {
+              toast.error('Subscription already exists', {
+                description: 'You already have an active subscription for this plan.',
+                duration: 5000,
+              });
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error checking existing subscription:', error);
+          // Continue with subscription creation even if check fails
+        }
+      }
+
+      // Make an API call to /api/subscriptions/create or use existing subscription for retry
+      let response;
+      if (retryMode && existingSubscriptionId) {
+        // For retry mode, we don't need to create a new subscription
+        // We'll use the existing subscription ID directly
+        response = {
+          ok: true,
+          json: async () => ({
+            subscriptionId: existingSubscriptionId,
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            amount: 0, // Will be set by Razorpay
+            currency: 'INR',
+            name: 'Retry Payment',
+            description: 'Retrying payment for existing subscription',
+            prefill: {},
+            notes: {}
+          })
+        };
+      } else {
+        // Create new subscription
+        response = await fetch('/api/subscriptions/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ razorpayPlanId, selectedCycle }),
+        });
+      }
 
       // Check if the response is not ok (status not in 200-299 range)
       if (!response.ok) {
@@ -54,13 +103,19 @@ export function SubscribeButton({
 
       const subscriptionDetails = await response.json();
 
+      console.log('Subscription details:', subscriptionDetails);
+
       if (subscriptionDetails.error) {
         toast.error(subscriptionDetails.error || 'Error fetching subscription details');
         return;
       }
 
       // Store the subscription ID for potential cleanup
-      setCurrentSubscriptionId(subscriptionDetails.subscriptionId);
+      const subscriptionId = subscriptionDetails.subscriptionId;
+      console.log('Subscription ID in variable:', subscriptionId);
+      setCurrentSubscriptionId(subscriptionId);
+      console.log('Current subscription ID:', subscriptionId);
+
 
       // Open the Razorpay checkout form
       openRazorpayCheckout({
@@ -68,7 +123,7 @@ export function SubscribeButton({
         subscription_id: subscriptionDetails.subscriptionId,
         name: subscriptionDetails.name,
         description: subscriptionDetails.description,
-        amount: subscriptionDetails.amount,
+        amount: retryMode ? 0 : subscriptionDetails.amount, // For retry, let Razorpay determine amount
         currency: subscriptionDetails.currency,
         prefill: subscriptionDetails.prefill,
         notes: subscriptionDetails.notes,
@@ -188,7 +243,8 @@ export function SubscribeButton({
           ondismiss: async function () {
             console.log('Payment modal dismissed, cleaning up subscription...');
             
-            if (currentSubscriptionId) {
+            console.log('Current subscription ID in modal:', subscriptionId);
+            if (subscriptionId) {
               try {
                 const cancelResponse = await fetch('/api/subscriptions/cancel', {
                   method: 'POST',
@@ -196,7 +252,7 @@ export function SubscribeButton({
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    subscription_id: currentSubscriptionId,
+                    razorpaySubscriptionId: subscriptionId,
                     reason: 'USER_CANCELLED'
                   }),
                 });
@@ -224,7 +280,7 @@ export function SubscribeButton({
               } catch (error) {
                 console.error('Error cancelling subscription:', {
                   error: error instanceof Error ? error.message : 'Unknown error',
-                  subscription_id: currentSubscriptionId
+                  subscription_id: subscriptionId
                 });
                 
                 toast.warning('Payment cancelled', {
@@ -240,6 +296,41 @@ export function SubscribeButton({
             }
             
             setCurrentSubscriptionId(null);
+            setIsLoading(false);
+          },
+          onError: async function (error: any) {
+            console.error('Payment error Failed occurred:', error);
+            
+            if (subscriptionId) {
+              try {
+                // Mark payment as failed in database
+                const markFailedResponse = await fetch('/api/subscriptions/mark-payment-failed', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    subscriptionId: subscriptionId,
+                    error: error.description || error.error?.description || 'Payment failed',
+                    failureReason: error.code || error.error?.code || 'Unknown error'
+                  }),
+                });
+
+                if (markFailedResponse.ok) {
+                  console.log('Payment marked as failed successfully');
+                  toast.error('Payment failed', {
+                    description: 'Your payment could not be processed. You can retry the payment.',
+                    duration: 5000,
+                  });
+                } else {
+                  console.error('Failed to mark payment as failed');
+                }
+              } catch (error) {
+                console.error('Error marking payment as failed:', error);
+              }
+            }
+            
+            // Clear loading state
             setIsLoading(false);
           },
         },

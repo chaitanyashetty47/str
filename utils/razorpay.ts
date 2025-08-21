@@ -25,6 +25,7 @@ export interface RazorpayOptions {
   };
   modal?: {
     ondismiss?: () => void;
+    onError?: (error: any) => void;
     escape?: boolean;
     animation?: boolean;
   };

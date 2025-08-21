@@ -16,6 +16,7 @@ export type PlanButtonState =
   | 'upgrade' 
   | 'downgrade' 
   | 'subscribe' 
+  | 'retry_payment'
   | 'conflict_all_in_one'
   | 'keep_one_active';
 
@@ -30,7 +31,7 @@ export type PlanMatrixItem = {
   buttonState: PlanButtonState;
   buttonText: string;
   action: {
-    type: 'current' | 'subscribe' | 'upgrade' | 'downgrade' | 'cancel_first' | 'disabled';
+    type: 'current' | 'subscribe' | 'upgrade' | 'downgrade' | 'retry_payment' | 'cancel_first' | 'disabled';
     subscriptionId?: string;
     planId?: string;
     endDate?: string;
@@ -67,6 +68,18 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       }
     });
 
+    // Get failed payments for retry detection
+    const failedPayments = await prisma.user_subscriptions.findMany({
+      where: {
+        user_id: userId,
+        status: 'CREATED',
+        payment_status: 'FAILED'
+      },
+      include: {
+        subscription_plans: true
+      }
+    });
+
  
     // Separate active vs scheduled for cancellation
     const activeSubscriptions = userSubscriptions.filter(sub => !sub.cancel_at_cycle_end);
@@ -87,9 +100,16 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         sub.subscription_plans.category === plan.category
       );
 
+      // Check if user has failed payment for this exact plan (retry scenario)
+      const failedPaymentInCategory = failedPayments.find(sub => 
+        sub.subscription_plans.category === plan.category && 
+        sub.plan_id === plan.id
+      );
+
       // Check if this exact plan is current
       const isCurrentPlan = activeInCategory?.plan_id === plan.id;
       const isScheduledPlan = scheduledInCategory?.plan_id === plan.id;
+      const isFailedPayment = failedPaymentInCategory?.plan_id === plan.id;
 
       // Calculate button state and action
       let buttonState: PlanButtonState;
@@ -104,6 +124,17 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         action = { type: 'current' };
         disabled = true;
         variant = 'secondary';
+      } else if (isFailedPayment) {
+        // Retry payment scenario
+        buttonState = 'retry_payment';
+        buttonText = 'Retry Payment';
+        action = { 
+          type: 'retry_payment', 
+          subscriptionId: failedPaymentInCategory!.id, 
+          planId: plan.id 
+        };
+        disabled = false;
+        variant = 'default';
       } else if (isScheduledPlan && scheduledInCategory) {
         buttonState = 'scheduled_end';
         const endDate = scheduledInCategory.current_end ? 

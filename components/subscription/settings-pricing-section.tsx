@@ -105,6 +105,13 @@ export function SettingsPricingSection({
         // This will be handled by the SubscribeButton component
         break;
         
+      case 'retry_payment':
+        // Handle retry payment - reuse existing subscription
+        if (action.subscriptionId && action.planId) {
+          handleRetryPayment(plan, action.subscriptionId);
+        }
+        break;
+        
       case 'upgrade':
       case 'downgrade':
         if (action.subscriptionId && action.planId) {
@@ -161,6 +168,36 @@ export function SettingsPricingSection({
         userId,
         subscriptionId: conflictSubs[0].id
       });
+    }
+  };
+
+  const handleRetryPayment = async (plan: PlanMatrixItem, subscriptionId: string) => {
+    try {
+      // Reset payment status to PENDING for retry
+      const resetResponse = await fetch('/api/subscriptions/reset-payment-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscriptionId: subscriptionId,
+        }),
+      });
+
+      if (resetResponse.ok) {
+        // Open Razorpay checkout with existing subscription
+        // This will be handled by the SubscribeButton component
+        // We need to trigger the subscription flow with the existing subscription ID
+        toast.success('Payment retry initiated. Please complete your payment.');
+        
+        // Refresh plans to update the UI
+        loadPlans();
+      } else {
+        toast.error('Failed to initiate payment retry');
+      }
+    } catch (error) {
+      console.error('Error handling retry payment:', error);
+      toast.error('Failed to initiate payment retry');
     }
   };
 
@@ -242,6 +279,9 @@ export function SettingsPricingSection({
     if (plan.buttonState === 'current') {
       return "w-full bg-green-500 hover:bg-green-600 text-white";
     }
+    if (plan.buttonState === 'retry_payment') {
+      return "w-full bg-strentor-orange hover:bg-strentor-orange/90 text-white";
+    }
     return "w-full bg-strentor-red hover:bg-strentor-red/90 text-white";
   };
 
@@ -251,7 +291,7 @@ export function SettingsPricingSection({
   );
 
   return (
-    <div className="space-y-8">
+    <div id="pricing-section" className="space-y-8">
       {/* Pricing Header with Billing Cycle Tabs */}
       <PricingHeader
         title="All Subscription Plans"
@@ -328,13 +368,15 @@ export function SettingsPricingSection({
               
               {/* Button Section - Always at Bottom */}
               <div className="mt-auto">
-                {plan.action.type === 'subscribe' ? (
+                {plan.action.type === 'subscribe' || plan.action.type === 'retry_payment' ? (
                   <SubscribeButton
                     razorpayPlanId={plan.razorpay_plan_id}
                     selectedCycle={plan.billing_cycle}
                     buttonText={plan.buttonText}
                     className={getButtonClassName(plan)}
                     onSuccess={handleSubscriptionSuccess}
+                    retryMode={plan.action.type === 'retry_payment'}
+                    existingSubscriptionId={plan.action.type === 'retry_payment' ? plan.action.subscriptionId : undefined}
                   />
                 ) : (
                   <Button

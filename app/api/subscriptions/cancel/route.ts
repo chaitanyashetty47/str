@@ -27,7 +27,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { razorpaySubscriptionId } = await request.json();
+    const { razorpaySubscriptionId, reason} = await request.json();
+
+    console.log('Razorpay subscription ID:', razorpaySubscriptionId);
+    console.log('Reason:', reason);
 
     if (!razorpaySubscriptionId) {
       return NextResponse.json(
@@ -51,8 +54,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Step 2: Check if subscription is in a cancellable state
-      if (subscription.status !== 'ACTIVE') {
-        throw new Error('Only active subscriptions can be cancelled');
+      // Allow cancellation of any non-final subscription status
+      if (subscription.status && ['CANCELLED', 'EXPIRED', 'COMPLETED'].includes(subscription.status)) {
+        throw new Error('Subscription is already in a final state and cannot be cancelled');
       }
 
       // Step 3: Check if cancellation is already requested
@@ -61,6 +65,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Step 4: Call Razorpay API to cancel subscription at cycle end
+      console.log('Razorpay subscription ID:', razorpaySubscriptionId);
       const razorpayResponse = await razorpay.subscriptions.cancel(razorpaySubscriptionId, false);
 
       console.log('Razorpay cancel response:', razorpayResponse);
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
         },
         data: {
           cancel_requested_at: new Date(),
-          cancel_at_cycle_end: true,
+          cancel_at_cycle_end: false,
           // Set end_date to Today - subscription will remain active until then
           end_date: new Date(),
           //end_date: subscription.current_end,

@@ -23,6 +23,7 @@ export type SubscriptionWithPlan = {
   totalCount: number | null;
   paidCount: number | null;
   remainingCount: number | null;
+  retryAttempts: number | null;
   cancelRequestedAt: string | null;
   cancelAtCycleEnd: boolean | null;
   plan: {
@@ -67,6 +68,7 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       totalCount: sub.total_count,
       paidCount: sub.paid_count,
       remainingCount: sub.remaining_count,
+      retryAttempts: sub.retry_attempts,
       cancelRequestedAt: sub.cancel_requested_at?.toISOString() || null,
       cancelAtCycleEnd: sub.cancel_at_cycle_end,
       plan: {

@@ -187,7 +187,21 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
           <CreditCard className="mx-auto h-12 w-12 mb-2" />
           <p>No active subscriptions found</p>
         </div>
-        <Button variant="outline">Browse Plans</Button>
+        <Button 
+          variant="outline" 
+          className='bg-primary hover:bg-primary/90 text-primary-foreground'
+          onClick={() => {
+            const pricingSection = document.getElementById('pricing-section');
+            if (pricingSection) {
+              pricingSection.scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+              });
+            }
+          }}
+        >
+          Browse Plans
+        </Button>
       </div>
     );
   }

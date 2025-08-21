@@ -1,4 +1,4 @@
-import { FormMessage, Message } from "@/components/form-message";
+import { Message } from "@/components/form-message";
 import { Button } from "@/components/ui/button";
 import { GoogleSignInButton } from "@/components/google-signin-button";
 import { AppleSignInButton } from "@/components/apple-signin-button";
@@ -11,18 +11,6 @@ export default async function Signup(props: {
   searchParams: Promise<Message>;
 }) {
   const searchParams = await props.searchParams;
-  if ("message" in searchParams) {
-    return (
-      <div className="w-full flex-1 flex items-center h-screen justify-center gap-2 p-4">
-        <div className="bg-white/90 backdrop-blur-sm border rounded-2xl shadow-xl p-8 max-w-md w-full">
-          <FormMessage message={searchParams} />
-          <Button asChild className="w-full mt-6 bg-[#F31818] hover:bg-[#F31818]/90 rounded-full font-bold">
-            <Link href="/sign-up">Try Again</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#F31818]/5 via-[#00D115]/5 to-[#0D97FF]/5">
