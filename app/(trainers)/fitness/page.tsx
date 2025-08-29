@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Users, Activity, Calendar, User, Weight, ArrowRight } from "lucide-react";
 import { getTrainerDashboardData } from "@/actions/trainer.dashboard.action";
+import { NewlyAssignedClientsCard } from "@/components/dashboard/NewlyAssignedClientsCard";
 
 export default async function TrainerDashboard() {
   // Fetch data using the server action
@@ -228,6 +229,9 @@ export default async function TrainerDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Newly Assigned Clients Card */}
+      <NewlyAssignedClientsCard clients={dashboardData.newlyAssignedClients} />
 
       {/* Recent Client PRs Card */}
       <Card>

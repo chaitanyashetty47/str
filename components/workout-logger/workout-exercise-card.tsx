@@ -119,7 +119,7 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
     if (!targetSet) return;
 
     // Check if values are significantly higher than prescribed
-    const weightExceeds = weightKg > (targetSet.targetWeight * 1.5);
+    const weightExceeds = weightKg > (targetSet.targetWeight + 5);
     const repsExceeds = reps > (targetSet.targetReps * 1.5);
 
     if (weightExceeds || repsExceeds) {

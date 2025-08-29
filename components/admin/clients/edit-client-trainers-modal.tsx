@@ -22,6 +22,9 @@ interface EditClientTrainersModalProps {
   onTrainersUpdated: () => void;
 }
 
+// Add specific type for trainer categories
+type TrainerCategory = "FITNESS" | "PSYCHOLOGY" | "MANIFESTATION";
+
 // Helper function to get initials from name
 function getInitials(name: string): string {
   return name
@@ -98,7 +101,7 @@ export function EditClientTrainersModal({
   const fetchAllTrainers = async () => {
     setIsFetching(true);
     try {
-      const categories: SubscriptionCategory[] = ['FITNESS', 'PSYCHOLOGY', 'MANIFESTATION'];
+      const categories: TrainerCategory[] = ['FITNESS', 'PSYCHOLOGY', 'MANIFESTATION'];
       const trainerData: Record<SubscriptionCategory, Trainer[]> = {
         FITNESS: [],
         PSYCHOLOGY: [],
@@ -149,7 +152,7 @@ export function EditClientTrainersModal({
       // This would be a server action to update trainer assignments
       const updates = [];
       
-      const categories: SubscriptionCategory[] = ['FITNESS', 'PSYCHOLOGY', 'MANIFESTATION'];
+      const categories: TrainerCategory[] = ['FITNESS', 'PSYCHOLOGY', 'MANIFESTATION'];
       
       for (const category of categories) {
         if (clientNeedsCategory(client, category)) {

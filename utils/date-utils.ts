@@ -3,6 +3,18 @@
  */
 
 /**
+ * Strip timezone information from a Date object to create a pure date
+ * This ensures dates are stored as DD-MM-YYYY without timezone complications
+ * @param date - The Date object to strip timezone from
+ * @returns A new Date object with only date components (no time/timezone)
+ */
+export function stripTimezone(date: Date): Date {
+  // Create a new date using UTC to avoid timezone offset issues
+  // This ensures the date is exactly what the user selected, regardless of timezone
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+}
+
+/**
  * Get the Monday-Sunday date range for a given date
  */
 function getWeekDateRange(date: Date): { startDate: Date; endDate: Date } {

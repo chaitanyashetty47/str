@@ -40,10 +40,21 @@ export interface ClientPR {
   date: string; // Formatted date string
 }
 
+export interface NewlyAssignedClient {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  assignedAt: string; // ISO date string
+  category: string | null; // SubscriptionCategory from trainer_clients
+  daysSinceAssignment: number; // Calculated field for urgency
+}
+
 export interface TrainerDashboardData {
   stats: TrainerDashboardStats;
   upcomingWorkouts: UpcomingWorkout[];
   recentActivity: RecentActivity[];
   ongoingPlans: OngoingPlan[];
   clientPRs: ClientPR[];
+  newlyAssignedClients: NewlyAssignedClient[]; // NEW FIELD
 }

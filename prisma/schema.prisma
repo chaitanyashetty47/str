@@ -248,7 +248,7 @@ model workout_days {
   workout_plans         workout_plans           @relation(fields: [plan_id], references: [id], onDelete: Cascade, map: "WorkoutDay_planId_fkey")
 
   @@schema("public")
-  @@unique([plan_id, day_date])              // never two days on the same date in one plan
+  //@@unique([plan_id, day_date])              // never two days on the same date in one plan
   @@index([plan_id, day_date])
   @@index([plan_id, is_deleted])             // NEW: Index for filtering soft-deleted days
 }
@@ -274,8 +274,8 @@ model workout_plans {
   title                                                 String
   trainer_id                                            String          @db.Uuid
   client_id                                             String          @db.Uuid
-  start_date                                            DateTime
-  end_date                                              DateTime
+  start_date                                            DateTime        @db.Date
+  end_date                                              DateTime        @db.Date
   duration_in_weeks                                     Int
   category                                              WorkoutCategory
   description                                           String?         @default("")

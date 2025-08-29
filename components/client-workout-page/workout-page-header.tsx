@@ -9,7 +9,8 @@ interface ProgressMetrics {
   currentWeek: number;
   totalWeeks: number;
   daysRemaining: number;
-  progressPercentage: number;
+  progressPercentage: number;        // Overall progress (set-based)
+  weeklyProgressPercentage: number;  // Current week progress (set-based)
 }
 
 interface WorkoutPageHeaderProps {
@@ -100,6 +101,17 @@ export default function WorkoutPageHeader({
                 ? `${progress.progressPercentage}% completed (${elapsedDays}/${totalDays} days)`
                 : "No data"}
             </span>
+
+            {/* Weekly Progress */}
+            <div className="pt-2 border-t">
+              <span className="text-sm font-medium text-muted-foreground">Week {progress?.currentWeek || 1} Progress</span>
+              <Progress className="text-strentor-red outline-double outline-black" value={progress?.weeklyProgressPercentage ?? 0} />
+              <span className="text-xs text-muted-foreground">
+                {progress
+                  ? `${progress.weeklyProgressPercentage}% completed this week`
+                  : "No data"}
+              </span>
+            </div>
 
             {/* Action Buttons */}
             <div className="space-y-2 mt-3">

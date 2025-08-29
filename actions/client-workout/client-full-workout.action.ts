@@ -12,10 +12,11 @@ import { createClient } from "@/utils/supabase/server";
 // ────────────────────────────────────────────────────────────────────────────
 interface ProgressMetrics {
   currentWeek: number;
-  currentDay: number;
+  currentDay: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   totalWeeks: number;
   daysRemaining: number;
-  progressPercentage: number;
+  progressPercentage: number;        // Overall progress (set-based)
+  weeklyProgressPercentage: number;  // Current week progress (set-based)
 }
 
 export interface SetInstruction {
@@ -37,7 +38,7 @@ export interface ExerciseDetail {
 }
 
 export interface DayDetail {
-  dayNumber: 1 | 2 | 3 | 4 | 5;
+  dayNumber: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   title: string;
   dayDate: string; // ISO date string from day_date field
   exercises: ExerciseDetail[];
@@ -71,38 +72,154 @@ export interface SingleWeekOutput {
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────────────────
-function calculateProgress(start: Date, end: Date, totalWeeks: number): ProgressMetrics {
+function calculateProgress(
+  start: Date, 
+  end: Date, 
+  totalWeeks: number, 
+  workoutDays: any[], 
+  clientId: string
+): ProgressMetrics {
   const now = new Date();
 
   // Clamp dates to avoid negative numbers
   const totalDurationMs = Math.max(end.getTime() - start.getTime(), 1);
   const elapsedMs = Math.max(now.getTime() - start.getTime(), 0);
 
-  const progressPercentage = Math.min(
-    100,
-    Math.round((elapsedMs / totalDurationMs) * 100),
+  // Calculate current week using the same logic as fetchOngoingPlans
+  let currentWeek = Math.min(
+    totalWeeks,
+    Math.max(1, Math.ceil(elapsedMs / (7 * 24 * 60 * 60 * 1000))),
   );
+
+  // Calculate current day using in-memory date matching
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Strip time for date comparison
+
+  let currentDay = 1; // Default fallback to Day 1 of Week 1
+
+  // Find which workout day matches today's date
+  for (let weekNum = 1; weekNum <= totalWeeks; weekNum++) {
+    for (let dayNum = 1; dayNum <= 7; dayNum++) { // Support 7 days, not just 5
+      const dayDate = new Date(start);
+      dayDate.setDate(start.getDate() + (weekNum - 1) * 7 + (dayNum - 1));
+      dayDate.setHours(0, 0, 0, 0);
+      
+      if (dayDate.getTime() === today.getTime()) {
+        currentWeek = weekNum; // Update current week if we found a match
+        currentDay = dayNum;
+        break;
+      }
+    }
+    if (currentDay !== 1) break; // Found the day, exit outer loop
+  }
+
+  // Calculate set-based progress (like fetchOngoingPlans)
+  let overallTotalSets = 0;
+  let overallCompletedSets = 0;
+  let weeklyTotalSets = 0;
+  let weeklyCompletedSets = 0;
+
+  console.log(`🔍 [calculateProgress] Debug Info:`);
+  console.log(`   - Current Week: ${currentWeek}`);
+  console.log(`   - Current Day: ${currentDay}`);
+  console.log(`   - Total Weeks: ${totalWeeks}`);
+  console.log(`   - Workout Days Count: ${workoutDays.length}`);
+  console.log(`   - Client ID: ${clientId}`);
+
+  // Calculate overall progress (weeks 1 to current week, set-based)
+  const overallWeekDays = workoutDays.filter((day) => 
+    day.week_number <= currentWeek
+  );
+
+  console.log(`📊 [Overall Progress] Debug:`);
+  console.log(`   - Overall Week Days Count: ${overallWeekDays.length}`);
+  console.log(`   - Overall Week Days:`, overallWeekDays.map(d => ({ week: d.week_number, day: d.day_number })));
+
+  // Group by week for better debugging
+  const weekBreakdown = new Map<number, { total: number; completed: number }>();
+  
+  for (const day of overallWeekDays) {
+    const weekNum = day.week_number;
+    if (!weekBreakdown.has(weekNum)) {
+      weekBreakdown.set(weekNum, { total: 0, completed: 0 });
+    }
+    
+    for (const exercise of day.workout_day_exercises) {
+      for (const setInstruction of exercise.workout_set_instructions) {
+        overallTotalSets++;
+        weekBreakdown.get(weekNum)!.total++;
+        
+        // Check if this specific client has logged this set - using same logic as weekly workout action
+        const logEntry = setInstruction.exercise_logs?.find(
+          (log: any) => log.client_id === clientId
+        );
+        if (logEntry) {
+          overallCompletedSets++;
+          weekBreakdown.get(weekNum)!.completed++;
+        }
+      }
+    }
+  }
+
+  console.log(`   - Week Breakdown:`, Object.fromEntries(weekBreakdown));
+
+  console.log(`   - Overall Total Sets: ${overallTotalSets}`);
+  console.log(`   - Overall Completed Sets: ${overallCompletedSets}`);
+  console.log(`   - Overall Weeks Included: 1 to ${currentWeek}`);
+
+  // Calculate weekly progress (current week only, set-based) - using same logic as client-weekly-workout.action.ts
+  const currentWeekDays = workoutDays.filter((day) => 
+    day.week_number === currentWeek
+  );
+
+  console.log(`📈 [Weekly Progress] Debug:`);
+  console.log(`   - Current Week Days Count: ${currentWeekDays.length}`);
+  console.log(`   - Current Week Days:`, currentWeekDays.map(d => ({ week: d.week_number, day: d.day_number })));
+
+  for (const day of currentWeekDays) {
+    for (const exercise of day.workout_day_exercises) {
+      for (const setInstruction of exercise.workout_set_instructions) {
+        weeklyTotalSets++;
+        // Check if this specific client has logged this set - using same logic as weekly workout action
+        const logEntry = setInstruction.exercise_logs?.find(
+          (log: any) => log.client_id === clientId
+        );
+        if (logEntry) {
+          weeklyCompletedSets++;
+        }
+      }
+    }
+  }
+
+  console.log(`   - Weekly Total Sets: ${weeklyTotalSets}`);
+  console.log(`   - Weekly Completed Sets: ${weeklyCompletedSets}`);
+  console.log(`   - Weekly Week: ${currentWeek} only`);
+
+  // Calculate progress percentages
+  const progressPercentage = overallTotalSets > 0 
+    ? Math.round((overallCompletedSets / overallTotalSets) * 100) 
+    : 0;
+
+  const weeklyProgressPercentage = weeklyTotalSets > 0 
+    ? Math.round((weeklyCompletedSets / weeklyTotalSets) * 100) 
+    : 0;
+
+  console.log(`🎯 [Final Progress] Debug:`);
+  console.log(`   - Overall Progress: ${progressPercentage}% (${overallCompletedSets}/${overallTotalSets})`);
+  console.log(`   - Weekly Progress: ${weeklyProgressPercentage}% (${weeklyCompletedSets}/${weeklyTotalSets})`);
 
   const daysRemaining = Math.max(
     0,
     Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
   );
 
-  const currentWeek = Math.min(
-    totalWeeks,
-    Math.max(1, Math.ceil(elapsedMs / (7 * 24 * 60 * 60 * 1000))),
-  );
-
-  // Calculate current day (assuming 5 training days per week)
-  const weekProgress = (elapsedMs % (7 * 24 * 60 * 60 * 1000)) / (7 * 24 * 60 * 60 * 1000);
-  const currentDay = Math.min(5, Math.max(1, Math.ceil(weekProgress * 5))) as 1 | 2 | 3 | 4 | 5;
-
   return {
     currentWeek,
-    currentDay,
+    currentDay: currentDay as 1 | 2 | 3 | 4 | 5 | 6 | 7,
     totalWeeks,
     daysRemaining,
     progressPercentage,
+    weeklyProgressPercentage,
   };
 }
 
@@ -134,15 +251,29 @@ async function fullPlanHandler({ planId }: z.infer<typeof fullPlanInput>): Promi
       client_id: userId 
     },
     include: {
-      workout_days: {
-        orderBy: [{ week_number: "asc" }, { day_number: "asc" }],
-        include: {
+              workout_days: {
+          where: {
+            is_deleted: false, // Get all weeks, not just current week
+          },
+          orderBy: [{ week_number: "asc" }, { day_number: "asc" }],
+          include: {
           workout_day_exercises: {
             orderBy: { order: "asc" },
             include: {
               workout_exercise_lists: true,
               workout_set_instructions: {
                 orderBy: { set_number: "asc" },
+                include: {
+                  exercise_logs: {
+                    select: {
+                      id: true,
+                      client_id: true,
+                      weight_used: true,
+                      reps_done: true,
+                      rpe: true,
+                    }
+                  }
+                }
               },
             },
           },
@@ -155,11 +286,13 @@ async function fullPlanHandler({ planId }: z.infer<typeof fullPlanInput>): Promi
     return { error: "Plan not found" };
   }
 
-  // Calculate progress
+  // Calculate progress with workout data for set-based calculation
   const progress = calculateProgress(
     plan.start_date,
     plan.end_date,
     plan.duration_in_weeks,
+    plan.workout_days,
+    userId
   );
 
   // Group days by week

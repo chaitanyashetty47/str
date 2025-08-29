@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { 
   WeekAnalyticsData, 
   OverallAnalyticsData,
   getWeekAnalytics,
   getOverallAnalytics 
 } from '@/actions/client-workout/workout-analytics.action';
+import {
+  getTrainerWeekAnalytics,
+  getTrainerOverallAnalytics
+} from '@/actions/trainer-clients/trainer-workout-analytics.action';
 
 // Cache structure
 interface AnalyticsCache {
@@ -26,13 +31,20 @@ function isCacheValid(timestamp: number): boolean {
   return Date.now() - timestamp < CACHE_DURATION;
 }
 
-// Generate cache keys
-function getWeekCacheKey(planId: string, weekNumber: number): string {
-  return `${planId}-week-${weekNumber}`;
+// Helper to detect if we're in trainer context
+function isTrainerContext(pathname: string): boolean {
+  return pathname.includes('/fitness/plans/') && pathname.includes('/summary');
 }
 
-function getOverallCacheKey(planId: string): string {
-  return `${planId}-overall`;
+// Generate cache keys (include context to separate client/trainer caches)
+function getWeekCacheKey(planId: string, weekNumber: number, isTrainer: boolean): string {
+  const context = isTrainer ? 'trainer' : 'client';
+  return `${planId}-week-${weekNumber}-${context}`;
+}
+
+function getOverallCacheKey(planId: string, isTrainer: boolean): string {
+  const context = isTrainer ? 'trainer' : 'client';
+  return `${planId}-overall-${context}`;
 }
 
 // Hook for weekly analytics with caching
@@ -40,9 +52,11 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
   const [data, setData] = useState<WeekAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pathname = usePathname();
 
   const fetchData = useCallback(async (forceRefresh = false) => {
-    const cacheKey = getWeekCacheKey(planId, weekNumber);
+    const isTrainer = isTrainerContext(pathname);
+    const cacheKey = getWeekCacheKey(planId, weekNumber, isTrainer);
     
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
@@ -57,12 +71,15 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
     }
 
     // Fetch fresh data
-    console.log(`🔄 Fetching fresh weekly data for ${cacheKey}`);
+    console.log(`🔄 Fetching fresh weekly data for ${cacheKey} (${isTrainer ? 'trainer' : 'client'} context)`);
     setLoading(true);
     setError(null);
     
     try {
-      const result = await getWeekAnalytics({ planId, weekNumber });
+      // Call appropriate action based on context
+      const result = isTrainer 
+        ? await getTrainerWeekAnalytics({ planId, weekNumber })
+        : await getWeekAnalytics({ planId, weekNumber });
       
       if (result.error) {
         setError(result.error);
@@ -82,7 +99,7 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
     } finally {
       setLoading(false);
     }
-  }, [planId, weekNumber]);
+  }, [planId, weekNumber, pathname]);
 
   useEffect(() => {
     fetchData();
@@ -100,9 +117,11 @@ export function useOverallAnalytics(planId: string) {
   const [data, setData] = useState<OverallAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pathname = usePathname();
 
   const fetchData = useCallback(async (forceRefresh = false) => {
-    const cacheKey = getOverallCacheKey(planId);
+    const isTrainer = isTrainerContext(pathname);
+    const cacheKey = getOverallCacheKey(planId, isTrainer);
     
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
@@ -117,12 +136,15 @@ export function useOverallAnalytics(planId: string) {
     }
 
     // Fetch fresh data
-    console.log(`🔄 Fetching fresh overall data for ${cacheKey}`);
+    console.log(`🔄 Fetching fresh overall data for ${cacheKey} (${isTrainer ? 'trainer' : 'client'} context)`);
     setLoading(true);
     setError(null);
     
     try {
-      const result = await getOverallAnalytics({ planId });
+      // Call appropriate action based on context
+      const result = isTrainer 
+        ? await getTrainerOverallAnalytics({ planId })
+        : await getOverallAnalytics({ planId });
       
       if (result.error) {
         setError(result.error);
@@ -142,7 +164,7 @@ export function useOverallAnalytics(planId: string) {
     } finally {
       setLoading(false);
     }
-  }, [planId]);
+  }, [planId, pathname]);
 
   useEffect(() => {
     fetchData();
@@ -166,18 +188,20 @@ export const analyticsUtils = {
 
   // Clear cache for specific plan
   clearPlanCache: (planId: string) => {
-    // Clear weekly data for this plan
+    // Clear weekly data for this plan (both client and trainer contexts)
     for (const [key] of analyticsCache.weeklyData) {
       if (key.startsWith(planId)) {
         analyticsCache.weeklyData.delete(key);
       }
     }
     
-    // Clear overall data for this plan
-    const overallKey = getOverallCacheKey(planId);
-    analyticsCache.overallData.delete(overallKey);
+    // Clear overall data for this plan (both contexts)
+    const clientOverallKey = getOverallCacheKey(planId, false);
+    const trainerOverallKey = getOverallCacheKey(planId, true);
+    analyticsCache.overallData.delete(clientOverallKey);
+    analyticsCache.overallData.delete(trainerOverallKey);
     
-    console.log(`🗑️ Cleared cache for plan ${planId}`);
+    console.log(`🗑️ Cleared cache for plan ${planId} (both contexts)`);
   },
 
   // Get cache stats
@@ -196,20 +220,24 @@ export const analyticsUtils = {
   },
 
   // Preload data for faster navigation
-  preloadWeekData: async (planId: string, weekNumbers: number[]) => {
+  preloadWeekData: async (planId: string, weekNumbers: number[], isTrainer: boolean = false) => {
     const promises = weekNumbers.map(weekNumber => {
-      const cacheKey = getWeekCacheKey(planId, weekNumber);
+      const cacheKey = getWeekCacheKey(planId, weekNumber, isTrainer);
       const cachedEntry = analyticsCache.weeklyData.get(cacheKey);
       
       // Only preload if not cached or cache is expired
       if (!cachedEntry || !isCacheValid(cachedEntry.timestamp)) {
-        return getWeekAnalytics({ planId, weekNumber }).then(result => {
+        const actionCall = isTrainer 
+          ? getTrainerWeekAnalytics({ planId, weekNumber })
+          : getWeekAnalytics({ planId, weekNumber });
+          
+        return actionCall.then(result => {
           if (result.data) {
             analyticsCache.weeklyData.set(cacheKey, {
               data: result.data,
               timestamp: Date.now(),
             });
-            console.log(`⚡ Preloaded week ${weekNumber} data`);
+            console.log(`⚡ Preloaded week ${weekNumber} data (${isTrainer ? 'trainer' : 'client'})`);
           }
         });
       }

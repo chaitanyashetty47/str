@@ -16,6 +16,7 @@ interface DatePickerProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  allowFutureDates?: boolean;
 }
 
 export function DatePicker({ 
@@ -23,7 +24,8 @@ export function DatePicker({
   onSelect, 
   disabled, 
   placeholder = "Pick a date",
-  className 
+  className,
+  allowFutureDates = false
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -55,10 +57,15 @@ export function DatePicker({
           initialFocus
           captionLayout="dropdown"
           disabled={(date) => {
-            // Disable future dates and dates more than 100 years ago
+            // Disable dates more than 100 years ago, and optionally future dates
             const today = new Date();
             const minDate = new Date(today.getFullYear() - 100, 0, 1);
-            return date > today || date < minDate;
+            
+            if (allowFutureDates) {
+              return date < minDate; // Only disable very old dates
+            } else {
+              return date > today || date < minDate; // Disable future dates and very old dates
+            }
           }}
         />
       </PopoverContent>

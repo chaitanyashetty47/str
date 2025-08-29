@@ -5,15 +5,15 @@ import { DayDetail } from "@/actions/client-workout/client-full-workout.action";
 interface DayListTabsProps {
   days: DayDetail[];
   selectedDay: number;
-  onDaySelect: (dayNumber: 1 | 2 | 3 | 4 | 5) => void;
+  onDaySelect: (dayNumber: 1 | 2 | 3 | 4 | 5 | 6 | 7) => void;
 }
 
 export default function DayListTabs({ days, selectedDay, onDaySelect }: DayListTabsProps) {
-  // Define all possible days (1-5)
-  const allDays = [1, 2, 3, 4, 5] as const;
+  // Define all possible days (1-7)
+  const allDays = [1, 2, 3, 4, 5, 6, 7] as const;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
       {allDays.map((dayNumber) => {
         const dayData = days.find(d => d.dayNumber === dayNumber);
         const isSelected = selectedDay === dayNumber;

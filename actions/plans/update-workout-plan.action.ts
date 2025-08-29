@@ -10,8 +10,62 @@ import {
   WeightUnit,
 } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
-import { addDays, startOfWeek } from "date-fns";
+import { addDays, format } from "date-fns";
 import { convertToKg } from "@/utils/weight";
+import { requireTrainerAccess } from "@/utils/user";
+import { stripTimezone } from "@/utils/date-utils";
+
+// ────────────────────────────────────────────────────────────────────────────
+// Helper function to check for conflicting published plans
+// ────────────────────────────────────────────────────────────────────────────
+async function checkPlanConflicts(
+  clientId: string,
+  trainerId: string,
+  startDate: Date,
+  endDate: Date,
+  excludePlanId?: string
+): Promise<string | null> {
+  const conflictingPlan = await prisma.workout_plans.findFirst({
+    where: {
+      client_id: clientId,
+      trainer_id: trainerId,
+      status: WorkoutPlanStatus.PUBLISHED,
+      id: excludePlanId ? { not: excludePlanId } : undefined,
+      OR: [
+        {
+          // New plan starts during existing plan
+          start_date: { lte: startDate },
+          end_date: { gte: startDate },
+        },
+        {
+          // New plan ends during existing plan
+          start_date: { lte: endDate },
+          end_date: { gte: endDate },
+        },
+        {
+          // New plan completely contains existing plan
+          start_date: { gte: startDate },
+          end_date: { lte: endDate },
+        },
+      ],
+    },
+    select: {
+      title: true,
+      start_date: true,
+      end_date: true,
+    },
+  });
+
+  if (conflictingPlan) {
+    const conflictStartDate = format(conflictingPlan.start_date, "dd/MM/yyyy");
+    const conflictEndDate = format(conflictingPlan.end_date, "dd/MM/yyyy");
+    const suggestedStartDate = format(addDays(conflictingPlan.end_date, 1), "dd/MM/yyyy");
+    
+    return `Choose start date after ${conflictEndDate} as previous plan '${conflictingPlan.title}' (${conflictStartDate} - ${conflictEndDate}) is currently published. Suggested start date: ${suggestedStartDate}`;
+  }
+
+  return null;
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Zod schemas (shared with create action)
@@ -36,7 +90,7 @@ const ExerciseSchema = z.object({
 });
 
 const DaySchema = z.object({
-  dayNumber: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  dayNumber: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
   title: z.string(),
   exercises: z.array(ExerciseSchema),
   estimatedTimeMinutes: z.number().int().nonnegative(),
@@ -44,17 +98,13 @@ const DaySchema = z.object({
 
 const WeekSchema = z.object({
   weekNumber: z.number().int().positive(),
-  days: z.tuple([DaySchema, DaySchema, DaySchema]),
+  days: z.array(DaySchema).min(3).max(7), // Minimum 3 days, maximum 7 days
 });
 
 const MetaSchema = z.object({
   title: z.string(),
   description: z.string(),
-  startDate: z.coerce.date().transform(date => {
-    // Ensure we always work with UTC dates at midnight
-    const utcDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    return utcDate;
-  }),
+  startDate: z.coerce.date(),
   durationWeeks: z.number().int().positive(),
   category: z.nativeEnum(WorkoutCategory),
   clientId: z.string().uuid(),
@@ -114,7 +164,13 @@ interface ExistingSet {
 // ────────────────────────────────────────────────────────────────────────────
 async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
   try {
-    // Get trainer's weight unit preference
+    // Check if authenticated user is a fitness trainer
+    const { userId: authenticatedUserId } = await requireTrainerAccess();
+
+    if (!authenticatedUserId) {
+      throw new Error("No user found");    
+    }
+    // Get existing plan to check ownership
     const existingPlan = await prisma.workout_plans.findUnique({
       where: { id },
       select: { trainer_id: true }
@@ -124,6 +180,11 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
       throw new Error("Plan not found");
     }
 
+    // Ensure the authenticated trainer can only update their own plans
+    if (authenticatedUserId !== existingPlan.trainer_id) {
+      throw new Error("You can only update your own workout plans");
+    }
+
     const trainer = await prisma.users_profile.findUnique({
       where: { id: existingPlan.trainer_id },
       select: { weight_unit: true }
@@ -131,18 +192,52 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
 
     const trainerWeightUnit = trainer?.weight_unit || WeightUnit.KG;
 
-    // meta.startDate is already normalized to UTC midnight by the schema transform
-    const mondayStart = startOfWeek(meta.startDate, { weekStartsOn: 1 });
-    const endDate = addDays(mondayStart, meta.durationWeeks * 7 - 1);
+    // Debug: Log the exact dates we're receiving
+    console.log('🔍 DEBUG - Raw meta.startDate:', meta.startDate);
+    console.log('🔍 DEBUG - meta.startDate.toISOString():', meta.startDate.toISOString());
+    console.log('🔍 DEBUG - meta.startDate.toString():', meta.startDate.toString());
+    console.log('🔍 DEBUG - meta.startDate.getTime():', meta.startDate.getTime());
+    
+    // Use the exact start date provided by the user, but strip timezone info
+    // Convert to plain date (DD-MM-YYYY) to avoid timezone issues
+    const startDate = stripTimezone(meta.startDate);
+    console.log('🔍 DEBUG - After stripTimezone:', startDate);
+    console.log('🔍 DEBUG - After stripTimezone.toISOString():', startDate.toISOString());
+    
+    const endDate = addDays(startDate, meta.durationWeeks * 7 - 1);
+
+    // Check for conflicts only if the plan is being published
+    if (meta.status === WorkoutPlanStatus.PUBLISHED) {
+      const conflictError = await checkPlanConflicts(
+        meta.clientId,
+        existingPlan.trainer_id,
+        startDate,
+        endDate,
+        id // Exclude current plan from conflict check
+      );
+      
+      if (conflictError) {
+        return { error: conflictError };
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
-      // 1. Update plan meta
+      // 1. Get the current plan data to check if start_date changed
+      const currentPlan = await tx.workout_plans.findUnique({
+        where: { id },
+        select: { start_date: true }
+      });
+
+      const startDateChanged = currentPlan && 
+        currentPlan.start_date.getTime() !== startDate.getTime();
+
+      // 2. Update plan meta
       await tx.workout_plans.update({
         where: { id },
         data: {
           title: meta.title,
           description: meta.description,
-          start_date: mondayStart,
+          start_date: startDate,
           end_date: endDate,
           duration_in_weeks: meta.durationWeeks,
           category: meta.category,
@@ -151,7 +246,7 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         },
       });
 
-      // 2. Get existing structure for comparison
+      // 3. Get existing structure for comparison
       const existingDays = await tx.workout_days.findMany({
         where: { 
           plan_id: id,
@@ -171,7 +266,29 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         orderBy: [{ week_number: 'asc' }, { day_number: 'asc' }],
       }) as ExistingDay[];
 
-      // 3. Create lookup maps for existing data
+      // 4. ONLY update day_date values if start_date actually changed
+      if (startDateChanged) {
+        console.log(`Start date changed from ${currentPlan?.start_date} to ${startDate}, updating all day dates...`);
+        
+        for (const existingDay of existingDays) {
+          const calculatedDate = addDays(startDate, (existingDay.week_number - 1) * 7 + (existingDay.day_number - 1));
+          // Strip timezone info to ensure pure date storage
+          const newDayDate = stripTimezone(calculatedDate);
+          
+          await tx.workout_days.update({
+            where: { id: existingDay.id },
+            data: {
+              day_date: newDayDate,
+            },
+          });
+        }
+        
+        console.log(`Updated ${existingDays.length} workout days with new dates`);
+      } else {
+        console.log('Start date unchanged, skipping day date updates');
+      }
+
+      // 5. Create lookup maps for existing data
       const existingDaysMap = new Map<string, ExistingDay>();
       const existingExercisesMap = new Map<string, ExistingExercise>();
       const existingSetsMap = new Map<string, ExistingSet>();
@@ -189,12 +306,15 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         });
       });
 
-      // 4. Process each week and day from the incoming data
+      // 6. Process each week and day from the incoming data
       for (const week of weeks) {
         for (const day of week.days) {
           const dayKey = `${week.weekNumber}-${day.dayNumber}`;
           const existingDay = existingDaysMap.get(dayKey);
-          const dayDate = addDays(mondayStart, (week.weekNumber - 1) * 7 + (day.dayNumber - 1));
+          // Calculate day date directly from user's start date
+          // Strip timezone info to ensure pure date storage
+          const calculatedDate = addDays(startDate, (week.weekNumber - 1) * 7 + (day.dayNumber - 1));
+          const dayDate = stripTimezone(calculatedDate);
 
           if (existingDay) {
             // Update existing day
@@ -253,7 +373,7 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         }
       }
 
-      // 5. Handle removed days (soft delete by checking if any logs exist)
+      // 7. Handle removed days (soft delete by checking if any logs exist)
       const incomingDayKeys = new Set<string>();
       weeks.forEach(week => {
         week.days.forEach(day => {
@@ -293,6 +413,8 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
           }
         }
       }
+    }, {
+      timeout: 15000, // 15 seconds timeout for complex workout plan updates
     });
 
     return { data: { ok: true } };

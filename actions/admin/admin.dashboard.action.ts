@@ -105,10 +105,10 @@ function getInitials(name: string): string {
 }
 
 // Helper function to get trainer role based on plan category
-function getTrainerRoleForCategory(planCategory: string): ('FITNESS_TRAINER' | 'PSYCHOLOGY_TRAINER' | 'MANIFESTATION_TRAINER')[] {
+function getTrainerRoleForCategory(planCategory: string): ('FITNESS_TRAINER' | 'FITNESS_TRAINER_ADMIN' | 'PSYCHOLOGY_TRAINER' | 'MANIFESTATION_TRAINER')[] {
   switch (planCategory) {
     case 'FITNESS':
-      return ['FITNESS_TRAINER'];
+      return ['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN'];
     case 'PSYCHOLOGY':
       return ['PSYCHOLOGY_TRAINER'];
     case 'MANIFESTATION':
@@ -120,36 +120,13 @@ function getTrainerRoleForCategory(planCategory: string): ('FITNESS_TRAINER' | '
   }
 }
 
-// Role-based access control
-async function checkAdminAccess(): Promise<{ userId: string; role: string }> {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  
-  if (error || !user) {
-    throw new Error("Authentication required");
-  }
-
-  // Get user profile to check role
-  const userProfile = await prisma.users_profile.findUnique({
-    where: { id: user.id },
-    select: { role: true }
-  });
-
-  if (!userProfile) {
-    throw new Error("User profile not found");
-  }
-
-  // Check if user has admin access
-  if (userProfile.role !== 'ADMIN' && userProfile.role !== 'FITNESS_TRAINER_ADMIN') {
-    throw new Error("Admin access required");
-  }
-
-  return { userId: user.id, role: userProfile.role };
-}
+// Import admin utility from centralized user utils
+import { getAdminUser } from "@/utils/user";
 
 // Get available trainers for a specific plan category
 export async function getAvailableTrainers(planCategory: string): Promise<Trainer[]> {
-  await checkAdminAccess();
+  const adminUser = await getAdminUser();
+  if (!adminUser) throw new Error("Admin access required");
 
   const trainerRoles = getTrainerRoleForCategory(planCategory);
 
@@ -178,7 +155,8 @@ export async function assignTrainerToClient(
   category?: 'FITNESS' | 'PSYCHOLOGY' | 'MANIFESTATION'
 ): Promise<{ success: boolean; message: string }> {
   try {
-    await checkAdminAccess();
+    const adminUser = await getAdminUser();
+    if (!adminUser) throw new Error("Admin access required");
 
     // Check if assignment already exists for this category
     const existingAssignment = await prisma.trainer_clients.findFirst({
@@ -217,7 +195,8 @@ export async function assignAllInOneTrainers(
   assignments: AllInOneTrainerAssignment
 ): Promise<{ success: boolean; message: string }> {
   try {
-    await checkAdminAccess();
+    const adminUser = await getAdminUser();
+    if (!adminUser) throw new Error("Admin access required");
 
     // Validate that all required trainers are provided
     if (!assignments.fitnessTrainerId || !assignments.psychologyTrainerId || !assignments.manifestationTrainerId) {
@@ -283,7 +262,8 @@ export async function assignAllInOneTrainers(
 // Get user signups chart data for the current year
 export async function getUserSignupsChartData(): Promise<UserSignupData[]> {
   try {
-    await checkAdminAccess();
+    const adminUser = await getAdminUser();
+    if (!adminUser) throw new Error("Admin access required");
     
     // Use 2025 as the target year since that's where the data exists
     const targetYear = 2025;
@@ -327,7 +307,8 @@ export async function getUserSignupsChartData(): Promise<UserSignupData[]> {
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   // Check admin access first
-  await checkAdminAccess();
+  const adminUser = await getAdminUser();
+  if (!adminUser) throw new Error("Admin access required");
 
   const now = getIstNow();
   const currentMonthRange = getIstMonthRange(now, 0);

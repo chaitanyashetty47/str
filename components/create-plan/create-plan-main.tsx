@@ -17,7 +17,9 @@ export function CreatePlanMain({ mode, trainerId, planId }: CreatePlanMainProps)
 
       <div className="flex h-[calc(100vh-4rem)]">
         <WeekAndDaySelector />
-        <DayCanvas />
+        <div className="flex-1 overflow-y-auto">
+          <DayCanvas />
+        </div>
       </div>
     </div>
   );

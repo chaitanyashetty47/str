@@ -23,10 +23,7 @@ import {
   Tooltip,
   Cell,
 } from "recharts";
-import {
-  WeekAnalyticsData,
-  ExerciseAnalytics,
-} from "@/actions/client-workout/workout-analytics.action";
+
 import { useWeeklyAnalytics } from "@/hooks/use-workout-analytics";
 
 interface WeeklyAnalyticsProps {

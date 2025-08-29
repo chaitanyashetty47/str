@@ -10,6 +10,7 @@ import type {
   RecentActivity,
   OngoingPlan,
   ClientPR,
+  NewlyAssignedClient,
 } from "@/types/trainer.dashboard";
 
 // Helper function to get current week's Monday and Sunday
@@ -415,18 +416,74 @@ async function fetchClientPRs(trainerId: string): Promise<ClientPR[]> {
   }));
 }
 
+// Helper function for newly assigned clients without workout plans
+async function fetchNewlyAssignedClients(trainerId: string): Promise<NewlyAssignedClient[]> {
+  const currentDate = new Date();
+  
+  // Get clients who need new plans (no active or future plans)
+  const newlyAssignedClients = await prisma.trainer_clients.findMany({
+    where: {
+      trainer_id: trainerId,
+      // Only include clients who don't have active or future plans
+      client: {
+        workout_plans_as_client: {
+          none: {
+            OR: [
+              // Active plan: current date falls within plan dates
+              {
+                start_date: { lte: currentDate },
+                end_date: { gte: currentDate }
+              },
+              // Future plan: plan starts in the future
+              {
+                start_date: { gt: currentDate }
+              }
+            ]
+          }
+        }
+      }
+    },
+    include: {
+      client: {
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      }
+    },
+    orderBy: {
+      assigned_at: 'desc'
+    }
+  });
+
+  // Process and format the data
+  return newlyAssignedClients.map(client => ({
+    id: client.id,
+    clientId: client.client_id,
+    clientName: client.client.name,
+    clientEmail: client.client.email,
+    assignedAt: client.assigned_at.toISOString(),
+    category: client.category,
+    daysSinceAssignment: Math.floor(
+      (currentDate.getTime() - client.assigned_at.getTime()) / (1000 * 60 * 60 * 24)
+    )
+  }));
+}
+
 // Cached function for fetching dashboard data
 const getCachedTrainerDashboardData = unstable_cache(
   async (trainerId: string): Promise<TrainerDashboardData> => {
     const currentDate = new Date();
 
     try {
-      const [stats, upcomingWorkouts, recentActivity, ongoingPlans, clientPRs] = await Promise.all([
+      const [stats, upcomingWorkouts, recentActivity, ongoingPlans, clientPRs, newlyAssignedClients] = await Promise.all([
         fetchTrainerStats(trainerId, currentDate),
         fetchUpcomingWorkouts(trainerId, currentDate),
         fetchRecentActivity(trainerId),
         fetchOngoingPlans(trainerId, currentDate),
         fetchClientPRs(trainerId),
+        fetchNewlyAssignedClients(trainerId),
       ]);
 
       return {
@@ -435,6 +492,7 @@ const getCachedTrainerDashboardData = unstable_cache(
         recentActivity,
         ongoingPlans,
         clientPRs,
+        newlyAssignedClients,
       };
     } catch (error) {
       console.error("Error fetching trainer dashboard data:", error);

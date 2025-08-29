@@ -45,7 +45,10 @@ export function DayContainer({weekNumber, dayNumber}: {weekNumber: number, dayNu
   };
 
   return (
-    <Card className="rounded-lg border border-muted-foreground/10 shadow-sm">
+    <Card 
+      id={`week-${weekNumber}-day-${dayNumber}`}
+      className="rounded-lg border border-muted-foreground/10 shadow-sm scroll-mt-6"
+    >
       <CardHeader className="py-4 px-6">
         <CardTitle className="flex items-center gap-3 text-sm sm:text-base font-semibold">
           <span className="whitespace-nowrap">Day {dayNumber}</span>

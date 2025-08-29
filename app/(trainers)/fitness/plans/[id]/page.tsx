@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { PlanEditorProvider } from "@/contexts/PlanEditorContext";
 import { CreatePlanMain } from "@/components/create-plan/create-plan-main";
 import prisma from "@/utils/prisma/prismaClient";
-import { createClient } from "@/utils/supabase/server";
+import { requireTrainerAccess } from "@/utils/user";
 import {
   PlanEditorState,
   WeekInPlan,
@@ -25,17 +25,17 @@ export default async function EditPlanPage({
 }) {
   const { id } = await params;
 
-  // Auth check
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) redirect("/sign-in");
-
-  // Fetch plan with full nested structure via Prisma
-  const plan = await prisma.workout_plans.findUnique({
-    where: { id },
+  // Enhanced authorization check
+  try {
+    // 1. Check if user is a fitness trainer (role-based authorization)
+    const { userId: trainerId } = await requireTrainerAccess();
+    
+    // 2. Fetch plan with trainer ownership validation
+    const plan = await prisma.workout_plans.findUnique({
+      where: { 
+        id,
+        trainer_id: trainerId, // Only fetch if owned by authenticated trainer
+      },
     include: {
       workout_days: {
         where: { is_deleted: false }, // Filter out soft-deleted days
@@ -57,24 +57,25 @@ export default async function EditPlanPage({
     },
   });
 
-  if (!plan || plan.trainer_id !== user.id) {
-    redirect("/training/plans?error=Plan%20not%20found");
+  // 3. Check if plan exists and trainer has access
+  if (!plan) {
+    redirect("/training/plans?error=Plan%20not%20found%20or%20access%20denied");
   }
 
-  // Fetch trainer's weight unit
+  // 4. Fetch trainer's weight unit
   const trainer = await prisma.users_profile.findUnique({
-    where: { id: user.id },
+    where: { id: trainerId },
     select: { weight_unit: true },
   });
 
   if (!trainer) {
-    redirect("/training/plans?error=Trainer%20not%20found");
+    redirect("/unauthorized?reason=trainer_profile_missing");
   }
 
   // Convert DB shape to PlanEditorState
   const weeksMap = new Map<number, DayInPlan[]>();
 
-  const blankDay = (weekNum: number, dayNum: 1 | 2 | 3): DayInPlan => ({
+  const blankDay = (weekNum: number, dayNum: 1 | 2 | 3 | 4 | 5 | 6 | 7): DayInPlan => ({
     dayNumber: dayNum,
     title: `Training Day ${dayNum}`,
     exercises: [],
@@ -105,7 +106,7 @@ export default async function EditPlanPage({
     });
 
     const dayObj: DayInPlan = {
-      dayNumber: dbDay.day_number as 1 | 2 | 3,
+      dayNumber: dbDay.day_number as 1 | 2 | 3 | 4 | 5 | 6 | 7,
       title: dbDay.title,
       exercises,
       estimatedTimeMinutes: 0,
@@ -116,19 +117,27 @@ export default async function EditPlanPage({
     weeksMap.set(dbDay.week_number, arr);
   }
 
-  // Build ordered weeks array
+  // Build ordered weeks array with flexible day support
   const weeks: WeekInPlan[] = Array.from(weeksMap.entries())
     .sort((a, b) => a[0] - b[0])
     .map(([weekNumber, daysArr]) => {
-      const days: [DayInPlan, DayInPlan, DayInPlan] = [
-        blankDay(weekNumber, 1),
-        blankDay(weekNumber, 2),
-        blankDay(weekNumber, 3),
-      ];
-      for (const d of daysArr) {
-        days[d.dayNumber - 1] = d; // replace blank
+      // Sort days by day number
+      const sortedDays = daysArr.sort((a, b) => a.dayNumber - b.dayNumber);
+      
+      // If no days exist, create default 3-day structure
+      if (sortedDays.length === 0) {
+        return {
+          weekNumber,
+          days: [
+            blankDay(weekNumber, 1),
+            blankDay(weekNumber, 2),
+            blankDay(weekNumber, 3),
+          ]
+        };
       }
-      return { weekNumber, days };
+      
+      // Use existing days as-is (supports 3-7 days)
+      return { weekNumber, days: sortedDays };
     });
 
   const editorState: PlanEditorState = {
@@ -156,4 +165,21 @@ export default async function EditPlanPage({
       <CreatePlanMain mode="edit" planId={plan.id} />
     </PlanEditorProvider>
   );
+  
+  } catch (error) {
+    // Handle authorization errors
+    console.error("Edit plan authorization error:", error);
+    
+    // Check if it's an authentication/authorization error
+    if (error instanceof Error) {
+      if (error.message.includes("Authentication required")) {
+        redirect("/sign-in?redirect=" + encodeURIComponent(`/training/plans/${id}`));
+      } else if (error.message.includes("Fitness trainer access required")) {
+        redirect("/unauthorized?reason=trainer_required");
+      }
+    }
+    
+    // Fallback for any other errors
+    redirect("/unauthorized?reason=access_denied");
+  }
 }

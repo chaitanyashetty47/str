@@ -33,7 +33,7 @@ export default function WorkoutPlanViewer({ plan }: WorkoutPlanViewerProps) {
     }
   };
 
-  const handleDayChange = (dayNumber: 1 | 2 | 3 | 4 | 5) => {
+  const handleDayChange = (dayNumber: 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
     setSelectedDay(dayNumber);
   };
 

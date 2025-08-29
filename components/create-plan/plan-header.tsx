@@ -1,15 +1,13 @@
 "use client"
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { useState } from "react";
-import { format, addDays, startOfWeek } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { WorkoutCategory, IntensityMode } from "@prisma/client";
@@ -32,6 +30,7 @@ import { z } from "zod";
 import { useForm, FormProvider } from "react-hook-form";
 import { toast } from "sonner";
 import { PlanHeaderSchema, type PlanHeaderFormData, validatePlanHeader } from "@/lib/schemas/plan-validation";
+import { format, addDays, startOfWeek } from "date-fns";
 
 interface PlanHeaderProps {
   mode: "create" | "edit" | "archive";
@@ -75,39 +74,103 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
     if (!date) return;
     const monday = startOfWeek(date, { weekStartsOn: 1 });
     setValue("startDate", monday, { shouldValidate: true });
+    dispatch({ 
+      type: "UPDATE_META", 
+      payload: { ...meta, startDate: monday } 
+    });
+    
+    // Clear conflict error when date changes
+    setConflictError(null);
   };
 
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [invalidClientError, setInvalidClientError] = useState<string | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
 
   const { options: clientOptions, isLoading: isClientsLoading } = useTrainerClientOptions();
+
+  // Check if the pre-selected clientId exists in the trainer's client list
+  const selectedClient = clientOptions.find((opt) => opt.id === formValues.clientId);
+  const preSelectedClientExists = meta.clientId && selectedClient;
+
+  // Show error if pre-selected client doesn't exist
+  useEffect(() => {
+    if (meta.clientId && !selectedClient && clientOptions.length > 0) {
+      setInvalidClientError("Selected client doesn't exist or doesn't belong to you");
+      // Reset the clientId to empty to show placeholder
+      setValue("clientId", "");
+      dispatch({ 
+        type: "UPDATE_META", 
+        payload: { ...meta, clientId: "" } 
+      });
+    } else {
+      setInvalidClientError(null);
+    }
+  }, [meta.clientId, selectedClient, clientOptions.length, setValue, dispatch, meta]);
 
   const filteredClientOptions = clientOptions.filter((opt) =>
     opt.name.toLowerCase().includes(clientSearchQuery.toLowerCase()),
   );
 
-  const selectedClient = clientOptions.find((opt) => opt.id === formValues.clientId);
+  const handleClientSelect = (clientId: string) => {
+    const client = clientOptions.find((opt) => opt.id === clientId);
+    if (client) {
+      setValue("clientId", clientId);
+      dispatch({ 
+        type: "UPDATE_META", 
+        payload: { ...meta, clientId: clientId } 
+      });
+      setInvalidClientError(null);
+      setIsClientDropdownOpen(false); // Close the dropdown
+    } else {
+      setInvalidClientError("Selected client doesn't exist or doesn't belong to you");
+      setValue("clientId", ""); // Clear the input
+      dispatch({ 
+        type: "UPDATE_META", 
+        payload: { ...meta, clientId: "" } 
+      });
+    }
+  };
 
   // Setup useAction based on mode
   const createAction = useAction(createWorkoutPlan, {
     onSuccess: ({ id }) => {
+      setConflictError(null); // Clear any previous conflict errors
       toast.success("Workout plan created successfully!");
       router.push(`/training/plans/${id}`);
     },
     onError: (error) => {
       console.error("Error creating plan:", error);
-      toast.error("Failed to create workout plan. Please try again.");
+      
+      // Check if it's a conflict error (contains specific keywords)
+      if (error.includes("Choose start date after") && error.includes("currently published")) {
+        setConflictError(error);
+        toast.error("Plan date conflict detected");
+      } else {
+        setConflictError(null);
+        toast.error("Failed to create workout plan. Please try again.");
+      }
     },
   });
 
   const updateAction = useAction(updateWorkoutPlan, {
     onSuccess: () => {
+      setConflictError(null); // Clear any previous conflict errors
       toast.success("Workout plan updated successfully!");
       router.refresh();
     },
     onError: (error) => {
       console.error("Error updating plan:", error);
-      toast.error("Failed to update workout plan. Please try again.");
+      
+      // Check if it's a conflict error (contains specific keywords)
+      if (error.includes("Choose start date after") && error.includes("currently published")) {
+        setConflictError(error);
+        toast.error("Plan date conflict detected");
+      } else {
+        setConflictError(null);
+        toast.error("Failed to update workout plan. Please try again.");
+      }
     },
   });
 
@@ -219,35 +282,24 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
           render={({ field }) => (
             <FormItem className="flex flex-col gap-2">
               <FormLabel>Start Date</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button 
-                      variant="outline" 
-                      className={cn( 
-                        "w-full justify-start text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? format(field.value, "PPP") : "Select a date"}
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar 
-                    mode="single" 
-                    selected={field.value} 
-                    onSelect={(date) => {
-                      if (date) {
-                        handleStartDateChange(date);
-                      }
-                    }} 
-                    initialFocus 
-                  />
-                </PopoverContent>
-              </Popover>
+              <FormControl>
+                <DatePicker
+                  date={field.value}
+                  onSelect={handleStartDateChange}
+                  placeholder="Select start date"
+                  className="w-full"
+                  allowFutureDates={true}
+                />
+              </FormControl>
               <FormMessage />
+              {conflictError && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTitle>Plan Conflict</AlertTitle>
+                  <AlertDescription className="text-sm">
+                    {conflictError}
+                  </AlertDescription>
+                </Alert>
+              )}
             </FormItem>
           )}
         />
@@ -274,9 +326,12 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
         {/* End Date (Read-only calculated field) */}
         <div className="flex flex-col gap-2">
           <Label>End Date</Label>
-          <Label className="text-sm text-muted-foreground">
-            {endDate ? format(endDate, "PPP") : "Select a date"}
-          </Label>
+          <Input
+            type="date"
+            value={endDate ? format(endDate, "yyyy-MM-dd") : ""}
+            disabled
+            className="w-full"
+          />
         </div>
         {/* Category Field */}
         <FormField
@@ -310,6 +365,12 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
           render={({ field }) => (
             <FormItem className="flex flex-col gap-2">
               <FormLabel>Select a client</FormLabel>
+              {invalidClientError && (
+                <Alert variant="destructive" className="mb-2">
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{invalidClientError}</AlertDescription>
+                </Alert>
+              )}
               {isClientsLoading ? (
                 <Button variant="outline" className="w-full justify-between" disabled>
                   Loading clients...
@@ -332,7 +393,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
                         className="w-full justify-between font-normal bg-background"
                       >
                         <span className={cn("truncate", !selectedClient && "text-muted-foreground")}> 
-                          {selectedClient ? selectedClient.name : "Select a client..."}
+                          {selectedClient ? selectedClient.name : "Choose a client"}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-muted-foreground/80" />
                       </Button>
@@ -355,8 +416,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
                               key={client.id}
                               value={client.name}
                               onSelect={() => {
-                                field.onChange(client.id);
-                                setIsClientDropdownOpen(false);
+                                handleClientSelect(client.id);
                               }}
                             >
                               {client.name}

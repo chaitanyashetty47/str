@@ -18,15 +18,18 @@ import {
   type SetValidationError, 
   type ValidationSummary 
 } from "@/lib/schemas/plan-validation";
+import { startOfWeek } from "date-fns";
 
 // ------------------------------------------------------------------
 // Action types (expand incrementally)
 // ------------------------------------------------------------------
 export type PlanEditorAction =
   | { type: "ADD_WEEK" }
-  | { type: "SELECT_WEEK_DAY"; week: number; day: 1 | 2 | 3 }
+  | { type: "SELECT_WEEK_DAY"; week: number; day: 1 | 2 | 3 | 4 | 5 | 6 | 7 }
   | { type: "DUPLICATE_WEEK"; week: number}
   | { type: "DELETE_WEEK"; week: number}
+  | { type: "ADD_DAY"; week: number }
+  | { type: "DELETE_DAY"; week: number; day: number }
   | { type: "UPDATE_META"; payload: Partial<PlanEditorMeta>}
   | {type: "SET_STATUS"; status: WorkoutPlanStatus}
   | {type: "TOGGLE_INTENSITY_MODE"}
@@ -63,16 +66,37 @@ export type PlanEditorAction =
 // TOGGLE_PLAN_INTENSITY   // 'ABS' ↔ 'PERCENT'
 
 // ------------------------------------------------------------------
-// Initial blank week helper – implementation TODO
+// Helper functions
 // ------------------------------------------------------------------
 function createBlankWeek(weekNumber: number): WeekInPlan {
-  const days: [DayInPlan, DayInPlan, DayInPlan] = [
+  const days: DayInPlan[] = [
     { dayNumber: 1, title: "Training Day 1", exercises: [], estimatedTimeMinutes: 0 },
     { dayNumber: 2, title: "Training Day 2", exercises: [], estimatedTimeMinutes: 0 },
     { dayNumber: 3, title: "Training Day 3", exercises: [], estimatedTimeMinutes: 0 },
   ];
 
   return { weekNumber, days };
+}
+
+// Check if a week can have more days added (max 7 days)
+function canAddDay(week: WeekInPlan): boolean {
+  return week.days.length < 7;
+}
+
+// Check if a week can have days deleted (min 3 days)
+function canDeleteDay(week: WeekInPlan): boolean {
+  return week.days.length > 3;
+}
+
+// Get the next day number for a week
+function getNextDayNumber(week: WeekInPlan): number {
+  if (week.days.length === 0) return 1;
+  return Math.max(...week.days.map(d => d.dayNumber)) + 1;
+}
+
+// Calculate total days across all weeks
+function getTotalDays(weeks: WeekInPlan[]): number {
+  return weeks.reduce((total, week) => total + week.days.length, 0);
 }
 
 
@@ -146,6 +170,61 @@ function reducer(state: PlanEditorState, action: PlanEditorAction): PlanEditorSt
           }
         } else if (draft.selectedWeek > action.week) {
           draft.selectedWeek -= 1; // Shift selectedWeek down
+        }
+        break;
+      }
+
+      case "ADD_DAY": {
+        // Find the target week
+        const week = draft.weeks.find((w) => w.weekNumber === action.week);
+        if (!week) break; // Week not found
+
+        // Check if we can add more days (max 7)
+        if (!canAddDay(week)) break; // Already at max days
+
+        // Get the next day number
+        const nextDayNumber = getNextDayNumber(week);
+
+        // Create new day
+        const newDay: DayInPlan = {
+          dayNumber: nextDayNumber as 1 | 2 | 3 | 4 | 5 | 6 | 7,
+          title: `Training Day ${nextDayNumber}`,
+          exercises: [],
+          estimatedTimeMinutes: 0,
+        };
+
+        // Add the new day
+        week.days.push(newDay);
+
+        // Auto-select the newly added day
+        draft.selectedWeek = action.week;
+        draft.selectedDay = nextDayNumber as 1 | 2 | 3 | 4 | 5 | 6 | 7;
+        break;
+      }
+
+      case "DELETE_DAY": {
+        // Find the target week
+        const week = draft.weeks.find((w) => w.weekNumber === action.week);
+        if (!week) break; // Week not found
+
+        // Check if we can delete days (min 3 days)
+        if (!canDeleteDay(week)) break; // Already at minimum days
+
+        // Find the day to delete
+        const dayIndex = week.days.findIndex((d) => d.dayNumber === action.day);
+        if (dayIndex === -1) break; // Day not found
+
+        // Remove the day
+        week.days.splice(dayIndex, 1);
+
+        // Adjust selectedDay if the deleted day was selected
+        if (draft.selectedWeek === action.week && draft.selectedDay === action.day) {
+          // Select the first available day in the week
+          if (week.days.length > 0) {
+            draft.selectedDay = week.days[0].dayNumber;
+          } else {
+            draft.selectedDay = 1; // Fallback
+          }
         }
         break;
       }
@@ -327,7 +406,7 @@ const initialState: PlanEditorState = {
   meta: {
     title: "New Routine",
     description: "",
-    startDate: new Date(),
+    startDate: startOfWeek(new Date(), { weekStartsOn: 1 }), // Always start on Monday of current week
     category: WorkoutCategory.HYPERTROPHY, // temp placeholder – cast for now
     clientId: "",
     durationWeeks: 1,
@@ -344,10 +423,20 @@ interface PlanEditorProviderProps {
   children: ReactNode;
   initial?: PlanEditorState;
   trainerWeightUnit?: WeightUnit;
+  selectedClientId?: string;
 }
 
-export function PlanEditorProvider({ children, initial, trainerWeightUnit }: PlanEditorProviderProps) {
-  const [state, dispatch] = useReducer(reducer, initial ?? initialState);
+export function PlanEditorProvider({ children, initial, trainerWeightUnit, selectedClientId }: PlanEditorProviderProps) {
+  // Create initial state with selectedClientId if provided
+  const initialStateWithClient: PlanEditorState = {
+    ...initialState,
+    meta: {
+      ...initialState.meta,
+      clientId: selectedClientId || "",
+    },
+  };
+
+  const [state, dispatch] = useReducer(reducer, initial ?? initialStateWithClient);
   const weightUnit = trainerWeightUnit ?? WeightUnit.KG;
   
   return (
@@ -515,5 +604,28 @@ export function usePlanValidation() {
     getSetValidationErrors: () => getSetValidationErrors(state),
     hasValidationErrors: () => hasValidationErrors(state),
     getExerciseValidationStatus,
+  } as const;
+}
+
+// ------------------------------------------------------------------
+// Helper hook for day management
+// ------------------------------------------------------------------
+export function usePlanHelpers() {
+  const state = usePlanState();
+  
+  return {
+    canAddDay: (weekNumber: number) => {
+      const week = state.weeks.find(w => w.weekNumber === weekNumber);
+      return week ? canAddDay(week) : false;
+    },
+    canDeleteDay: (weekNumber: number) => {
+      const week = state.weeks.find(w => w.weekNumber === weekNumber);
+      return week ? canDeleteDay(week) : false;
+    },
+    getTotalDays: () => getTotalDays(state.weeks),
+    getNextDayNumber: (weekNumber: number) => {
+      const week = state.weeks.find(w => w.weekNumber === weekNumber);
+      return week ? getNextDayNumber(week) : 1;
+    },
   } as const;
 } 

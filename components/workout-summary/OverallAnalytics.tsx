@@ -30,10 +30,7 @@ import {
   Tooltip,
   ReferenceLine,
 } from "recharts";
-import {
-  OverallAnalyticsData,
-  ExerciseProgressData,
-} from "@/actions/client-workout/workout-analytics.action";
+
 import { useOverallAnalytics } from "@/hooks/use-workout-analytics";
 
 interface OverallAnalyticsProps {
@@ -373,7 +370,7 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
                       y={firstORM}
                       stroke="#94a3b8"
                       strokeDasharray="5 5"
-                      label={{ value: "Starting Point", position: "topLeft" }}
+                      label={{ value: "Starting Point", position: "top" }}
                     />
                   )}
                 </LineChart>

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
 import { GripVertical, Plus, MoreHorizontal, CheckCircle2 } from "lucide-react";
 
-import { usePlanState, usePlanDispatch } from "../../contexts/PlanEditorContext";
+import { usePlanState, usePlanDispatch, usePlanHelpers } from "../../contexts/PlanEditorContext";
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -31,20 +31,38 @@ function formatWeekRange(startDate: Date, weekIndex: number) {
 export function WeekAndDaySelector() {
   const { weeks, selectedWeek, selectedDay, meta } = usePlanState();
   const dispatch = usePlanDispatch();
+  const { canAddDay, canDeleteDay, getTotalDays } = usePlanHelpers();
 
   // Accordion open state: keep all open by default
   const [openAccordions, setOpenAccordions] = useState<string[]>(
     weeks.map((w) => `week-${w.weekNumber}`)
   );
 
-  const totalDays = weeks.length * 3;
+  const totalDays = getTotalDays();
 
   const groupedWeeks = weeks; // alias for clarity
 
   const addWeek = () => dispatch({ type: "ADD_WEEK" });
+  
+  const addDay = (weekNum: number) => dispatch({ type: "ADD_DAY", week: weekNum });
+  
+  const deleteDay = (weekNum: number, dayNum: number) => dispatch({ type: "DELETE_DAY", week: weekNum, day: dayNum });
 
-  const selectDay = (weekNum: number, dayNum: 1 | 2 | 3) =>
+  const selectDay = (weekNum: number, dayNum: 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
     dispatch({ type: "SELECT_WEEK_DAY", week: weekNum, day: dayNum });
+    
+    // Smooth scroll to the selected day
+    const targetId = `week-${weekNum}-day-${dayNum}`;
+    const targetElement = document.getElementById(targetId);
+    
+    if (targetElement) {
+      targetElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
+    }
+  };
 
   // memo helper to check if all 3 days have at least 1 exercise
   const isWeekCompleted = (weekIndex: number) => {
@@ -53,7 +71,7 @@ export function WeekAndDaySelector() {
   };
 
   return (
-    <aside className="border-r bg-gray-50 p-4 overflow-y-auto w-[320px]">
+    <aside className="border-r bg-gray-50 p-4 overflow-y-auto w-[320px] sticky top-0 h-[calc(100vh-4rem)] z-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm text-muted-foreground">Total: {totalDays} days</span>
@@ -122,30 +140,69 @@ export function WeekAndDaySelector() {
                   const isSelected =
                     selectedWeek === week.weekNumber && selectedDay === day.dayNumber;
                   return (
-                    <button
+                    <div
                       key={`${week.weekNumber}-${day.dayNumber}`}
-                      onClick={() => selectDay(week.weekNumber, day.dayNumber)}
                       className={cn(
-                        "w-full text-left p-2 rounded-md transition-colors flex items-center justify-between",
+                        "w-full rounded-md transition-colors flex items-center justify-between",
                         isSelected
                           ? "bg-blue-100 text-blue-900 font-medium"
                           : "hover:bg-gray-100"
                       )}
                     >
-                      <span className="text-sm">
-                        {day.title || `Day ${day.dayNumber}`}
-                        <span className="text-xs text-muted-foreground ml-1">
-                          (Day {day.dayNumber})
+                      <button
+                        onClick={() => selectDay(week.weekNumber, day.dayNumber)}
+                        className="flex-1 text-left p-2 rounded-md"
+                      >
+                        <span className="text-sm">
+                          {day.title || `Day ${day.dayNumber}`}
+                          <span className="text-xs text-muted-foreground ml-1">
+                            (Day {day.dayNumber})
+                          </span>
                         </span>
-                      </span>
-                      {day.exercises.length > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          {day.exercises.length}
-                        </Badge>
-                      )}
-                    </button>
+                      </button>
+                      <div className="flex items-center gap-1 pr-2">
+                        {day.exercises.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {day.exercises.length}
+                          </Badge>
+                        )}
+                        {canDeleteDay(week.weekNumber) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <span className="h-6 w-6 p-0 inline-flex items-center justify-center rounded hover:bg-accent cursor-pointer">
+                                <MoreHorizontal className="h-3 w-3 text-muted-foreground" />
+                              </span>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteDay(week.weekNumber, day.dayNumber);
+                                }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                Delete Day
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
+                
+                {/* Add Day Button */}
+                {canAddDay(week.weekNumber) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addDay(week.weekNumber)}
+                    className="w-full text-left p-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 transition-colors"
+                  >
+                    <Plus className="h-3 w-3 mr-2" />
+                    <span className="text-xs text-muted-foreground">Add Day</span>
+                  </Button>
+                )}
     </div>
             </AccordionContent>
           </AccordionItem>

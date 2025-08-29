@@ -36,7 +36,7 @@ export interface ExerciseInPlan {
 
 // ─── Day inside a week (always 3 per week) ─────────────────────────
 export interface DayInPlan {
-  dayNumber: 1 | 2 | 3;
+  dayNumber: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   title: string;
   exercises: ExerciseInPlan[];
   /** cached client-side; recomputed when exercises change */
@@ -46,7 +46,7 @@ export interface DayInPlan {
 // ─── Week wrapper ──────────────────────────────────────────────────
 export interface WeekInPlan {
   weekNumber: number;  // contiguous 1…n
-  days: [DayInPlan, DayInPlan, DayInPlan];
+  days: DayInPlan[]; // Flexible array: minimum 3 days, maximum 7 days
 }
 
 // ─── Top-level editor state ───────────────────────────────────────
@@ -75,7 +75,7 @@ export interface PlanEditorState {
   meta: PlanEditorMeta;
   weeks: WeekInPlan[];
   selectedWeek: number;  // 1-based
-  selectedDay: 1 | 2 | 3;
+  selectedDay: 1 | 2 | 3 | 4 | 5 | 6 | 7;
 }
 
 

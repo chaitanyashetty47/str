@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createSafeAction } from "@/lib/create-safe-action";
 import prisma from "@/utils/prisma/prismaClient";
-import { getAuthenticatedUserId } from "@/utils/user";
+import { checkAdminAccess, getAdminUser } from "@/utils/user";
 import { Prisma, SubscriptionStatus } from "@prisma/client";
 import { randomUUID } from "crypto";
 
@@ -17,8 +17,8 @@ const GetAdminClientsSchema = z.object({
 export const getAdminClients = createSafeAction(
   GetAdminClientsSchema,
   async (input) => {
-    const adminId = await getAuthenticatedUserId();
-    if (!adminId) return { error: "Unauthorized" };
+    const adminUser = await getAdminUser();
+    if (!adminUser) return { error: "Admin access required" };
 
     const { page, pageSize, search, category } = input;
     const skip = (page || 0) * (pageSize || 10);
@@ -170,8 +170,8 @@ const GetTrainersByRoleSchema = z.object({
 export const getTrainersByRole = createSafeAction(
   GetTrainersByRoleSchema,
   async (input) => {
-    const adminId = await getAuthenticatedUserId();
-    if (!adminId) return { error: "Unauthorized" };
+    const adminUser = await getAdminUser();
+    if (!adminUser) return { error: "Admin access required" };
 
     const { roles } = input;
 
@@ -204,8 +204,8 @@ const AssignTrainerSchema = z.object({
 export const assignTrainerToClient = createSafeAction(
   AssignTrainerSchema,
   async (input) => {
-    const adminId = await getAuthenticatedUserId();
-    if (!adminId) return { error: "Unauthorized" };
+    const adminUser = await getAdminUser();
+    if (!adminUser) return { error: "Admin access required" };
 
     const { clientId, trainerId, category } = input;
 
@@ -265,8 +265,8 @@ const UpdateTrainerAssignmentsSchema = z.object({
 export const updateTrainerAssignments = createSafeAction(
   UpdateTrainerAssignmentsSchema,
   async (input) => {
-    const adminId = await getAuthenticatedUserId();
-    if (!adminId) return { error: "Unauthorized" };
+    const adminUser = await getAdminUser();
+    if (!adminUser) return { error: "Admin access required" };
 
     const { clientId, updates } = input;
 

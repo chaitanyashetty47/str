@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createSafeAction } from "@/lib/create-safe-action";
 import prisma from "@/utils/prisma/prismaClient";
-import { getAuthenticatedUserId } from "@/utils/user";
+import { checkAdminAccess, getAdminUser } from "@/utils/user";
 import { Prisma, Role } from "@prisma/client";
 
 const GetAdminTrainersSchema = z.object({
@@ -16,8 +16,8 @@ const GetAdminTrainersSchema = z.object({
 export const getAdminTrainers = createSafeAction(
   GetAdminTrainersSchema,
   async (input) => {
-    const adminId = await getAuthenticatedUserId();
-    if (!adminId) return { error: "Unauthorized" };
+    const adminUser = await getAdminUser();
+    if (!adminUser) return { error: "Admin access required" };
 
     const { page, pageSize, search, category } = input;
     const skip = (page || 0) * (pageSize || 10);

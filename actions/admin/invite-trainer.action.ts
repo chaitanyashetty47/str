@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createSafeAction } from "@/lib/create-safe-action";
-import { getAuthenticatedUserId } from "@/utils/user";
+import { checkAdminAccess, getAdminUser } from "@/utils/user";
 import { createServiceClient } from "@/utils/supabase/service";
 
 const InviteTrainerSchema = z.object({
@@ -14,8 +14,8 @@ const InviteTrainerSchema = z.object({
 export const inviteTrainer = createSafeAction(
   InviteTrainerSchema,
   async (input) => {
-    const adminId = await getAuthenticatedUserId();
-    if (!adminId) return { error: "Unauthorized" };
+    const adminUser = await getAdminUser();
+    if (!adminUser) return { error: "Admin access required" };
 
     const { email, name, role } = input;
 
@@ -40,7 +40,7 @@ export const inviteTrainer = createSafeAction(
         data: {
           name: name,
           role: role,
-          invited_by: adminId,
+          invited_by: adminUser.userId,
           invited_at: new Date().toISOString(),
         },
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=invite&role=${role}`,
