@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Users, Activity, Calendar, User, Weight, ArrowRight } from "lucide-react";
 import { getTrainerDashboardData } from "@/actions/trainer.dashboard.action";
 import { NewlyAssignedClientsCard } from "@/components/dashboard/NewlyAssignedClientsCard";
+import Link from "next/link";
 
 export default async function TrainerDashboard() {
   // Fetch data using the server action
@@ -217,6 +218,15 @@ export default async function TrainerDashboard() {
                         <span className="text-xs font-medium">{plan.overallProgressPercentage}%</span>
                       </div>
                       <Progress value={plan.overallProgressPercentage} className="h-2" />
+                    </div>
+                    
+                    <div className="pt-2">
+                      <Link 
+                        href={`/fitness/plans/${plan.planId}/progress`}
+                        className="text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                      >
+                        Check progress <ArrowRight className="h-3 w-3" />
+                      </Link>
                     </div>
                   </div>
                 ))}
