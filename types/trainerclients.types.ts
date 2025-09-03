@@ -1,7 +1,7 @@
 import { Database } from "@/utils/supabase/types";
 
 type Client = Pick<
-  Database["public"]["Tables"]["users"]["Row"],
+  Database["public"]["Tables"]["users_profile"]["Row"],
   "name" | "email"
 >;
 

@@ -63,6 +63,9 @@ export const updateSession = async (request: NextRequest) => {
      const isProtectedRoute = protectedRoutes.some(route => 
        pathname.startsWith(route)
      );
+     
+     // Special protection for password reset page
+     const isPasswordResetPage = pathname === '/protected/reset-password';
 
 
       // Redirect to sign-in if accessing protected route without auth
@@ -71,6 +74,9 @@ export const updateSession = async (request: NextRequest) => {
       redirectUrl.searchParams.set('redirectTo', pathname);
       return NextResponse.redirect(redirectUrl);
     }
+    
+    // Note: Password reset page protection is handled in the page component itself
+    // to check for valid password reset session and URL parameters
 
 //*** This is old code for protected routes */
     // protected routes

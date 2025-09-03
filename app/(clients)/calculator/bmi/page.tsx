@@ -2,6 +2,9 @@ import PageHeaderTemplate from "@/components/page-header-template";
 import BMICalculator from "@/components/calculator/bmi/BMICalculator";
 import { getWeightHeight } from "@/actions/body-measurement-metrics/get-weight-height.action";
 
+// Force dynamic rendering since this page uses cookies for authentication
+export const dynamic = 'force-dynamic';
+
 export default async function BMICalculatorPage() {
   const weightHeight = await getWeightHeight();
   if(weightHeight.error) {

@@ -33,7 +33,10 @@ function isCacheValid(timestamp: number): boolean {
 
 // Helper to detect if we're in trainer context
 function isTrainerContext(pathname: string): boolean {
-  return pathname.includes('/fitness/plans/') && pathname.includes('/summary');
+  console.log('🔍 Checking context for path:', pathname);
+  const isTrainer = pathname.includes('/fitness/plans/') && pathname.includes('/progress');
+  console.log('Is trainer context?', isTrainer);
+  return isTrainer;
 }
 
 // Generate cache keys (include context to separate client/trainer caches)
@@ -54,13 +57,23 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
 
+  console.log("inside weekly analytics hook")
+
   const fetchData = useCallback(async (forceRefresh = false) => {
+    console.log('📊 Weekly Analytics - Starting fetch', { planId, weekNumber, pathname });
+    
     const isTrainer = isTrainerContext(pathname);
     const cacheKey = getWeekCacheKey(planId, weekNumber, isTrainer);
+    console.log('🔑 Cache key generated:', cacheKey);
     
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
       const cachedEntry = analyticsCache.weeklyData.get(cacheKey);
+      console.log('🔍 Cache check:', { 
+        hasCachedEntry: !!cachedEntry,
+        isValid: cachedEntry && isCacheValid(cachedEntry.timestamp)
+      });
+      
       if (cachedEntry && isCacheValid(cachedEntry.timestamp)) {
         console.log(`📦 Using cached weekly data for ${cacheKey}`);
         setData(cachedEntry.data);
@@ -71,7 +84,11 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
     }
 
     // Fetch fresh data
-    console.log(`🔄 Fetching fresh weekly data for ${cacheKey} (${isTrainer ? 'trainer' : 'client'} context)`);
+    console.log(`🔄 Fetching fresh weekly data for ${cacheKey}`, {
+      context: isTrainer ? 'trainer' : 'client',
+      action: isTrainer ? 'getTrainerWeekAnalytics' : 'getWeekAnalytics'
+    });
+    
     setLoading(true);
     setError(null);
     
@@ -81,10 +98,18 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
         ? await getTrainerWeekAnalytics({ planId, weekNumber })
         : await getWeekAnalytics({ planId, weekNumber });
       
+      console.log('📥 Server action response:', { 
+        hasError: !!result.error,
+        hasData: !!result.data,
+        error: result.error
+      });
+      
       if (result.error) {
+        console.error('❌ Server action error:', result.error);
         setError(result.error);
         setData(null);
       } else if (result.data) {
+        console.log('✅ Server action success, caching data');
         setData(result.data);
         // Cache the result
         analyticsCache.weeklyData.set(cacheKey, {
@@ -94,6 +119,7 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
         console.log(`💾 Cached weekly data for ${cacheKey}`);
       }
     } catch (err) {
+      console.error('💥 Unexpected error:', err);
       setError('Failed to fetch analytics data');
       setData(null);
     } finally {
@@ -120,12 +146,20 @@ export function useOverallAnalytics(planId: string) {
   const pathname = usePathname();
 
   const fetchData = useCallback(async (forceRefresh = false) => {
+    console.log('📈 Overall Analytics - Starting fetch', { planId, pathname });
+    
     const isTrainer = isTrainerContext(pathname);
     const cacheKey = getOverallCacheKey(planId, isTrainer);
+    console.log('🔑 Cache key generated:', cacheKey);
     
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
       const cachedEntry = analyticsCache.overallData.get(cacheKey);
+      console.log('🔍 Cache check:', { 
+        hasCachedEntry: !!cachedEntry,
+        isValid: cachedEntry && isCacheValid(cachedEntry.timestamp)
+      });
+      
       if (cachedEntry && isCacheValid(cachedEntry.timestamp)) {
         console.log(`📦 Using cached overall data for ${cacheKey}`);
         setData(cachedEntry.data);
@@ -136,7 +170,11 @@ export function useOverallAnalytics(planId: string) {
     }
 
     // Fetch fresh data
-    console.log(`🔄 Fetching fresh overall data for ${cacheKey} (${isTrainer ? 'trainer' : 'client'} context)`);
+    console.log(`🔄 Fetching fresh overall data for ${cacheKey}`, {
+      context: isTrainer ? 'trainer' : 'client',
+      action: isTrainer ? 'getTrainerOverallAnalytics' : 'getOverallAnalytics'
+    });
+    
     setLoading(true);
     setError(null);
     
@@ -146,10 +184,18 @@ export function useOverallAnalytics(planId: string) {
         ? await getTrainerOverallAnalytics({ planId })
         : await getOverallAnalytics({ planId });
       
+      console.log('📥 Server action response:', { 
+        hasError: !!result.error,
+        hasData: !!result.data,
+        error: result.error
+      });
+      
       if (result.error) {
+        console.error('❌ Server action error:', result.error);
         setError(result.error);
         setData(null);
       } else if (result.data) {
+        console.log('✅ Server action success, caching data');
         setData(result.data);
         // Cache the result
         analyticsCache.overallData.set(cacheKey, {
@@ -159,6 +205,7 @@ export function useOverallAnalytics(planId: string) {
         console.log(`💾 Cached overall data for ${cacheKey}`);
       }
     } catch (err) {
+      console.error('💥 Unexpected error:', err);
       setError('Failed to fetch analytics data');
       setData(null);
     } finally {

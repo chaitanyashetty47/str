@@ -1,18 +1,19 @@
 "use client"
 import { Button } from "@/components/ui/button"
 import { PlusIcon } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState, useRef } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useAction } from "@/hooks/useAction";
 import { addBMI } from "@/actions/body-measurement-metrics/add-bmi.action";
+import { updateTodaysWeight } from "@/actions/body-measurement-metrics/update-todays-weight.action";
 import { BMIAreaChart } from "./BMIAreaChart";
 import useSWR from "swr";
 import { getWeightUnit } from "@/actions/profile/get-weight-unit.action";
 import { WeightUnit } from "@prisma/client";
 import { convertFromKg } from "@/utils/weight";
-import { getTodaysWeight, updateTodaysWeight, convertToKG } from "@/lib/weight-management";
+import { convertToKG } from "@/utils/weight-conversions";
 import { useAuth } from "@/contexts/AuthContext";
 
 function getTodayISODate() {
@@ -48,7 +49,7 @@ function getCategoryColor(category: string) {
 
 // Fetcher for server actions
 async function fetchIsTodayLogged() {
-  const mod = await import("@/actions/body-measurement-metrics/is-today-logged.action");
+  const mod = await import("@/actions/body-measurement-metrics/is-today-bmi-logged.action");
   
   // Get current client date
   const today = new Date();
@@ -61,6 +62,26 @@ async function fetchIsTodayLogged() {
   return result.data?.isTodayLogged;
 }
 
+async function fetchTodaysWeight() {
+  const mod = await import("@/actions/body-measurement-metrics/get-todays-weight.action");
+  const result = await mod.getTodaysWeight({});
+  return result.data;
+}
+
+async function fetchIsTodayWeightLogged() {
+  const mod = await import("@/actions/body-measurement-metrics/is-today-weight-logged.action");
+  
+  // Get current client date
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const clientDate = `${year}-${month}-${day}`;
+  
+  const result = await mod.isTodayWeightLogged({ clientDate });
+  return result.data?.isTodayWeightLogged;
+}
+
 async function fetchAllBMI() {
   const { getBMI } = await import("@/actions/body-measurement-metrics/get-bmi.action");
   // Fetch all records (set pageSize high)
@@ -70,7 +91,7 @@ async function fetchAllBMI() {
 
 export default function BMICalculator({ initialWeight, initialHeight }: { initialWeight: number, initialHeight: number }) {
   const { user } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [weight, setWeight] = useState(initialWeight);
   const [height, setHeight] = useState(initialHeight);
   const [userWeightUnit, setUserWeightUnit] = useState<WeightUnit>(WeightUnit.KG);
@@ -100,10 +121,7 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
   // Fetch today's weight data
   const { data: todaysWeightData, mutate: mutateTodaysWeight } = useSWR(
     user ? "todaysWeight" : null,
-    async () => {
-      if (!user) return null;
-      return await getTodaysWeight(user.id);
-    },
+    fetchTodaysWeight,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
@@ -150,6 +168,17 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
     }
   );
 
+  // SWR for checking if weight is logged today
+  const { data: isTodayWeightLogged } = useSWR(
+    "isTodayWeightLogged", 
+    fetchIsTodayWeightLogged,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000, // 1 minute
+    }
+  );
+
   // SWR for all BMI data with optimized configuration
   const { data: bmiData, mutate: mutateBMIData, isLoading: isBMIDataLoading } = useSWR(
     "allBMI", 
@@ -186,13 +215,13 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
       // If user chose to save new weight, update weight_logs
       if (saveNewWeight && user) {
         const weightInKG = convertToKG(weight, userWeightUnit);
-        await updateTodaysWeight(user.id, weightInKG, 'KG');
+        await updateTodaysWeight({ weight: weightInKG, weightUnit: 'KG' });
         // Refresh today's weight data
         mutateTodaysWeight();
       }
       
-      // Close dialog first
-      setIsDialogOpen(false);
+      // Close form
+      setShowAddForm(false);
       
       // Delay SWR mutations to prevent re-render conflicts
       setTimeout(() => {
@@ -247,14 +276,97 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
           <h1 className="text-2xl font-bold">BMI Results</h1>
           <div className="flex flex-row gap-2">
             <Button className="bg-strentor-red text-white"
-              onClick={() => setIsDialogOpen(true)}
+              onClick={() => setShowAddForm(!showAddForm)}
               disabled={isTodayLogged || isAdding}
               title={isTodayLogged ? "You have already inputted today's data." : undefined}
             >
-              <PlusIcon className="w-4 h-4" /> Add New BMI
+              <PlusIcon className="w-4 h-4" /> {showAddForm ? "Cancel" : "Add New BMI"}
             </Button>
           </div>
         </div>
+        
+        {/* Add BMI Form - Hidden div that appears above chart */}
+        {showAddForm && (
+          <div className="mb-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Add New BMI</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {weightData?.source === 'weight_logs' 
+                    ? "Weight already logged for today - using that value"
+                    : "Weight from profile - can be updated"}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  <Label>Weight</Label>
+                  <div className="flex">
+                    <Input 
+                      type="number" 
+                      value={weight} 
+                      onChange={(e) => setWeight(Number(e.target.value))}
+                      className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
+                      disabled={weightData?.isLocked}
+                    />
+                    <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground bg-muted border border-l-0 rounded-r-md">
+                      {userWeightUnit === WeightUnit.KG ? "kg" : "lbs"}
+                    </span>
+                  </div>
+                  {weightData?.isLocked && (
+                    <p className="text-sm text-muted-foreground">
+                      ⚠️ Weight is locked for today. Use the same weight across all calculators.
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Height</Label>
+                  <div className="flex">
+                    <Input 
+                      type="number" 
+                      value={height} 
+                      onChange={(e) => setHeight(Number(e.target.value))}
+                      className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
+                    />
+                    <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground bg-muted border border-l-0 rounded-r-md">
+                      cm
+                    </span>
+                  </div>
+                </div>
+                {!weightData?.isLocked && !isTodayWeightLogged && (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="saveNewWeight"
+                      checked={saveNewWeight}
+                      onChange={(e) => setSaveNewWeight(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="saveNewWeight" className="text-sm">
+                      Save as today's weight
+                    </Label>
+                  </div>
+                )}
+                {addError && <div className="text-red-500 text-sm">{addError}</div>}
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => handleAddBMI({ weight, height })} 
+                    disabled={!weight || !height || isAdding}
+                    className="bg-strentor-red text-white"
+                  >
+                    {isAdding ? "Adding..." : "Add BMI"}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowAddForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="flex-1">
           <BMIAreaChart data={bmiEntries.map(e => ({
             ...e,
@@ -307,19 +419,7 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
           <Button variant="outline" size="sm" onClick={() => setPage(p => p - 1)} disabled={!hasPrev || isBMIDataLoading}>Previous</Button>
           <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={!hasNext || isBMIDataLoading}>Next</Button>
         </div>
-        <BMICalculatorDialog 
-          open={isDialogOpen} 
-          setOpen={setIsDialogOpen} 
-          initialWeight={displayWeight} 
-          initialHeight={displayHeight} 
-          onAdd={handleAddBMI} 
-          isLoading={isAdding} 
-          addError={addError}
-          weightUnit={userWeightUnit}
-          weightData={weightData}
-          saveNewWeight={saveNewWeight}
-          setSaveNewWeight={setSaveNewWeight}
-        />
+
       </div>
       {/* Right: BMI Latest Result card */}
       <div className="flex-1 min-w-[280px] flex justify-center md:justify-start mt-8 md:mt-0">
@@ -385,117 +485,5 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
     </div>
   );
 
-  function BMICalculatorDialog({ 
-    open, 
-    setOpen, 
-    initialWeight, 
-    initialHeight, 
-    onAdd, 
-    isLoading, 
-    addError, 
-    weightUnit,
-    weightData,
-    saveNewWeight,
-    setSaveNewWeight
-  }: { 
-    open: boolean, 
-    setOpen: (open: boolean) => void, 
-    initialWeight: number, 
-    initialHeight: number, 
-    onAdd: (data: { weight: number, height: number }) => void, 
-    isLoading?: boolean, 
-    addError?: string, 
-    weightUnit: WeightUnit,
-    weightData: {
-      weight: number;
-      source: 'weight_logs' | 'profile';
-      isLocked: boolean;
-      weightUnit: 'KG' | 'LB';
-    } | null,
-    saveNewWeight: boolean,
-    setSaveNewWeight: (save: boolean) => void
-  }) {
-    const [weight, setWeight] = useState(initialWeight);
-    const [height, setHeight] = useState(initialHeight);
-
-    useEffect(() => {
-      if (open) {
-        setWeight(initialWeight);
-        setHeight(initialHeight);
-      }
-    }, [open, initialWeight, initialHeight]);
-
-    // Show weight source information
-    const weightSourceInfo = weightData?.source === 'weight_logs' 
-      ? "Weight already logged for today - using that value"
-      : "Weight from profile - can be updated";
-
-    return (
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New BMI</DialogTitle>
-            <DialogDescription>
-              {weightSourceInfo}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label>Weight</Label>
-              <div className="flex">
-                <Input 
-                  type="number" 
-                  value={weight} 
-                  onChange={(e) => setWeight(Number(e.target.value))}
-                  className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
-                  disabled={weightData?.isLocked}
-                />
-                <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground bg-muted border border-l-0 rounded-r-md">
-                  {weightUnit === WeightUnit.KG ? "kg" : "lbs"}
-                </span>
-              </div>
-              {weightData?.isLocked && (
-                <p className="text-sm text-muted-foreground">
-                  ⚠️ Weight is locked for today. Use the same weight across all calculators.
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Height</Label>
-              <div className="flex">
-                <Input 
-                  type="number" 
-                  value={height} 
-                  onChange={(e) => setHeight(Number(e.target.value))}
-                  className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
-                />
-                <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground bg-muted border border-l-0 rounded-r-md">
-                  cm
-                </span>
-              </div>
-            </div>
-            {!weightData?.isLocked && (
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="saveNewWeight"
-                  checked={saveNewWeight}
-                  onChange={(e) => setSaveNewWeight(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <Label htmlFor="saveNewWeight" className="text-sm">
-                  Save as today's weight
-                </Label>
-              </div>
-            )}
-            {addError && <div className="text-red-500 text-sm">{addError}</div>}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => onAdd({ weight, height })} disabled={!weight || !height || isLoading}>{isLoading ? "Adding..." : "Add"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 }
 

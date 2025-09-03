@@ -21,7 +21,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { sidebarMenus } from "@/data/sidebar-data/client-sidebar-menus";
+import { clientSidebarMenus } from "@/data/sidebar-data/client-sidebar-menus";
 
 /**
  * AppSidebar Component
@@ -77,7 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={sidebarMenus.navMain} />
+        <NavMain items={clientSidebarMenus.navMain} />
         {/* <NavWorkspace workspaces={sidebarMenus.workspaces} /> */}
         {/* <NavSecondary items={sidebarMenus.navSecondary} className="mt-auto" /> */}
       </SidebarContent>

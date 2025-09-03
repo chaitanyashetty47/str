@@ -159,7 +159,7 @@ export const resetPasswordAction = async (formData: FormData) => {
   const confirmPassword = formData.get("confirmPassword") as string;
 
   if (!password || !confirmPassword) {
-    encodedRedirect(
+    return encodedRedirect(
       "error",
       "/protected/reset-password",
       "Password and confirm password are required",
@@ -167,7 +167,7 @@ export const resetPasswordAction = async (formData: FormData) => {
   }
 
   if (password !== confirmPassword) {
-    encodedRedirect(
+    return encodedRedirect(
       "error",
       "/protected/reset-password",
       "Passwords do not match",
@@ -179,14 +179,99 @@ export const resetPasswordAction = async (formData: FormData) => {
   });
 
   if (error) {
-    encodedRedirect(
+    return encodedRedirect(
       "error",
       "/protected/reset-password",
       "Password update failed",
     );
   }
 
-  encodedRedirect("success", "/protected/reset-password", "Password updated");
+  // Get user role to determine the correct redirect path
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Determine redirect path based on user role
+  let redirectPath = "/settings"; // Default for clients
+  
+  if (user) {
+    // Check user role from JWT claims or database
+    const { data: profile } = await supabase
+      .from("users_profile")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    
+    if (profile?.role) {
+      switch (profile.role) {
+        case 'FITNESS_TRAINER':
+        case 'FITNESS_TRAINER_ADMIN':
+        case 'TRAINER': // Legacy
+          redirectPath = "/fitness/settings";
+          break;
+        case 'PSYCHOLOGY_TRAINER':
+          redirectPath = "/psychological/settings";
+          break;
+        case 'MANIFESTATION_TRAINER':
+          redirectPath = "/manifestation/settings";
+          break;
+        case 'ADMIN':
+          redirectPath = "/admin";
+          break;
+        default:
+          redirectPath = "/settings"; // Default for clients
+      }
+    }
+  }
+  
+  // Redirect to appropriate settings page with success message
+  return redirect(`${redirectPath}?message=Password updated successfully`);
+};
+
+export const requestPasswordResetAction = async (redirectPath?: string) => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user?.email) {
+    const defaultPath = redirectPath || "/settings";
+    return encodedRedirect("error", defaultPath, "User email not found");
+  }
+
+  const origin = (await headers()).get("origin");
+  
+  // Create the redirect URL with proper encoding
+  // For password reset, redirect directly to our reset password page
+  // No need to go through auth callback - Supabase handles verification
+  const resetPasswordUrl = `${origin}/protected/reset-password/`;
+  
+  console.log('Sending password reset email with redirectTo:', resetPasswordUrl); // Debug log
+  
+  const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+    redirectTo: resetPasswordUrl,
+  });
+
+  if (error) {
+    const defaultPath = redirectPath || "/settings";
+    return encodedRedirect("error", defaultPath, "Failed to send reset email");
+  }
+
+  const defaultPath = redirectPath || "/settings";
+  return encodedRedirect("success", defaultPath, "Password reset email sent! Check your inbox.");
+};
+
+// Role-specific password reset actions
+export const requestPasswordResetForFitnessTrainer = async () => {
+  return requestPasswordResetAction("/fitness/settings");
+};
+
+export const requestPasswordResetForPsychologyTrainer = async () => {
+  return requestPasswordResetAction("/psychological/settings");
+};
+
+export const requestPasswordResetForManifestationTrainer = async () => {
+  return requestPasswordResetAction("/manifestation/settings");
+};
+
+export const requestPasswordResetForClient = async () => {
+  return requestPasswordResetAction("/settings");
 };
 
 export const signOutAction = async () => {

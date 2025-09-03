@@ -26,12 +26,12 @@ interface WorkoutPageHeaderProps {
 
 export default function WorkoutPageHeader({
   planId,
-  title = "",
-  description = "",
-  category = "",
+  title="",
+  description="",
+  category="",
   startDate,
   endDate,
-  durationWeeks = 0,
+  durationWeeks=0,
   progress,
 }: WorkoutPageHeaderProps) {
   // Helper formatters (safe for undefined)

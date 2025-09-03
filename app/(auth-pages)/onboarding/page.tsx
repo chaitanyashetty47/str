@@ -1,7 +1,10 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import OnboardingWizard from '@/components/onboarding'
-import { getProfileDetails } from '@/actions/profile/profile-details.action'
+import { getProfileDetails } from '@/actions/profile/get-profile-details.action'
+
+// Force dynamic rendering since this page uses cookies for authentication
+export const dynamic = 'force-dynamic';
 
 export default async function OnboardingPage() {
   const supabase = await createClient()

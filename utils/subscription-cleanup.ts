@@ -49,7 +49,7 @@ export async function cleanupFailedSubscription({ subscriptionId, userId, reason
       await tx.user_subscriptions.update({
         where: { id: subscription.id },
         data: {
-          status: 'CANCELED',
+          status: 'CANCELLED',
           payment_status: 'FAILED',
           end_date: new Date()
         }

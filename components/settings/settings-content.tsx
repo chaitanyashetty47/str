@@ -5,7 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { SettingsSubscriptionsWrapper } from "@/components/subscription/settings-subscriptions-wrapper";
-import { getProfileDetails } from "@/actions/profile/profile-details.action";
+import { getProfileDetails } from "@/actions/profile/get-profile-details.action";
 import { getActiveSubscriptions } from "@/actions/subscriptions/get-active-subscriptions.action";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -25,20 +25,7 @@ export function SettingsContent({ user }: SettingsContentProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Determine active tab from URL path
-  // const getActiveTab = () => {
-  //   if (pathname.includes('/subscription')) {
-  //     return 'subscription';
-  //   }
-  //   return 'profile';
-  // };
-
-  // const [activeTab, setActiveTab] = useState(getActiveTab);
-
-  // // Update active tab when URL changes
-  // useEffect(() => {
-  //   setActiveTab(getActiveTab());
-  // }, [pathname]);
+  
 
   const activeTab = pathname.includes('/subscription') ? 'subscription' : 'profile';
 

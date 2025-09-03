@@ -58,7 +58,12 @@ export function NavUser() {
     await signOut();
     router.push("/");
   };
-
+  const handleBillingClick = async() => {
+    router.push("/settings/subscription");
+  }
+  const handleAccountClick = async() => {
+    router.push("/settings");
+  }
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -118,26 +123,26 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
+            {/* <DropdownMenuGroup>
               <DropdownMenuItem role="menuitem">
                 <Sparkles aria-hidden="true" />
                 Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator /> */}
             <DropdownMenuGroup>
-              <DropdownMenuItem role="menuitem">
+              <DropdownMenuItem onClick={handleAccountClick} role="menuitem">
                 <BadgeCheck aria-hidden="true" />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem role="menuitem">
+              <DropdownMenuItem onClick={handleBillingClick} role="menuitem">
                 <CreditCard aria-hidden="true" />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem role="menuitem">
+              {/* <DropdownMenuItem role="menuitem">
                 <Bell aria-hidden="true" />
                 Notifications
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} role="menuitem">

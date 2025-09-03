@@ -8,16 +8,17 @@ import { ContactForm } from "@/components/forms/ContactForm";
 import { EmailCaptureModal } from "@/components/forms/EmailCaptureModal";
 import { CalendlyEmbedModal } from "@/components/forms/CalendlyEmbedModal";
 import Link from "next/link"
-
+import { useRouter } from "next/navigation";
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showEmailCapture, setShowEmailCapture] = useState(false);
   const [showCalendlyEmbed, setShowCalendlyEmbed] = useState(false);
   const [capturedEmail, setCapturedEmail] = useState("");
-
+  const router = useRouter();
   const handleBookingClick = () => {
-    setShowEmailCapture(true);
+    //setShowEmailCapture(true);
+    router.push("/sign-up");
   };
 
   const handleEmailCaptured = (email: string) => {
@@ -73,7 +74,7 @@ export default function Header() {
               onClick={handleBookingClick}
             >
               <span className="whitespace-pre-wrap text-center text-sm font-bold leading-none tracking-tight text-white lg:text-lg">
-               Book Your Discovery Call
+               Sign Up
               </span>
             </Button>
           </div>
@@ -92,7 +93,7 @@ export default function Header() {
               onClick={handleBookingClick}
             >
               <span className="whitespace-pre-wrap text-center text-sm font-bold leading-none tracking-tight text-white lg:text-lg">
-               Book Your Discovery Call
+               Sign Up
               </span>
             </Button>
           </div>

@@ -98,7 +98,7 @@ export default function MetricCard() {
         href={`/calculator/${calculator.id}`}
         key={calculator.id}
         className="transition-transform hover:scale-105 hover:shadow-lg hover:bg-gray-50">
-          <Card className = "h-full border-2 hover:border-gray-300">
+          <Card className="h-full border-2 hover:border-gray-300">
           <CardHeader className={`${calculator.color} rounded-t-lg`}>
             <div className="flex items-center gap-3">
               {calculator.icon} 

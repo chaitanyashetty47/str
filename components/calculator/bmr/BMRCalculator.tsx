@@ -1,19 +1,21 @@
 "use client"
 import { Button } from "@/components/ui/button"
 import { PlusIcon } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState, useRef } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useAction } from "@/hooks/useAction";
 import { addBMR } from "@/actions/body-measurement-metrics/add-bmr.action";
 import { getBMR } from "@/actions/body-measurement-metrics/get-bmr.action";
+import { calculateBMRAction } from "@/actions/body-measurement-metrics/calculate-bmr.action";
 import  BMRAreaChart  from "./BMRAreaChart";
 import useSWR from "swr";
 import { getWeightUnit } from "@/actions/profile/get-weight-unit.action";
 import { WeightUnit, ActivityLevel, Gender } from "@prisma/client";
 import { convertFromKg } from "@/utils/weight";
-import { getTodaysWeight, updateTodaysWeight, convertToKG } from "@/lib/weight-management";
+import { convertToKG } from "@/utils/weight-conversions";
+import { updateTodaysWeight } from "@/actions/body-measurement-metrics/update-todays-weight.action";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -33,26 +35,27 @@ function getDateOnly(date: string | Date) {
   return date.toISOString().split('T')[0];
 }
 
-// Calculate BMR using Mifflin-St Jeor Equation
-function calculateBMR(weight: number, height: number, age: number, gender: Gender): number {
-  if (gender === Gender.MALE) {
-    return (10 * weight) + (6.25 * height) - (5 * age) + 5;
-  } else {
-    return (10 * weight) + (6.25 * height) - (5 * age) - 161;
-  }
+
+
+// Fetcher for server actions
+async function fetchTodaysWeight() {
+  const mod = await import("@/actions/body-measurement-metrics/get-todays-weight.action");
+  const result = await mod.getTodaysWeight({});
+  return result.data;
 }
 
-// Calculate daily calorie needs based on activity level
-function calculateDailyCalories(bmr: number, activityLevel: ActivityLevel): number {
-  const multipliers = {
-    [ActivityLevel.SEDENTARY]: 1.2,
-    [ActivityLevel.LIGHTLY_ACTIVE]: 1.375,
-    [ActivityLevel.MODERATELY_ACTIVE]: 1.55,
-    [ActivityLevel.VERY_ACTIVE]: 1.725,
-    [ActivityLevel.EXTRA_ACTIVE]: 1.9
-  };
+async function fetchIsTodayWeightLogged() {
+  const mod = await import("@/actions/body-measurement-metrics/is-today-weight-logged.action");
   
-  return bmr * multipliers[activityLevel];
+  // Get current client date
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const clientDate = `${year}-${month}-${day}`;
+  
+  const result = await mod.isTodayWeightLogged({ clientDate });
+  return result.data?.isTodayWeightLogged;
 }
 
 export default function BMRCalculator({ 
@@ -69,7 +72,7 @@ export default function BMRCalculator({
   initialActivityLevel: ActivityLevel 
 }) {
   const { user } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [weight, setWeight] = useState(initialWeight);
   const [height, setHeight] = useState(initialHeight);
   const [age, setAge] = useState(initialAge);
@@ -102,14 +105,22 @@ export default function BMRCalculator({
   // Fetch today's weight data
   const { data: todaysWeightData, mutate: mutateTodaysWeight } = useSWR(
     user ? "todaysWeight" : null,
-    async () => {
-      if (!user) return null;
-      return await getTodaysWeight(user.id);
-    },
+    fetchTodaysWeight,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60000,
+    }
+  );
+
+  // SWR for checking if weight is logged today
+  const { data: isTodayWeightLogged } = useSWR(
+    "isTodayWeightLogged", 
+    fetchIsTodayWeightLogged,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000, // 1 minute
     }
   );
 
@@ -141,10 +152,47 @@ export default function BMRCalculator({
   const displayWeight = userWeightUnit === WeightUnit.KG ? weight : convertFromKg(weight, WeightUnit.LB);
   const displayHeight = height; // Height always in CM for BMR calculation
 
-  // Calculate BMR and daily calories
-  const weightInKG = userWeightUnit === WeightUnit.KG ? weight : convertToKG(weight, WeightUnit.LB);
-  const bmr = calculateBMR(weightInKG, height, age, gender);
-  const dailyCalories = calculateDailyCalories(bmr, activityLevel);
+  // State for server-calculated BMR
+  const [bmrResult, setBmrResult] = useState<{bmr: number, dailyCalories: number} | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  // Calculate BMR server-side when data changes
+  useEffect(() => {
+    const calculateBMR = async () => {
+      if (weight > 0 && height > 0 && age > 0) {
+        setIsCalculating(true);
+        try {
+          const result = await calculateBMRAction({
+            weight,
+            height,
+            age,
+            gender,
+            activityLevel,
+            weightUnit: userWeightUnit
+          });
+          
+          if (result.data) {
+            setBmrResult({
+              bmr: result.data.bmr,
+              dailyCalories: result.data.dailyCalories
+            });
+          }
+        } catch (error) {
+          console.error("Error calculating BMR:", error);
+        } finally {
+          setIsCalculating(false);
+        }
+      } else {
+        setBmrResult(null);
+      }
+    };
+
+    calculateBMR();
+  }, [weight, height, age, gender, activityLevel, userWeightUnit]);
+
+  // Use calculated values or show placeholders
+  const bmr = bmrResult?.bmr || 0;
+  const dailyCalories = bmrResult?.dailyCalories || 0;
 
   // SWR for BMR data
   const { data: bmrData, mutate: mutateBMRData, isLoading: isBMRDataLoading } = useSWR(
@@ -180,13 +228,13 @@ export default function BMRCalculator({
   } = useAction(addBMR, {
     onSuccess: async (result) => {
       try {
-        // Close dialog immediately to prevent flashing
-        setIsDialogOpen(false);
+        // Close form immediately to prevent flashing
+        setShowAddForm(false);
         
         // If user chose to save new weight, update weight_logs
         if (saveNewWeight && user) {
           const weightInKG = convertToKG(weight, userWeightUnit);
-          await updateTodaysWeight(user.id, weightInKG, 'KG');
+          await updateTodaysWeight({ weight: weightInKG, weightUnit: 'KG' });
           // Refresh today's weight data
           mutateTodaysWeight();
         }
@@ -252,11 +300,11 @@ export default function BMRCalculator({
           <h1 className="text-2xl font-bold">BMR Results</h1>
           <div className="flex flex-row gap-2">
             <Button className="bg-strentor-red text-white"
-              onClick={() => setIsDialogOpen(true)}
+              onClick={() => setShowAddForm(!showAddForm)}
               disabled={hasTodayEntry || isAdding}
               title={hasTodayEntry ? "You have already inputted today's data." : undefined}
             >
-              <PlusIcon className="w-4 h-4" /> Add New BMR
+              <PlusIcon className="w-4 h-4" /> {showAddForm ? "Cancel" : "Add New BMR"}
             </Button>
           </div>
         </div>
@@ -265,20 +313,152 @@ export default function BMRCalculator({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6 text-center border">
             <h3 className="text-lg font-medium text-gray-500">Your BMR</h3>
-            <div className="text-4xl font-bold text-blue-600">{Math.round(bmr)}</div>
+            <div className="text-4xl font-bold text-blue-600">
+              {isCalculating ? "..." : (bmr > 0 ? Math.round(bmr) : "---")}
+            </div>
             <p className="text-sm text-gray-600">calories/day</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center border">
             <h3 className="text-lg font-medium text-gray-500">Daily Calories</h3>
-            <div className="text-4xl font-bold text-green-600">{Math.round(dailyCalories)}</div>
+            <div className="text-4xl font-bold text-green-600">
+              {isCalculating ? "..." : (dailyCalories > 0 ? Math.round(dailyCalories) : "---")}
+            </div>
             <p className="text-sm text-gray-600">with activity</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center border">
             <h3 className="text-lg font-medium text-gray-500">Activity Level</h3>
             <div className="text-2xl font-bold text-purple-600">{activityLevel.replace('_', ' ')}</div>
-            <p className="text-sm text-gray-600">multiplier: {calculateDailyCalories(bmr, activityLevel) / bmr}</p>
+            <p className="text-sm text-gray-600">
+              multiplier: {bmr > 0 ? (dailyCalories / bmr).toFixed(2) : "---"}
+            </p>
           </div>
         </div>
+
+        {/* Add BMR Form - Hidden div that appears above chart */}
+        {showAddForm && (
+          <div className="mb-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Add New BMR</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {weightData?.source === 'weight_logs' 
+                    ? "Weight already logged for today - using that value"
+                    : "Weight from profile - can be updated"}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  <Label>Weight</Label>
+                  <div className="flex">
+                    <Input 
+                      type="number" 
+                      value={weight} 
+                      onChange={(e) => setWeight(Number(e.target.value))}
+                      className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
+                      disabled={weightData?.isLocked}
+                    />
+                    <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground bg-muted border border-l-0 rounded-r-md">
+                      {userWeightUnit === WeightUnit.KG ? "kg" : "lbs"}
+                    </span>
+                  </div>
+                  {weightData?.isLocked && (
+                    <p className="text-sm text-muted-foreground">
+                      ⚠️ Weight is locked for today. Use the same weight across all calculators.
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <Label>Height</Label>
+                  <div className="flex">
+                    <Input 
+                      type="number" 
+                      value={height} 
+                      onChange={(e) => setHeight(Number(e.target.value))}
+                      className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
+                      disabled={true}
+                    />
+                    <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground bg-muted border border-l-0 rounded-r-md">
+                      cm
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <Label>Age</Label>
+                  <Input 
+                    type="number" 
+                    value={age} 
+                    onChange={(e) => setAge(Number(e.target.value))}
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
+                    disabled={true}
+                  />
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <Label>Gender</Label>
+                  <Select value={gender} onValueChange={(value) => setGender(value as Gender)} disabled={true}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={Gender.MALE}>Male</SelectItem>
+                      <SelectItem value={Gender.FEMALE}>Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <Label>Activity Level</Label>
+                  <Select value={activityLevel} onValueChange={(value) => setActivityLevel(value as ActivityLevel)} disabled={true}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ActivityLevel.SEDENTARY}>Sedentary</SelectItem>
+                      <SelectItem value={ActivityLevel.LIGHTLY_ACTIVE}>Lightly Active</SelectItem>
+                      <SelectItem value={ActivityLevel.MODERATELY_ACTIVE}>Moderately Active</SelectItem>
+                      <SelectItem value={ActivityLevel.VERY_ACTIVE}>Very Active</SelectItem>
+                      <SelectItem value={ActivityLevel.EXTRA_ACTIVE}>Extra Active</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {!weightData?.isLocked && !isTodayWeightLogged && (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="saveNewWeight"
+                      checked={saveNewWeight}
+                      onChange={(e) => setSaveNewWeight(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="saveNewWeight" className="text-sm">
+                      Save as today's weight
+                    </Label>
+                  </div>
+                )}
+                
+                {addError && <div className="text-red-500 text-sm">{addError}</div>}
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => handleAddBMR({ weight, height, age, gender, activityLevel })} 
+                    disabled={!weight || !height || !age || isAdding}
+                    className="bg-strentor-red text-white"
+                  >
+                    {isAdding ? "Adding..." : "Add BMR"}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowAddForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="flex-1">
           <BMRAreaChart data={bmrEntries.map(e => ({
@@ -333,22 +513,7 @@ export default function BMRCalculator({
           <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={!hasNext || isBMRDataLoading}>Next</Button>
         </div>
         
-        <BMRCalculatorDialog 
-          open={isDialogOpen} 
-          setOpen={setIsDialogOpen} 
-          initialWeight={displayWeight} 
-          initialHeight={displayHeight} 
-          initialAge={initialAge}
-          initialGender={initialGender}
-          initialActivityLevel={initialActivityLevel}
-          onAdd={handleAddBMR} 
-          isLoading={isAdding} 
-          addError={addError}
-          weightUnit={userWeightUnit}
-          weightData={weightData}
-          saveNewWeight={saveNewWeight}
-          setSaveNewWeight={setSaveNewWeight}
-        />
+
       </div>
       
       {/* Right: BMR Information card */}
@@ -403,173 +568,4 @@ export default function BMRCalculator({
     </div>
   );
 
-  function BMRCalculatorDialog({ 
-    open, 
-    setOpen, 
-    initialWeight, 
-    initialHeight, 
-    initialAge,
-    initialGender,
-    initialActivityLevel,
-    onAdd, 
-    isLoading, 
-    addError, 
-    weightUnit,
-    weightData,
-    saveNewWeight,
-    setSaveNewWeight
-  }: { 
-    open: boolean, 
-    setOpen: (open: boolean) => void, 
-    initialWeight: number, 
-    initialHeight: number, 
-    initialAge: number,
-    initialGender: Gender,
-    initialActivityLevel: ActivityLevel,
-    onAdd: (data: { weight: number, height: number, age: number, gender: Gender, activityLevel: ActivityLevel }) => void, 
-    isLoading?: boolean, 
-    addError?: string, 
-    weightUnit: WeightUnit,
-    weightData: {
-      weight: number;
-      source: 'weight_logs' | 'profile';
-      isLocked: boolean;
-      weightUnit: 'KG' | 'LB';
-    } | null,
-    saveNewWeight: boolean,
-    setSaveNewWeight: (save: boolean) => void
-  }) {
-    const [weight, setWeight] = useState(initialWeight);
-    const [height, setHeight] = useState(initialHeight);
-    const [age, setAge] = useState(initialAge);
-    const [gender, setGender] = useState<Gender>(initialGender);
-    const [activityLevel, setActivityLevel] = useState<ActivityLevel>(initialActivityLevel);
-
-    useEffect(() => {
-      // Only update values when dialog is opened AND not currently submitting
-      if (open && !isSubmittingRef.current) {
-        setWeight(initialWeight);
-        setHeight(initialHeight);
-        setAge(initialAge);
-        setGender(initialGender);
-        setActivityLevel(initialActivityLevel);
-      }
-    }, [open, initialWeight, initialHeight, initialAge, initialGender, initialActivityLevel]);
-
-    // Show weight source information
-    const weightSourceInfo = weightData?.source === 'weight_logs' 
-      ? "Weight already logged for today - using that value"
-      : "Weight from profile - can be updated";
-
-    return (
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New BMR</DialogTitle>
-            <DialogDescription>
-              {weightSourceInfo}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label>Weight</Label>
-              <div className="flex">
-                <Input 
-                  type="number" 
-                  value={weight} 
-                  onChange={(e) => setWeight(Number(e.target.value))}
-                  className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
-                  disabled={weightData?.isLocked}
-                />
-                <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground bg-muted border border-l-0 rounded-r-md">
-                  {weightUnit === WeightUnit.KG ? "kg" : "lbs"}
-                </span>
-              </div>
-              {weightData?.isLocked && (
-                <p className="text-sm text-muted-foreground">
-                  ⚠️ Weight is locked for today. Use the same weight across all calculators.
-                </p>
-              )}
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <Label>Height</Label>
-              <div className="flex">
-                <Input 
-                  type="number" 
-                  value={height} 
-                  onChange={(e) => setHeight(Number(e.target.value))}
-                  className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
-                />
-                <span className="inline-flex items-center px-3 py-2 text-sm text-muted-foreground bg-muted border border-l-0 rounded-r-md">
-                  cm
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <Label>Age</Label>
-              <Input 
-                type="number" 
-                value={age} 
-                onChange={(e) => setAge(Number(e.target.value))}
-                className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500"
-              />
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <Label>Gender</Label>
-              <Select value={gender} onValueChange={(value) => setGender(value as Gender)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={Gender.MALE}>Male</SelectItem>
-                  <SelectItem value={Gender.FEMALE}>Female</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <Label>Activity Level</Label>
-              <Select value={activityLevel} onValueChange={(value) => setActivityLevel(value as ActivityLevel)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ActivityLevel.SEDENTARY}>Sedentary</SelectItem>
-                  <SelectItem value={ActivityLevel.LIGHTLY_ACTIVE}>Lightly Active</SelectItem>
-                  <SelectItem value={ActivityLevel.MODERATELY_ACTIVE}>Moderately Active</SelectItem>
-                  <SelectItem value={ActivityLevel.VERY_ACTIVE}>Very Active</SelectItem>
-                  <SelectItem value={ActivityLevel.EXTRA_ACTIVE}>Extra Active</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {!weightData?.isLocked && (
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="saveNewWeight"
-                  checked={saveNewWeight}
-                  onChange={(e) => setSaveNewWeight(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <Label htmlFor="saveNewWeight" className="text-sm">
-                  Save as today's weight
-                </Label>
-              </div>
-            )}
-            
-            {addError && <div className="text-red-500 text-sm">{addError}</div>}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => onAdd({ weight, height, age, gender, activityLevel })} disabled={!weight || !height || !age || isLoading}>
-              {isLoading ? "Adding..." : "Add"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 }

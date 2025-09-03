@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getProfileDetails, updateProfile } from "@/actions/profile/profile-details.action";
+import { getProfileDetails, updateProfile } from "@/actions/profile/get-profile-details.action";
 import { useAction } from "@/hooks/useAction";
 import { toast } from "sonner";
 
@@ -146,7 +146,8 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
         <h3 className="text-lg font-medium">Profile Information</h3>
         {!isEditing ? (
           <Button 
-            variant="outline" 
+            variant="outline"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             size="sm" 
             onClick={() => setIsEditing(true)}
           >

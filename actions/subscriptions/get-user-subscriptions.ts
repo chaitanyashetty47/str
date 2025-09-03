@@ -1,7 +1,7 @@
 'use server';
 
 import { createSafeAction, ActionState } from '@/lib/create-safe-action';
-import  prisma  from '@/utils/prisma/prismaClient';
+import prisma from '@/utils/prisma/prismaClient';
 import { z } from 'zod';
 
 // Input schema - no input needed, uses session user

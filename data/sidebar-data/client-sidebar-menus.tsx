@@ -22,7 +22,7 @@ import {
 
 } from "lucide-react";
 
-export const sidebarMenus = {
+export const clientSidebarMenus = {
   user: {
     name: "James",
     email: "james@example.com",
@@ -45,44 +45,26 @@ export const sidebarMenus = {
       //   },
       // ],
     },
-    {
-      title: "My Clients",
-      url: "/training/clients",
-      icon: Users,
-      // items: [
-      //   {
-      //     title: "All Leads",
-      //     url: "/dashboard/leads",
-      //   },
-      //   {
-      //     title: "Qualified Leads",
-      //     url: "/dashboard/leads/qualified",
-      //   },
-      //   {
-      //     title: "Lead Scoring",
-      //     url: "/dashboard/leads/lead-scoring",
-      //   },
-      // ],
-    },
-    {
-      title: "Workout Plans",
-      url: "/training/plans",
-      icon: Dumbbell,
-      items: [
-        {
-          title: "All Plans",
-          url: "/training/plans/all",
-        },
-        {
-          title: "Create Plan",
-          url: "/training/plans/create",
-        },
-        // {
-        //   title: "Templates",
-        //   url: "/training/plans/templates",
-        // },
-      ],
-    },
+   
+    // {
+    //   title: "Workout Plans",
+    //   url: "/training/plans",
+    //   icon: Dumbbell,
+    //   items: [
+    //     {
+    //       title: "All Plans",
+    //       url: "/training/plans/all",
+    //     },
+    //     {
+    //       title: "Create Plan",
+    //       url: "/training/plans/create",
+    //     },
+    //     // {
+    //     //   title: "Templates",
+    //     //   url: "/training/plans/templates",
+    //     // },
+    //   ],
+    // },
     {
       title: "Personal Records",
       url: "/personal-records",
@@ -105,7 +87,7 @@ export const sidebarMenus = {
     },
     {
       title: "Calculators",
-      url: "/calculatorss",
+      url: "/calculator",
       icon: Calculator,
     },
     {

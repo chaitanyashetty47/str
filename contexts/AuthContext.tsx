@@ -15,6 +15,7 @@ interface AuthContextType {
   isClient: boolean;
   isTrainer: boolean;
   isAdmin: boolean;
+  isPasswordRecovery: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -39,9 +41,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log('AuthContext - Auth state change:', event);
+        
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setLoading(false);
+        
+        // Handle password recovery events
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsPasswordRecovery(true);
+        } else if (event === 'SIGNED_OUT') {
+          setIsPasswordRecovery(false);
+        }
       }
     );
 
@@ -81,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isClient: authUser?.role === 'CLIENT',
         isTrainer: authUser?.role === 'TRAINER',
         isAdmin: authUser?.role === 'ADMIN',
+        isPasswordRecovery,
         signOut,
       }}
     >
