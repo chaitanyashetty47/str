@@ -33,12 +33,14 @@ interface ExerciseCardProps {
   name: string;
   youtube_link: string | null;
   type: BodyPart;
+  is_reps_based: boolean; // NEW: Indicates if exercise is reps-based
   onPick: (payload: {
     name: string;
     bodyPart: BodyPart;
     listExerciseId: string;
     thumbnail: string | null;
     instructions: string;
+    isRepsBased: boolean; // NEW: Include reps-based flag
   }) => void;
 }
 
@@ -52,7 +54,7 @@ function getYoutubeId(url: string): string | undefined {
   return match ? match[1] : undefined;
 }
 
-function ExerciseCard({ id, name, youtube_link, type, onPick }: ExerciseCardProps) {
+function ExerciseCard({ id, name, youtube_link, type, is_reps_based, onPick }: ExerciseCardProps) {
   const videoId = youtube_link ? getYoutubeId(youtube_link) : undefined;
   const thumbnail = videoId
     ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
@@ -79,9 +81,16 @@ function ExerciseCard({ id, name, youtube_link, type, onPick }: ExerciseCardProp
         <p className="text-sm font-medium leading-tight line-clamp-2">
           {name}
         </p>
-        <Badge variant="secondary" className="w-fit text-[10px]">
-          {type}
-        </Badge>
+        <div className="flex gap-1">
+          <Badge variant="secondary" className="w-fit text-[10px]">
+            {type}
+          </Badge>
+          {is_reps_based && (
+            <Badge variant="outline" className="w-fit text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+              🏃 Reps-based
+            </Badge>
+          )}
+        </div>
       </div>
       <SheetClose asChild>
         <Button
@@ -96,6 +105,7 @@ function ExerciseCard({ id, name, youtube_link, type, onPick }: ExerciseCardProp
               listExerciseId: id,
               thumbnail: thumbnail ?? null,
               instructions: "",
+              isRepsBased: is_reps_based, // NEW: Include reps-based flag
             });
           }}
         >
@@ -118,6 +128,7 @@ interface ExerciseDrawerProps {
     listExerciseId: string;
     thumbnail: string | null;
     instructions: string;
+    isRepsBased: boolean; // NEW: Include reps-based flag
   }) => void;
 }
 

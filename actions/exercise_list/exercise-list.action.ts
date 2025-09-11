@@ -17,6 +17,7 @@ export interface ExerciseListOption {
   name: string;
   youtube_link: string | null;
   type: BodyPart;
+  is_reps_based: boolean;  // NEW: Indicates if exercise is reps-based
 }
 
 export const fetchExerciseList = createSafeAction(

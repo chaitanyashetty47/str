@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bug, AlertTriangle, CheckCircle } from "lucide-react";
-import { debugPRDetection, PRDebugData } from "@/actions/client-workout/debug-pr-detection.action";
+ import { debugPRDetection, PRDebugData } from "@/actions/client-workout/debug-pr-detection.action";
 
 interface PRDebugPanelProps {
   planId: string;

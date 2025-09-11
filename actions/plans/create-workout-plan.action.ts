@@ -222,7 +222,8 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
                   notes: "",
                   workout_set_instructions: {
                     create: ex.sets.map((s) => {
-                      // Convert weight to KG before storing
+                      // For reps-based exercises, skip weight conversion
+                      // For weight-based exercises, convert weight to KG before storing
                       const weightValue = s.weight ? parseFloat(s.weight) : null;
                       const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
                       
@@ -231,7 +232,7 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
                         set_number: s.setNumber,
                         reps: s.reps ? parseInt(s.reps, 10) || null : null,
                         intensity: meta.intensityMode,
-                        weight_prescribed: weightInKg,
+                        weight_prescribed: weightInKg, // Will be null for reps-based exercises
                         rest_time: s.rest || null,
                         notes: s.notes,
                       };

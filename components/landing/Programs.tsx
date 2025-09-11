@@ -27,13 +27,7 @@ const ProgramsCard = () => {
         "Professional mental health support to enhance your emotional well-being",
       gradient: "from-orange-500 to-red-500",
     },
-    // {
-    //   icon: "/lifecoaching.png",
-    //   title: "Life Coaching",
-    //   description:
-    //     "Strategic guidance to help you navigate life's challenges and achieve your dreams",
-    //   gradient: "from-green-500 to-teal-500",
-    // },
+   
   ];
 
   return (

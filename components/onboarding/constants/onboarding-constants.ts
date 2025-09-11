@@ -1,6 +1,6 @@
 export const ONBOARDING_FORM_KEYS = {
-  1: ["name", "email"] as const,
-  2: ["weight", "weightUnit", "height", "heightUnit", "dateOfBirth", "gender", "activityLevel"] as const,
+  1: ["name", "email", "country", "phone"] as const,
+  2: ["weight", "height", "dateOfBirth", "gender", "activityLevel"] as const,
   3: ["neck", "waist", "hips"] as const,
   4: [] as const, // Review step - no new fields
 } as const;

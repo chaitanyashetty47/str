@@ -42,6 +42,12 @@ export interface PersonalRecordOutput {
   date: string; // formatted
 }
 
+export interface WeightLogOutput {
+  id: string;
+  weight: number;
+  date: string; // formatted
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────────────────
@@ -257,9 +263,9 @@ async function prsHandler(_: z.infer<typeof prsInput>) {
     return {
       id: pr.id,
       exerciseName,
-      weight: pr.max_weight,
+      weight: pr.max_weight ?? 0,
       reps: null, // reps not stored in new schema
-      oneRepMax: pr.max_weight, // 1RM approximated as max weight lifted
+      oneRepMax: pr.max_weight ?? 0, // 1RM approximated as max weight lifted
       date: dateStr,
     };
   });
@@ -271,6 +277,50 @@ export const getUserLastFivePRs = createSafeAction<
   z.infer<typeof prsInput>,
   PersonalRecordOutput[]
 >(prsInput, prsHandler);
+
+// ────────────────────────────────────────────────────────────────────────────
+// 4. getUserWeightLogs
+// ────────────────────────────────────────────────────────────────────────────
+const weightLogsInput = z.object({});
+
+async function weightLogsHandler(_: z.infer<typeof weightLogsInput>) {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return { error: "User not authenticated" };
+  }
+
+  const weightLogs = await prisma.weight_logs.findMany({
+    where: { user_id: userId },
+    orderBy: { date_logged: "asc" }, // Oldest to latest
+    take: 6,
+    select: {
+      id: true,
+      weight: true,
+      date_logged: true,
+    },
+  });
+
+  const formatted: WeightLogOutput[] = weightLogs.map((log) => {
+    const dateStr = log.date_logged.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    return {
+      id: log.id,
+      weight: log.weight,
+      date: dateStr,
+    };
+  });
+
+  return { data: formatted };
+}
+
+export const getUserWeightLogs = createSafeAction<
+  z.infer<typeof weightLogsInput>,
+  WeightLogOutput[]
+>(weightLogsInput, weightLogsHandler);
 
 
 

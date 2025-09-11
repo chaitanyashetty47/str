@@ -22,6 +22,7 @@ interface SetRowProps {
   notes: string;
   oneRM?: number;
   intensityMode: IntensityMode;
+  isRepsBased: boolean; // NEW: Indicates if exercise is reps-based
 }
 
 export function SetRow({
@@ -35,6 +36,7 @@ export function SetRow({
   notes,
   oneRM,
   intensityMode,
+  isRepsBased,
 }: SetRowProps) {
   const dispatch = usePlanDispatch();
   const [isOpen, setIsOpen] = useState(false);
@@ -89,37 +91,42 @@ export function SetRow({
     <div className="grid grid-cols-12 gap-2 items-start text-sm">
       <span className="col-span-1 text-center">{setNumber}</span>
 
-      {/* Weight */}
-      <div className="col-span-3 flex flex-col gap-0.5">
-        <div className="flex items-center gap-1">
-          <Input
-            value={weight}
-            onChange={(e) => update("weight", e.target.value)}
-            className={cn(
-              "h-8",
-              hasWeightError && "border-destructive focus-visible:ring-destructive"
-            )}
-            placeholder="0"
-          />
-          <span className="text-xs text-muted-foreground">
-            {intensityMode === IntensityMode.ABSOLUTE ? getWeightUnitLabel() : "%"}
-          </span>
+      {/* Weight - Hidden for reps-based exercises */}
+      {!isRepsBased && (
+        <div className="col-span-3 flex flex-col gap-0.5">
+          <div className="flex items-center gap-1">
+            <Input
+              value={weight}
+              onChange={(e) => update("weight", e.target.value)}
+              className={cn(
+                "h-8",
+                hasWeightError && "border-destructive focus-visible:ring-destructive"
+              )}
+              placeholder="0"
+            />
+            <span className="text-xs text-muted-foreground">
+              {intensityMode === IntensityMode.ABSOLUTE ? getWeightUnitLabel() : "%"}
+            </span>
+          </div>
+          {/* Display absolute conversion when in % mode and numeric weight */}
+          {intensityMode === IntensityMode.PERCENT && !!Number(weight) && (
+            <span className="text-[10px] text-muted-foreground ml-1">
+              {oneRM
+                ? getDisplayWeight(Number(weight), intensityMode, oneRM, userWeightUnit)
+                : "No 1-RM"}
+            </span>
+          )}
+          {/* Weight validation error */}
+          {hasWeightError && (
+            <span className="text-[10px] text-destructive ml-1">
+              {getErrorMessage('weight')}
+            </span>
+          )}
         </div>
-        {/* Display absolute conversion when in % mode and numeric weight */}
-        {intensityMode === IntensityMode.PERCENT && !!Number(weight) && (
-          <span className="text-[10px] text-muted-foreground ml-1">
-            {oneRM
-              ? getDisplayWeight(Number(weight), intensityMode, oneRM, userWeightUnit)
-              : "No 1-RM"}
-          </span>
-        )}
-        {/* Weight validation error */}
-        {hasWeightError && (
-          <span className="text-[10px] text-destructive ml-1">
-            {getErrorMessage('weight')}
-          </span>
-        )}
-      </div>
+      )}
+      
+      {/* Spacer for reps-based exercises to maintain layout */}
+      {isRepsBased && <div className="col-span-3" />}
 
       {/* Reps */}
       <div className="col-span-2 flex flex-col gap-0.5">

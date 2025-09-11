@@ -197,7 +197,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
       toast.error(
         `Please fix ${errorCount} validation error${errorCount !== 1 ? 's' : ''} in ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''} before saving.`,
         {
-          description: "All exercise sets must have weight, reps, and rest time filled.",
+          description: "All exercise sets must have reps and rest time filled.",
           duration: 5000,
         }
       );

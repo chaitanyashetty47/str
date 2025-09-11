@@ -31,6 +31,7 @@ export interface WorkoutExercise {
   thumbnailUrl: string | null;
   instructions: string;
   youtubeLink: string | null;
+  isRepsBased: boolean; // NEW: Indicates if exercise is reps-based
   sets: WorkoutSet[];
   completedSets: number;
   totalSets: number;
@@ -38,7 +39,7 @@ export interface WorkoutExercise {
 }
 
 export interface WorkoutDay {
-  dayId: string; // workout_days.id
+  id: string; // workout_days.id (renamed from dayId for consistency)
   dayNumber: 1 | 2 | 3 | 4 | 5;
   title: string;
   dayDate: string; // ISO date string
@@ -47,6 +48,14 @@ export interface WorkoutDay {
   totalSets: number;
   progressPercentage: number; // 0-100 based on sets completed
   isCompleted: boolean; // All exercises completed
+  video?: {
+    id: string;
+    videoUrl: string;
+    videoTitle: string | null;
+    uploadedAt: Date;
+    reviewedAt: Date | null;
+    trainerNotes: string | null;
+  };
 }
 
 export interface WeeklyWorkoutData {
@@ -122,6 +131,7 @@ async function weeklyWorkoutHandler({
           },
           orderBy: { day_number: "asc" },
           include: {
+            workout_day_videos: true, // Include video data
             workout_day_exercises: {
               where: { is_deleted: false }, // Filter out soft-deleted exercises
               orderBy: { order: "asc" },
@@ -215,6 +225,7 @@ async function weeklyWorkoutHandler({
           thumbnailUrl: dbExercise.workout_exercise_lists.gif_url,
           instructions: dbExercise.instructions || "",
           youtubeLink: dbExercise.workout_exercise_lists.youtube_link || dbExercise.youtube_link,
+          isRepsBased: dbExercise.workout_exercise_lists.is_reps_based, // NEW: Include reps-based flag
           sets,
           completedSets: exerciseCompletedSets,
           totalSets: sets.length,
@@ -225,7 +236,7 @@ async function weeklyWorkoutHandler({
       }
 
       const day: WorkoutDay = {
-        dayId: dbDay.id,
+        id: dbDay.id,
         dayNumber: dbDay.day_number as 1 | 2 | 3 | 4 | 5,
         title: dbDay.title,
         dayDate: dbDay.day_date.toISOString(),
@@ -234,6 +245,14 @@ async function weeklyWorkoutHandler({
         totalSets: dayTotalSets,
         progressPercentage: dayTotalSets > 0 ? Math.round((dayCompletedSets / dayTotalSets) * 100) : 0,
         isCompleted: dayTotalSets > 0 && dayCompletedSets === dayTotalSets,
+        video: dbDay.workout_day_videos ? {
+          id: dbDay.workout_day_videos.id,
+          videoUrl: dbDay.workout_day_videos.video_url,
+          videoTitle: dbDay.workout_day_videos.video_title,
+          uploadedAt: dbDay.workout_day_videos.uploaded_at,
+          reviewedAt: dbDay.workout_day_videos.reviewed_at,
+          trainerNotes: dbDay.workout_day_videos.trainer_notes,
+        } : undefined,
       };
 
       days.push(day);

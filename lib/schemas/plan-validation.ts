@@ -52,10 +52,14 @@ export type PlanHeaderFormData = z.infer<typeof PlanHeaderSchema>;
 export const SetValidationSchema = z.object({
   weight: z
     .string()
-    .min(1, "Weight is required")
+    .optional()
     .refine((val) => {
-      const num = parseFloat(val);
-      return !isNaN(num) && num > 0;
+      // If weight is provided, it must be a positive number
+      if (val && val.length > 0) {
+        const num = parseFloat(val);
+        return !isNaN(num) && num > 0;
+      }
+      return true; // Empty string is valid (for reps-based exercises)
     }, "Weight must be a positive number"),
   
   reps: z
@@ -85,11 +89,11 @@ export const ExerciseValidationSchema = z.object({
     .min(1, "Each exercise must have at least one set")
     .refine(
       (sets) => sets.every(set => 
-        set.weight.length > 0 && 
         set.reps.length > 0 && 
         set.rest >= 0
+        // Weight is optional - can be empty string for reps-based exercises
       ),
-      "All sets must have weight, reps, and rest time filled"
+      "All sets must have reps and rest time filled"
     ),
 });
 

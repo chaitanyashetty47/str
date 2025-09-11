@@ -38,12 +38,15 @@ export interface ExerciseAnalytics {
   exerciseId: string;
   exerciseName: string;
   bodyPart: string;
+  isRepsBased: boolean; // NEW: Indicates if exercise is reps-based
   dayNumber: number;
   dayTitle: string;
   dayDate: string;
   sets: SetAnalytics[];
   bestORM: number | null;
+  bestReps: number | null; // NEW: For reps-based exercises
   totalVolume: number; // weight × reps × sets
+  totalReps: number; // NEW: For reps-based exercises
   completionRate: number; // percentage of sets completed
 }
 
@@ -60,6 +63,7 @@ export interface PRData {
   exerciseName: string;
   previousPR: number | null;
   newPR: number;
+  newRepsPR?: number; // NEW: For reps-based exercises
   improvement: number | null; // kg improvement
   achievedDate: string;
   setDetails: {
@@ -79,14 +83,17 @@ export interface ExerciseProgressData {
   exerciseId: string;
   exerciseName: string;
   bodyPart: string;
+  isRepsBased: boolean; // NEW: Indicates if exercise is reps-based
   weeklyORMs: WeeklyORM[];
   bestOverallORM: number | null;
+  bestOverallReps: number | null; // NEW: For reps-based exercises
   totalImprovement: number | null; // from week 1 to latest
 }
 
 export interface WeeklyORM {
   weekNumber: number;
   bestORM: number | null;
+  bestReps: number | null; // NEW: For reps-based exercises
   weekDate: string; // ISO date of week start
 }
 
@@ -163,15 +170,28 @@ async function weekAnalyticsHandler({
       select: {
         list_exercise_id: true,
         max_weight: true,
+        max_reps: true,
+        exercise_type: true,
       },
     });
 
-    const prMap = new Map(existingPRs.map(pr => [pr.list_exercise_id, pr.max_weight]));
+    // Create separate maps for weight-based and reps-based PRs
+    const weightPRMap = new Map<string, number>();
+    const repsPRMap = new Map<string, number>();
+    
+    existingPRs.forEach(pr => {
+      if (pr.exercise_type === 'WEIGHT_BASED' && pr.max_weight) {
+        weightPRMap.set(pr.list_exercise_id, pr.max_weight);
+      } else if (pr.exercise_type === 'REPS_BASED' && pr.max_reps) {
+        repsPRMap.set(pr.list_exercise_id, pr.max_reps);
+      }
+    });
 
     // Process exercises
     const exerciseMap = new Map<string, ExerciseAnalytics>();
     const prsAchieved: PRData[] = [];
     const weekBestORMs = new Map<string, number>(); // Track best ORM per exercise across the week
+    const weekBestReps = new Map<string, number>(); // Track best reps per exercise across the week
     let totalCompletedSets = 0;
     let totalSets = 0;
 
@@ -189,18 +209,22 @@ async function weekAnalyticsHandler({
             exerciseId,
             exerciseName,
             bodyPart,
+            isRepsBased: dayExercise.workout_exercise_lists.is_reps_based,
             dayNumber: day.day_number,
             dayTitle: day.title,
             dayDate: day.day_date.toISOString(),
             sets: [],
             bestORM: null,
+            bestReps: null,
             totalVolume: 0,
+            totalReps: 0,
             completionRate: 0,
           });
         }
 
         const exercise = exerciseMap.get(exerciseKey)!;
-        const previousPR = prMap.get(exerciseId) || null;
+        const previousWeightPR = weightPRMap.get(exerciseId) || null;
+        const previousRepsPR = repsPRMap.get(exerciseId) || null;
 
         for (const setInstruction of dayExercise.workout_set_instructions) {
           const logEntry = setInstruction.exercise_logs[0]; // Should be only one per set
@@ -210,44 +234,87 @@ async function weekAnalyticsHandler({
           let isPR = false;
           let volume = 0;
 
-          if (isCompleted && logEntry.weight_used && logEntry.reps_done) {
-            orm = calculateORM(logEntry.weight_used, logEntry.reps_done);
-            volume = logEntry.weight_used * logEntry.reps_done;
+          if (isCompleted && logEntry.reps_done) {
+            // Calculate volume (weight * reps) if weight is available
+            if (logEntry.weight_used) {
+              orm = calculateORM(logEntry.weight_used, logEntry.reps_done);
+              volume = logEntry.weight_used * logEntry.reps_done;
+            }
             
-            // Get current week's best ORM for this exercise
-            const currentWeekBest = weekBestORMs.get(exerciseId) || 0;
-            
-            // Check if this is a new PR
-            // Must exceed BOTH previous PR and current week's best
-            const exceedsPreviousPR = !previousPR || orm > previousPR;
-            const exceedsWeekBest = orm > currentWeekBest;
-            
-            if (exceedsPreviousPR && exceedsWeekBest) {
-              isPR = true;
-              weekBestORMs.set(exerciseId, orm); // Update week best for this exercise
+            // Check for PR based on exercise type
+            if (exercise.isRepsBased) {
+              // For reps-based exercises, check reps instead of ORM
+              const reps = logEntry.reps_done;
+              const currentWeekBestReps = weekBestReps.get(exerciseId) || 0;
               
-              // Update or add to PRs list - only keep the best PR for this exercise this week
-              const existingPRIndex = prsAchieved.findIndex(pr => pr.exerciseId === exerciseId);
-              const newPRData = {
-                exerciseId,
-                exerciseName,
-                previousPR,
-                newPR: orm,
-                improvement: previousPR ? orm - previousPR : null,
-                achievedDate: logEntry.performed_date.toISOString(),
-                setDetails: {
-                  weight: logEntry.weight_used,
-                  reps: logEntry.reps_done,
-                  setNumber: setInstruction.set_number,
-                },
-              };
+              const exceedsPreviousRepsPR = !previousRepsPR || reps > previousRepsPR;
+              const exceedsWeekBestReps = reps > currentWeekBestReps;
               
-              if (existingPRIndex >= 0) {
-                // Update existing PR if this one is better
-                prsAchieved[existingPRIndex] = newPRData;
-              } else {
-                // Add new PR
-                prsAchieved.push(newPRData);
+              if (exceedsPreviousRepsPR && exceedsWeekBestReps) {
+                isPR = true;
+                weekBestReps.set(exerciseId, reps); // Update week best for this exercise
+                
+                // Update or add to PRs list - only keep the best PR for this exercise this week
+                const existingPRIndex = prsAchieved.findIndex(pr => pr.exerciseId === exerciseId);
+                const newPRData = {
+                  exerciseId,
+                  exerciseName,
+                  previousPR: previousRepsPR,
+                  newPR: 0, // Not used for reps-based
+                  newRepsPR: reps, // NEW: Store reps PR
+                  improvement: previousRepsPR ? reps - previousRepsPR : null,
+                  achievedDate: logEntry.performed_date.toISOString(),
+                  setDetails: {
+                    weight: logEntry.weight_used || 0,
+                    reps: logEntry.reps_done,
+                    setNumber: setInstruction.set_number,
+                  },
+                };
+                
+                if (existingPRIndex >= 0) {
+                  // Update existing PR if this one is better
+                  prsAchieved[existingPRIndex] = newPRData;
+                } else {
+                  // Add new PR
+                  prsAchieved.push(newPRData);
+                }
+              }
+            } else {
+              // For weight-based exercises, check ORM (existing logic)
+              if (logEntry.weight_used && orm) {
+                const currentWeekBest = weekBestORMs.get(exerciseId) || 0;
+                
+                const exceedsPreviousPR = !previousWeightPR || orm > previousWeightPR;
+                const exceedsWeekBest = orm > currentWeekBest;
+                
+                if (exceedsPreviousPR && exceedsWeekBest) {
+                  isPR = true;
+                  weekBestORMs.set(exerciseId, orm); // Update week best for this exercise
+                  
+                  // Update or add to PRs list - only keep the best PR for this exercise this week
+                  const existingPRIndex = prsAchieved.findIndex(pr => pr.exerciseId === exerciseId);
+                  const newPRData = {
+                    exerciseId,
+                    exerciseName,
+                    previousPR: previousWeightPR,
+                    newPR: orm,
+                    improvement: previousWeightPR ? orm - previousWeightPR : null,
+                    achievedDate: logEntry.performed_date.toISOString(),
+                    setDetails: {
+                      weight: logEntry.weight_used,
+                      reps: logEntry.reps_done,
+                      setNumber: setInstruction.set_number,
+                    },
+                  };
+                  
+                  if (existingPRIndex >= 0) {
+                    // Update existing PR if this one is better
+                    prsAchieved[existingPRIndex] = newPRData;
+                  } else {
+                    // Add new PR
+                    prsAchieved.push(newPRData);
+                  }
+                }
               }
             }
           }
@@ -262,8 +329,12 @@ async function weekAnalyticsHandler({
           });
 
           exercise.totalVolume += volume;
+          exercise.totalReps += logEntry?.reps_done || 0;
           if (orm && (!exercise.bestORM || orm > exercise.bestORM)) {
             exercise.bestORM = orm;
+          }
+          if (logEntry?.reps_done && (!exercise.bestReps || logEntry.reps_done > exercise.bestReps)) {
+            exercise.bestReps = logEntry.reps_done;
           }
 
           totalSets++;
@@ -395,29 +466,43 @@ async function overallAnalyticsHandler({
             exerciseId,
             exerciseName,
             bodyPart,
+            isRepsBased: dayExercise.workout_exercise_lists.is_reps_based, // NEW: Include reps-based flag
             weeklyORMs: [],
             bestOverallORM: null,
+            bestOverallReps: null,
             totalImprovement: null,
           });
         }
 
         let weekBestORM = weekData.get(exerciseId) || null;
+        let weekBestReps = weekData.get(`${exerciseId}-reps`) || null;
 
-        // Find best ORM for this exercise in this week
+        // Find best ORM and reps for this exercise in this week
         for (const setInstruction of dayExercise.workout_set_instructions) {
           const logEntry = setInstruction.exercise_logs[0];
           
-          if (logEntry && logEntry.weight_used && logEntry.reps_done) {
-            const orm = calculateORM(logEntry.weight_used, logEntry.reps_done);
+          if (logEntry && logEntry.reps_done) {
+            // Track best reps for all exercises
+            if (!weekBestReps || logEntry.reps_done > weekBestReps) {
+              weekBestReps = logEntry.reps_done;
+            }
             
-            if (!weekBestORM || orm > weekBestORM) {
-              weekBestORM = orm;
+            // Track best ORM for weight-based exercises
+            if (logEntry.weight_used) {
+              const orm = calculateORM(logEntry.weight_used, logEntry.reps_done);
+              
+              if (!weekBestORM || orm > weekBestORM) {
+                weekBestORM = orm;
+              }
             }
           }
         }
 
         if (weekBestORM) {
           weekData.set(exerciseId, weekBestORM);
+        }
+        if (weekBestReps) {
+          weekData.set(`${exerciseId}-reps`, weekBestReps);
         }
       }
     }
@@ -432,10 +517,12 @@ async function overallAnalyticsHandler({
         
         const weekData = weeklyData.get(week);
         const bestORM = weekData?.get(exerciseId) || null;
+        const bestReps = weekData?.get(`${exerciseId}-reps`) || null;
         
         weeklyORMs.push({
           weekNumber: week,
           bestORM,
+          bestReps,
           weekDate: weekStartDate.toISOString(),
         });
 
@@ -443,16 +530,32 @@ async function overallAnalyticsHandler({
         if (bestORM && (!exerciseProgress.bestOverallORM || bestORM > exerciseProgress.bestOverallORM)) {
           exerciseProgress.bestOverallORM = bestORM;
         }
+        
+        // Update best overall reps
+        if (bestReps && (!exerciseProgress.bestOverallReps || bestReps > exerciseProgress.bestOverallReps)) {
+          exerciseProgress.bestOverallReps = bestReps;
+        }
       }
 
       exerciseProgress.weeklyORMs = weeklyORMs;
       
       // Calculate total improvement (first week with data vs last week with data)
-      const firstORM = weeklyORMs.find(w => w.bestORM)?.bestORM;
-      const lastORM = weeklyORMs.slice().reverse().find(w => w.bestORM)?.bestORM;
-      
-      if (firstORM && lastORM && lastORM > firstORM) {
-        exerciseProgress.totalImprovement = lastORM - firstORM;
+      if (exerciseProgress.isRepsBased) {
+        // For reps-based exercises, calculate improvement based on reps
+        const firstReps = weeklyORMs.find(w => w.bestReps)?.bestReps;
+        const lastReps = weeklyORMs.slice().reverse().find(w => w.bestReps)?.bestReps;
+        
+        if (firstReps && lastReps && lastReps > firstReps) {
+          exerciseProgress.totalImprovement = lastReps - firstReps;
+        }
+      } else {
+        // For weight-based exercises, calculate improvement based on ORM
+        const firstORM = weeklyORMs.find(w => w.bestORM)?.bestORM;
+        const lastORM = weeklyORMs.slice().reverse().find(w => w.bestORM)?.bestORM;
+        
+        if (firstORM && lastORM && lastORM > firstORM) {
+          exerciseProgress.totalImprovement = lastORM - firstORM;
+        }
       }
     }
 
@@ -461,7 +564,8 @@ async function overallAnalyticsHandler({
       exerciseId: pr.list_exercise_id,
       exerciseName: pr.workout_exercise_lists.name,
       previousPR: null, // Would need additional query to get previous PR
-      newPR: pr.max_weight,
+      newPR: pr.max_weight || 0, // Handle null case
+      newRepsPR: pr.max_reps || undefined, // NEW: Include reps PR
       improvement: null, // Would need additional calculation
       achievedDate: pr.date_achieved.toISOString(),
       setDetails: {

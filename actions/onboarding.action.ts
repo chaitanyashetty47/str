@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import prisma from '@/utils/prisma/prismaClient'
 import { onboardingSchema } from '@/types/onboarding'
+import { alpha3ToCountryEnum } from '@/utils/country-mapping'
 import { v4 as uuidv4 } from 'uuid'
 
 
@@ -35,18 +36,33 @@ export async function completeOnboardingAction(data: unknown) {
       return typeof value === 'string' ? parseFloat(value) : value
     }
 
+    // Convert country Alpha3 to enum
+    const countryEnum = alpha3ToCountryEnum(result.data.country)
+    if (!countryEnum) {
+      return {
+        success: false,
+        error: 'Invalid country selection'
+      }
+    }
+
+    // Prepare phone number (convert empty strings to null)
+    const phoneNumber = result.data.phone?.trim() || null
+
     // Update user profile in database (role defaults to CLIENT)
     const updatedUser = await prisma.users_profile.update({
       where: { id: user.id },
       data: {
         name: result.data.name,
         weight: result.data.weight,
-        weight_unit: result.data.weightUnit,
+        weight_unit: "KG", // Always KG for new users
         height: result.data.height,
-        height_unit: result.data.heightUnit,
+        height_unit: "CM", // Always CM for new users
         date_of_birth: new Date(result.data.dateOfBirth),
         gender: result.data.gender,
         activity_level: result.data.activityLevel,
+        // Country and phone information
+        country: countryEnum as any, // Convert to enum type
+        phone: phoneNumber,
         // Optional measurements
         neck: prepareMeasurement(result.data.neck),
         waist: prepareMeasurement(result.data.waist),
@@ -62,7 +78,7 @@ export async function completeOnboardingAction(data: unknown) {
         id: uuidv4(),
         user_id: user.id,
         weight: result.data.weight,
-        weight_unit: result.data.weightUnit,
+        weight_unit: "KG", // Always KG for new users
         date_logged: new Date(),
         notes: 'Initial weight from onboarding'
       }
@@ -89,6 +105,8 @@ export async function getUserOnboardingStatus(userId: string) {
         name: true,
         weight: true,
         height: true,
+        country: true,
+        phone: true,
         neck: true,
         waist: true,
         hips: true

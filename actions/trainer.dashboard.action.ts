@@ -409,9 +409,9 @@ async function fetchClientPRs(trainerId: string): Promise<ClientPR[]> {
     id: pr.id,
     clientName: pr.users_profile?.name || "Unknown Client",
     exerciseName: pr.workout_exercise_lists.name,
-    weight: pr.max_weight,
+    weight: pr.max_weight ?? 0,
     reps: null, // Max lifts don't store reps, they're calculated 1RMs
-    oneRepMax: pr.max_weight, // This is already the calculated 1RM
+    oneRepMax: pr.max_weight ?? 0, // This is already the calculated 1RM
     date: pr.date_achieved.toISOString().split('T')[0],
   }));
 }

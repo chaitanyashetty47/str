@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { format } from 'date-fns'
+import { CircleFlag } from 'react-circle-flags'
+import { lookup } from 'country-data-list'
 
 interface ReviewStepProps {
   onConfirmationChange: (confirmed: boolean) => void
@@ -40,7 +42,23 @@ export default function ReviewStep({ onConfirmationChange, isConfirmed }: Review
     return level?.replace('_', ' ')?.toLowerCase()?.replace(/\b\w/g, l => l.toUpperCase())
   }
 
+  const getCountryInfo = (alpha3Code: string) => {
+    if (!alpha3Code) return null
+    try {
+      const country = lookup.countries({ alpha3: alpha3Code.toUpperCase() })[0]
+      return country
+    } catch {
+      return null
+    }
+  }
+
+  const formatPhoneNumber = (phone: string) => {
+    if (!phone) return 'Not provided'
+    return phone
+  }
+
   const hasMeasurements = data.neck || data.waist || data.hips
+  const countryInfo = getCountryInfo(data.country || '')
 
   return (
     <div className="space-y-6">
@@ -88,6 +106,29 @@ export default function ReviewStep({ onConfirmationChange, isConfirmed }: Review
                 <span className="text-gray-600 font-medium">Gender:</span>
                 <span className="font-semibold">{data.gender}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">Country:</span>
+                <div className="flex items-center gap-2">
+                  {countryInfo && (
+                    <div className="w-4 h-4 rounded-full overflow-hidden flex-shrink-0">
+                      <CircleFlag
+                        countryCode={countryInfo.alpha2.toLowerCase()}
+                        height={16}
+                        width={16}
+                      />
+                    </div>
+                  )}
+                  <span className="font-semibold">
+                    {countryInfo ? countryInfo.name : data.country || 'Not selected'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">Phone:</span>
+                <span className="font-semibold text-sm">
+                  {formatPhoneNumber(data.phone || '')}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -104,13 +145,13 @@ export default function ReviewStep({ onConfirmationChange, isConfirmed }: Review
               <div className="flex justify-between">
                 <span className="text-gray-600 font-medium">Weight:</span>
                 <span className="font-semibold">
-                  {data.weight} {data.weightUnit?.toLowerCase()}
+                  {data.weight} kg
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 font-medium">Height:</span>
                 <span className="font-semibold">
-                  {data.height} {data.heightUnit?.toLowerCase()}
+                  {data.height} cm
                 </span>
               </div>
               <div className="flex justify-between md:col-span-2">

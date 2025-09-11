@@ -6,9 +6,87 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Controller } from "react-hook-form";
+import { CountryDropdown } from "@/components/ui/country-dropdown";
+import { PhoneInput, type CountryData } from "@/components/ui/phone-input";
+import { CircleFlag } from "react-circle-flags";
+import { countries } from "country-data-list";
+import { countryEnumToAlpha3 } from '@/utils/country-mapping';
 import { getProfileDetails, updateProfile } from "@/actions/profile/get-profile-details.action";
 import { useAction } from "@/hooks/useAction";
 import { toast } from "sonner";
+
+// Helper function to convert inches to cm
+function inchesToCm(inches: number): number {
+  return Math.round(inches * 2.54 * 10) / 10;
+}
+
+// Helper function to get country info from alpha3 code
+function getCountryInfo(countryCode: string) {
+  if (!countryCode) return null;
+  try {
+    const countryArray = countries[countryCode as keyof typeof countries];
+    return countryArray?.[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+// Helper function to format phone number with flag
+function formatPhoneNumber(phone: string, countryAlpha3: string) {
+  const countryInfo = getCountryInfo(countryAlpha3);
+  return {
+    phone,
+    countryInfo,
+    alpha2: countryInfo?.alpha2?.toLowerCase()
+  };
+}
+
+// Helper function to get measurement validation
+function getMeasurementValidation(value: number, fieldName: string) {
+  if (!value || value <= 0) return null;
+  
+  const ranges = {
+    neck: { min: 25, max: 60, name: "Neck" },
+    waist: { min: 50, max: 150, name: "Waist" },
+    hips: { min: 70, max: 150, name: "Hips" },
+  };
+  
+  const range = ranges[fieldName as keyof typeof ranges];
+  if (!range) return null;
+  
+  if (value < range.min) {
+    const inchesValue = Math.round(value / 2.54 * 10) / 10;
+    return {
+      type: "error" as const,
+      message: `${range.name} measurement seems too small (${value}cm). Did you mean ${inchesValue} inches? That would be ${inchesToCm(inchesValue)}cm.`,
+      suggestion: `Try ${inchesToCm(inchesValue)}cm instead.`
+    };
+  }
+  
+  // Warning thresholds based on new realistic ranges
+  if (value < range.min + 10) {
+    return {
+      type: "warning" as const,
+      message: `${range.name} measurement seems small (${value}cm). Please double-check. You can proceed with it.`,
+      suggestion: null
+    };
+  }
+  
+  if (value > range.max) {
+    return {
+      type: "error" as const,
+      message: `${range.name} measurement seems too large (${value}cm). Please check your measurement.`,
+      suggestion: null
+    };
+  }
+  
+  return {
+    type: "success" as const,
+    message: `${range.name} measurement looks good!`,
+    suggestion: null
+  };
+}
 
 interface ProfileFormProps {
   user: User;
@@ -23,18 +101,26 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    country: "",
+    phone: "",
     date_of_birth: "",
     gender: "",
     activity_level: "",
     weight: "",
-    weight_unit: "KG",
     height: "",
-    height_unit: "CM",
     neck: "",
     waist: "",
-    hips: "",
-    photo_privacy: "PRIVATE"
+    hips: ""
   });
+  
+  // Validation state for measurements
+  const [validationMessages, setValidationMessages] = useState<{
+    [key: string]: { type: 'error' | 'warning' | 'success'; message: string; suggestion: string | null } | null;
+  }>({});
+
+  // Country and phone synchronization state
+  const [selectedCountry, setSelectedCountry] = useState<any>(null);
+  const [countryDropdownData, setCountryDropdownData] = useState<any>(null);
 
   // Use the useAction hook for updating profile
   const { execute: executeUpdate, isLoading, fieldErrors, error } = useAction(updateProfile, {
@@ -58,18 +144,17 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
     setFormData({
       name: profileData.name || "",
       email: profileData.email || "",
+      country: profileData.country || "",
+      phone: profileData.phone || "",
       date_of_birth: profileData.date_of_birth ? 
         new Date(profileData.date_of_birth).toISOString().split('T')[0] : "",
       gender: profileData.gender || "",
       activity_level: profileData.activity_level || "",
       weight: profileData.weight?.toString() || "",
-      weight_unit: profileData.weight_unit || "KG",
       height: profileData.height?.toString() || "",
-      height_unit: profileData.height_unit || "CM",
       neck: profileData.neck?.toString() || "",
       waist: profileData.waist?.toString() || "",
-      hips: profileData.hips?.toString() || "",
-      photo_privacy: profileData.photo_privacy || "PRIVATE"
+      hips: profileData.hips?.toString() || ""
     });
   };
 
@@ -107,25 +192,59 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
     }
   }, [initialData, isEditing]);
 
+  // Initialize selectedCountry state when profile data is available
+  useEffect(() => {
+    if (profile?.country) {
+      // Convert enum to alpha3 if needed
+      const alpha3Code = countryEnumToAlpha3(profile.country) || profile.country;
+      const countryInfo = getCountryInfo(alpha3Code);
+      
+      if (countryInfo) {
+        setSelectedCountry({
+          alpha2: countryInfo.alpha2,
+          alpha3: alpha3Code,
+          name: countryInfo.name,
+          countryCallingCodes: countryInfo.countryCallingCodes
+        });
+      }
+    }
+  }, [profile]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Validate measurements in real-time
+    if (['neck', 'waist', 'hips'].includes(field)) {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        const validation = getMeasurementValidation(numValue, field);
+        setValidationMessages(prev => ({
+          ...prev,
+          [field]: validation
+        }));
+      } else {
+        setValidationMessages(prev => ({
+          ...prev,
+          [field]: null
+        }));
+      }
+    }
   };
 
   const handleSave = async () => {
     await executeUpdate({
       name: formData.name,
       email: formData.email,
+      country: formData.country || undefined,
+      phone: formData.phone || undefined,
       date_of_birth: formData.date_of_birth || undefined,
       gender: formData.gender as "MALE" | "FEMALE" | undefined,
       activity_level: formData.activity_level as any,
       weight: formData.weight ? parseFloat(formData.weight) : undefined,
-      weight_unit: formData.weight_unit as "KG" | "LB",
       height: formData.height ? parseFloat(formData.height) : undefined,
-      height_unit: formData.height_unit as "CM" | "INCHES" | "FEET",
       neck: formData.neck ? parseFloat(formData.neck) : undefined,
       waist: formData.waist ? parseFloat(formData.waist) : undefined,
-      hips: formData.hips ? parseFloat(formData.hips) : undefined,
-      photo_privacy: formData.photo_privacy as "PRIVATE" | "PUBLIC"
+      hips: formData.hips ? parseFloat(formData.hips) : undefined
     });
   };
 
@@ -196,7 +315,7 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
       )}
 
       <div className="space-y-6">
-        {/* Row 1: Email (readonly) and Name */}
+        {/* Row 1: Email (readonly), Name, Country, Phone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -222,6 +341,108 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
                 {formData.name || "Not set"}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Row 1.5: Country and Phone */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="country">Country</Label>
+            {isEditing ? (
+              <CountryDropdown
+                defaultValue={(() => {
+                  // Convert enum to alpha3 if needed
+                  return countryEnumToAlpha3(formData.country) || formData.country;
+                })()}
+                onChange={(country) => {
+                  handleInputChange("country", country.alpha3);
+                  setCountryDropdownData(country); // Store full country object
+                  const countryData = {
+                    alpha2: country.alpha2,
+                    alpha3: country.alpha3,
+                    name: country.name,
+                    countryCallingCodes: country.countryCallingCodes
+                  };
+                  setSelectedCountry(countryData);
+                  if (country.countryCallingCodes?.[0]) {
+                    handleInputChange("phone", country.countryCallingCodes[0]);
+                  }
+                }}
+                placeholder="Select your country"
+              />
+            ) : (
+              <div className="p-2 border rounded-md bg-muted/50">
+                {formData.country ? (
+                  (() => {
+                    // Convert enum to alpha3 if needed
+                    const alpha3Code = countryEnumToAlpha3(formData.country) || formData.country;
+                    const countryInfo = getCountryInfo(alpha3Code);
+                    
+                    if (countryInfo) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full overflow-hidden flex-shrink-0">
+                            <CircleFlag
+                              countryCode={countryInfo.alpha2.toLowerCase()}
+                              height={16}
+                              width={16}
+                            />
+                          </div>
+                          <span>{countryInfo.name}</span>
+                        </div>
+                      );
+                    }
+                    return formData.country;
+                  })()
+                ) : "Not set"}
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone Number</Label>
+            {isEditing ? (
+              <PhoneInput
+                value={formData.phone || ''}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                defaultCountry={selectedCountry?.alpha2?.toLowerCase()}
+                onCountryChange={(countryData) => {
+                  if (countryData && countryData.alpha3 !== selectedCountry?.alpha3) {
+                    setSelectedCountry(countryData);
+                    handleInputChange("country", countryData.alpha3);
+                  }
+                }}
+                placeholder="Enter your phone number"
+              />
+            ) : (
+              <div className="p-2 border rounded-md bg-muted/50">
+                {formData.phone ? (
+                  (() => {
+                    // Convert enum to alpha3 if needed
+                    const alpha3Code = countryEnumToAlpha3(formData.country) || formData.country;
+                    const phoneData = formatPhoneNumber(formData.phone, alpha3Code);
+                    
+                    if (phoneData.countryInfo && phoneData.alpha2) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full overflow-hidden flex-shrink-0">
+                            <CircleFlag
+                              countryCode={phoneData.alpha2}
+                              height={16}
+                              width={16}
+                            />
+                          </div>
+                          <span>{phoneData.phone}</span>
+                        </div>
+                      );
+                    }
+                    return formData.phone;
+                  })()
+                ) : "Not set"}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Optional - for contact purposes
+            </p>
           </div>
         </div>
 
@@ -288,68 +509,49 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
           </div>
         </div>
 
-        {/* Row 3: Weight + Weight Unit, Height + Height Unit */}
+        {/* Row 3: Weight (kg), Height (cm) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Weight</Label>
-            <div className="flex gap-2">
+            <Label htmlFor="weight">Weight (kg)</Label>
               {isEditing ? (
-                <>
                   <Input
+                id="weight"
                     type="number"
                     step="0.1"
                     value={formData.weight}
                     onChange={(e) => handleInputChange("weight", e.target.value)}
-                    placeholder="Enter weight"
-                    className="flex-1"
-                  />
-                  <Select value={formData.weight_unit} onValueChange={(value) => handleInputChange("weight_unit", value)}>
-                    <SelectTrigger className="w-20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="KG">KG</SelectItem>
-                      <SelectItem value="LB">LB</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </>
-              ) : (
-                <div className="p-2 border rounded-md bg-muted/50 w-full">
-                  {formData.weight ? `${formData.weight} ${formData.weight_unit}` : "Not set"}
+                placeholder="Enter weight in kilograms"
+                className="w-full"
+              />
+            ) : (
+              <div className="p-2 border rounded-md bg-muted/50">
+                {formData.weight ? `${formData.weight} kg` : "Not set"}
                 </div>
               )}
-            </div>
+            <p className="text-xs text-gray-500">
+              Enter your weight in kilograms
+            </p>
           </div>
           <div className="space-y-2">
-            <Label>Height</Label>
-            <div className="flex gap-2">
+            <Label htmlFor="height">Height (cm)</Label>
               {isEditing ? (
-                <>
                   <Input
+                id="height"
                     type="number"
                     step="0.1"
                     value={formData.height}
                     onChange={(e) => handleInputChange("height", e.target.value)}
-                    placeholder="Enter height"
-                    className="flex-1"
-                  />
-                  <Select value={formData.height_unit} onValueChange={(value) => handleInputChange("height_unit", value)}>
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CM">CM</SelectItem>
-                      <SelectItem value="INCHES">IN</SelectItem>
-                      <SelectItem value="FEET">FT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </>
-              ) : (
-                <div className="p-2 border rounded-md bg-muted/50 w-full">
-                  {formData.height ? `${formData.height} ${formData.height_unit}` : "Not set"}
+                placeholder="Enter height in centimeters"
+                className="w-full"
+              />
+            ) : (
+              <div className="p-2 border rounded-md bg-muted/50">
+                {formData.height ? `${formData.height} cm` : "Not set"}
                 </div>
               )}
-            </div>
+            <p className="text-xs text-gray-500">
+              Enter your height in centimeters
+            </p>
           </div>
         </div>
 
@@ -365,10 +567,23 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
                 value={formData.neck}
                 onChange={(e) => handleInputChange("neck", e.target.value)}
                 placeholder="Enter neck measurement"
+                className={validationMessages.neck?.type === 'error' ? 'border-red-500' : validationMessages.neck?.type === 'warning' ? 'border-yellow-500' : validationMessages.neck?.type === 'success' ? 'border-green-500' : ''}
               />
             ) : (
               <div className="p-2 border rounded-md bg-muted/50">
                 {formData.neck ? `${formData.neck} cm` : "Not set"}
+              </div>
+            )}
+            {validationMessages.neck && (
+              <div className={`text-sm p-2 rounded-md ${
+                validationMessages.neck?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
+                validationMessages.neck?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
+                'text-green-700 bg-green-50 border border-green-200'
+              }`}>
+                <p>{validationMessages.neck.message}</p>
+                {validationMessages.neck.suggestion && (
+                  <p className="font-medium mt-1">{validationMessages.neck.suggestion}</p>
+                )}
               </div>
             )}
           </div>
@@ -382,10 +597,23 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
                 value={formData.waist}
                 onChange={(e) => handleInputChange("waist", e.target.value)}
                 placeholder="Enter waist measurement"
+                className={validationMessages.waist?.type === 'error' ? 'border-red-500' : validationMessages.waist?.type === 'warning' ? 'border-yellow-500' : validationMessages.waist?.type === 'success' ? 'border-green-500' : ''}
               />
             ) : (
               <div className="p-2 border rounded-md bg-muted/50">
                 {formData.waist ? `${formData.waist} cm` : "Not set"}
+              </div>
+            )}
+            {validationMessages.waist && (
+              <div className={`text-sm p-2 rounded-md ${
+                validationMessages.waist?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
+                validationMessages.waist?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
+                'text-green-700 bg-green-50 border border-green-200'
+              }`}>
+                <p>{validationMessages.waist.message}</p>
+                {validationMessages.waist.suggestion && (
+                  <p className="font-medium mt-1">{validationMessages.waist.suggestion}</p>
+                )}
               </div>
             )}
           </div>
@@ -399,37 +627,29 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
                 value={formData.hips}
                 onChange={(e) => handleInputChange("hips", e.target.value)}
                 placeholder="Enter hip measurement"
+                className={validationMessages.hips?.type === 'error' ? 'border-red-500' : validationMessages.hips?.type === 'warning' ? 'border-yellow-500' : validationMessages.hips?.type === 'success' ? 'border-green-500' : ''}
               />
             ) : (
               <div className="p-2 border rounded-md bg-muted/50">
                 {formData.hips ? `${formData.hips} cm` : "Not set"}
               </div>
             )}
+            {validationMessages.hips && (
+              <div className={`text-sm p-2 rounded-md ${
+                validationMessages.hips?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
+                validationMessages.hips?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
+                'text-green-700 bg-green-50 border border-green-200'
+              }`}>
+                <p>{validationMessages.hips.message}</p>
+                {validationMessages.hips.suggestion && (
+                  <p className="font-medium mt-1">{validationMessages.hips.suggestion}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Row 5: Photo Privacy Settings */}
-        <div className="space-y-2">
-          <Label htmlFor="photo_privacy">Photo Privacy Settings</Label>
-          {isEditing ? (
-            <Select value={formData.photo_privacy} onValueChange={(value) => handleInputChange("photo_privacy", value)}>
-              <SelectTrigger className="w-full md:w-64">
-                <SelectValue placeholder="Select privacy setting" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PRIVATE">Private (Only you can see)</SelectItem>
-                <SelectItem value="PUBLIC">Public (Visible to others)</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="p-2 border rounded-md bg-muted/50 w-full md:w-64">
-              {formData.photo_privacy === "PRIVATE" ? "Private (Only you can see)" : "Public (Visible to others)"}
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Control who can see your transformation photos
-          </p>
-        </div>
+        {/* Row 5: End of form */}
       </div>
     </div>
   );

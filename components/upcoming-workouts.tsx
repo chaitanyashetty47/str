@@ -1,8 +1,9 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { getUpcomingWorkouts } from "@/actions/client-workout/client-workout.action"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WorkoutDayOutput } from "@/actions/client-workout/client-workout.action"
+import { cn } from "@/lib/utils"
 
 function UpcomingWorkoutsLoading() {
   return (
@@ -52,8 +53,8 @@ export default async function UpcomingWorkouts({planId, week}: {planId: string, 
               </p>
             </div>
             
-            <Button className="bg-black hover:bg-gray-800 text-white" asChild>
-              <Link href={`/workout-plan/${planId}`}>
+            <Button className="bg-primary hover:bg-gray-800 text-white" asChild>
+              <Link href={`/workout-plan/${planId}`} className={cn(buttonVariants({ variant: "default" }))}>
                 Start
               </Link>
             </Button>

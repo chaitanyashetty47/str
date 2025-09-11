@@ -24,6 +24,7 @@ export interface ExerciseInPlan {
   name: string;
   bodyPart: BodyPart;
   thumbnail: string | null;
+  isRepsBased: boolean; // NEW: Indicates if exercise is reps-based
   /**
    * Keeping order explicitly allows easy DB write
    * and drag-and-drop reordering without relying on array index.

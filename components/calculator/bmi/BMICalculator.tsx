@@ -1,6 +1,6 @@
 "use client"
 import { Button } from "@/components/ui/button"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState, useRef } from "react"
 import { Label } from "@/components/ui/label"
@@ -272,7 +272,7 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
     <div className="flex flex-col md:flex-row w-full gap-8">
       {/* Left: Main BMI Results content */}
       <div className="max-w-3xl w-full">
-        <div className="flex flex-row justify-between">
+        <div className="flex flex-row justify-between mb-6">
           <h1 className="text-2xl font-bold">BMI Results</h1>
           <div className="flex flex-row gap-2">
             <Button className="bg-strentor-red text-white"
@@ -280,7 +280,7 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
               disabled={isTodayLogged || isAdding}
               title={isTodayLogged ? "You have already inputted today's data." : undefined}
             >
-              <PlusIcon className="w-4 h-4" /> {showAddForm ? "Cancel" : "Add New BMI"}
+              {showAddForm ? <X className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />} {showAddForm ? "Cancel" : "Add New BMI"}
             </Button>
           </div>
         </div>

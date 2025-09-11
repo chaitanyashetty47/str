@@ -35,7 +35,8 @@ export function ExerciseContainer({ exercise, weekNumber, dayNumber, dragHandleP
   const dispatch = usePlanDispatch();
   const { meta } = usePlanMeta();
   const { oneRMMap } = useClientMaxLifts(meta.clientId);
-  const oneRM = oneRMMap[exercise.listExerciseId];
+  const oneRMData = oneRMMap[exercise.listExerciseId];
+  const oneRM = oneRMData?.maxWeight || undefined;
   const { getExerciseValidationStatus } = usePlanValidation();
 
   // Get validation status for this exercise
@@ -130,6 +131,7 @@ export function ExerciseContainer({ exercise, weekNumber, dayNumber, dragHandleP
             exerciseUid={exercise.uid}
             oneRM={oneRM}
             intensityMode={meta.intensityMode}
+            isRepsBased={exercise.isRepsBased} // NEW: Pass reps-based flag
           />
         ))}
 

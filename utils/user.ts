@@ -149,6 +149,132 @@ export async function requireTrainerAccess(): Promise<{ userId: string; role: st
 }
 
 /**
+ * Check if the authenticated user has manifestation trainer access
+ * Returns user ID and role if manifestation trainer, throws error otherwise
+ */
+export async function checkManifestationTrainerAccess(): Promise<{ userId: string; role: string }> {
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    throw new Error("Authentication required");
+  }
+
+  // Get user profile to check role
+  const userProfile = await prisma.users_profile.findUnique({
+    where: { id: user.id },
+    select: { role: true }
+  });
+
+  if (!userProfile) {
+    throw new Error("User profile not found");
+  }
+
+  // Check if user has manifestation trainer access
+  if (userProfile.role !== 'MANIFESTATION_TRAINER') {
+    throw new Error("Manifestation trainer access required");
+  }
+
+  return { userId: user.id, role: userProfile.role };
+}
+
+/**
+ * Check if the authenticated user is a manifestation trainer (boolean check)
+ * Returns true if manifestation trainer, false otherwise
+ */
+export async function isManifestationTrainer(): Promise<boolean> {
+  try {
+    await checkManifestationTrainerAccess();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get manifestation trainer user data if authenticated user is a manifestation trainer
+ * Returns null if not a manifestation trainer (doesn't throw error)
+ */
+export async function getManifestationTrainerUser(): Promise<{ userId: string; role: string } | null> {
+  try {
+    return await checkManifestationTrainerAccess();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Require manifestation trainer access - throws error if not a manifestation trainer
+ * Similar to checkManifestationTrainerAccess but with more descriptive name
+ */
+export async function requireManifestationTrainerAccess(): Promise<{ userId: string; role: string }> {
+  return checkManifestationTrainerAccess();
+}
+
+/**
+ * Check if the authenticated user has psychology trainer access
+ * Returns user ID and role if psychology trainer, throws error otherwise
+ */
+export async function checkPsychologyTrainerAccess(): Promise<{ userId: string; role: string }> {
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    throw new Error("Authentication required");
+  }
+
+  // Get user profile to check role
+  const userProfile = await prisma.users_profile.findUnique({
+    where: { id: user.id },
+    select: { role: true }
+  });
+
+  if (!userProfile) {
+    throw new Error("User profile not found");
+  }
+
+  // Check if user has psychology trainer access
+  if (userProfile.role !== 'PSYCHOLOGY_TRAINER') {
+    throw new Error("Psychology trainer access required");
+  }
+
+  return { userId: user.id, role: userProfile.role };
+}
+
+/**
+ * Check if the authenticated user is a psychology trainer (boolean check)
+ * Returns true if psychology trainer, false otherwise
+ */
+export async function isPsychologyTrainer(): Promise<boolean> {
+  try {
+    await checkPsychologyTrainerAccess();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get psychology trainer user data if authenticated user is a psychology trainer
+ * Returns null if not a psychology trainer (doesn't throw error)
+ */
+export async function getPsychologyTrainerUser(): Promise<{ userId: string; role: string } | null> {
+  try {
+    return await checkPsychologyTrainerAccess();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Require psychology trainer access - throws error if not a psychology trainer
+ * Similar to checkPsychologyTrainerAccess but with more descriptive name
+ */
+export async function requirePsychologyTrainerAccess(): Promise<{ userId: string; role: string }> {
+  return checkPsychologyTrainerAccess();
+}
+
+/**
  * Get user profile with role information
  * Returns user profile or null if not found
  */

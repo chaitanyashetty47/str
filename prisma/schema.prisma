@@ -29,7 +29,9 @@ model client_max_lifts {
   id            String        @id(map: "ClientMaxLift_pkey") @db.Uuid
   client_id     String        @db.Uuid
   list_exercise_id String     @db.Uuid
-  max_weight    Float
+  max_weight    Float?        // For weight-based exercises (can be null for reps-based)
+  max_reps      Int?          // NEW: For reps-based exercises (can be null for weight-based)
+  exercise_type ExerciseType  @default(WEIGHT_BASED) // NEW: Track exercise type
   last_updated  DateTime
   date_achieved DateTime      @default(now())
   workout_exercise_lists workout_exercise_lists @relation(fields: [list_exercise_id], references: [id], onDelete: NoAction, map: "ClientMaxLift_listExerciseId_fkey")
@@ -160,6 +162,10 @@ model users_profile {
   neck                                                      Float?
   waist                                                     Float?
   hips                                                      Float?
+  forearm                                                   Float?
+  wrist                                                     Float?
+  country                                                   country?                  
+  phone                                                     String?
   onboarding_completed                                      DateTime?
   onboarding_started                                        DateTime?
   calculator_sessions                                       calculator_sessions[]
@@ -174,6 +180,7 @@ model users_profile {
   workout_exercise_lists                                    workout_exercise_lists[]
   workout_plans_as_client                                   workout_plans[]          @relation("ClientWorkoutPlans")
   workout_plans_as_trainer                                  workout_plans[]          @relation("TrainerWorkoutPlans")
+  workout_day_videos                                        workout_day_videos[]     // NEW: One-to-many relationship for workout videos
 
   @@schema("public")
 }
@@ -245,6 +252,7 @@ model workout_days {
   is_deleted            Boolean                 @default(false) // NEW: Soft delete
   deleted_at            DateTime?               // NEW: Soft delete timestamp
   workout_day_exercises workout_day_exercises[]
+  workout_day_videos    workout_day_videos?     // NEW: One-to-one relationship for workout videos
   workout_plans         workout_plans           @relation(fields: [plan_id], references: [id], onDelete: Cascade, map: "WorkoutDay_planId_fkey")
 
   @@schema("public")
@@ -259,6 +267,7 @@ model workout_exercise_lists {
   youtube_link          String?
   gif_url               String?
   type                  BodyPart
+  is_reps_based         Boolean                 @default(false) // NEW: Indicates if exercise is bodyweight-based (pushups, pull-ups, etc.)
   created_at            DateTime                @default(now())
   created_by_id         String                  @db.Uuid
   workout_day_exercises workout_day_exercises[]
@@ -297,12 +306,29 @@ model workout_set_instructions {
   weight_prescribed     Float?
   rest_time             Int?
   notes                 String?
-   is_deleted            Boolean               @default(false) // NEW: Soft delete
+  is_deleted            Boolean               @default(false) // NEW: Soft delete
   deleted_at            DateTime?             // NEW: Soft delete timestamp
   exercise_logs         exercise_logs[]
   workout_day_exercises workout_day_exercises @relation(fields: [exercise_id], references: [id], onDelete: Cascade, map: "WorkoutSetInstruction_exerciseId_fkey")
   
   @@index([exercise_id, is_deleted])
+  @@schema("public")
+}
+
+model workout_day_videos {
+  id            String      @id(map: "WorkoutDayVideo_pkey") @db.Uuid
+  workout_day_id String     @db.Uuid
+  client_id     String      @db.Uuid
+  video_url     String      // The cloud link (Google Drive, Dropbox, etc.)
+  video_title   String?     // Optional title/description
+  uploaded_at   DateTime    @default(now())
+  reviewed_at   DateTime?   // When trainer reviewed it
+  trainer_notes String?     // Trainer feedback/notes
+  workout_days  workout_days @relation(fields: [workout_day_id], references: [id], onDelete: Cascade, map: "WorkoutDayVideo_workoutDayId_fkey")
+  users_profile users_profile @relation(fields: [client_id], references: [id], onDelete: NoAction, map: "WorkoutDayVideo_clientId_fkey")
+
+  @@unique([workout_day_id]) // Only one video per workout day
+  @@index([client_id], map: "WorkoutDayVideo_clientId_idx")
   @@schema("public")
 }
 
@@ -451,5 +477,269 @@ enum HeightUnit {
   INCHES
   FEET
 
+  @@schema("public")
+}
+
+enum ExerciseType {
+  WEIGHT_BASED    // Traditional exercises with weight (bench press, squats, etc.)
+  REPS_BASED      // Bodyweight exercises (pushups, pull-ups, etc.)
+
+  @@schema("public")
+}
+
+enum country {
+  ASCENSION_ISLAND
+  ANDORRA
+  UNITED_ARAB_EMIRATES
+  AFGHANISTAN
+  ANTIGUA_AND_BARBUDA
+  ANGUILLA
+  ALBANIA
+  ARMENIA
+  ANGOLA
+  ANTARCTICA
+  ARGENTINA
+  AMERICAN_SAMOA
+  AUSTRIA
+  AUSTRALIA
+  ARUBA
+  ALAND_ISLANDS
+  AZERBAIJAN
+  BOSNIA_HERZEGOVINA
+  BARBADOS
+  BANGLADESH
+  BELGIUM
+  BURKINA_FASO
+  BULGARIA
+  BAHRAIN
+  BURUNDI
+  BENIN
+  SAINT_BARTHELEMY
+  BERMUDA
+  BRUNEI_DARUSSALAM
+  BOLIVIA
+  BONAIRE_SINT_EUSTATIUS_AND_SABA
+  BRAZIL
+  BAHAMAS
+  BHUTAN
+  BOUVET_ISLAND
+  BOTSWANA
+  BELARUS
+  BELIZE
+  CANADA
+  COCOS_KEELING_ISLANDS
+  DEMOCRATIC_REPUBLIC_OF_CONGO
+  CENTRAL_AFRICAN_REPUBLIC
+  REPUBLIC_OF_CONGO
+  SWITZERLAND
+  COTE_DIVOIRE
+  COOK_ISLANDS
+  CHILE
+  CAMEROON
+  CHINA
+  COLOMBIA
+  COSTA_RICA
+  CUBA
+  CABO_VERDE
+  CURACAO
+  CHRISTMAS_ISLAND
+  CYPRUS
+  CZECH_REPUBLIC
+  GERMANY
+  DJIBOUTI
+  DENMARK
+  DOMINICA
+  DOMINICAN_REPUBLIC
+  ALGERIA
+  ECUADOR
+  ESTONIA
+  EGYPT
+  WESTERN_SAHARA
+  ERITREA
+  SPAIN
+  ETHIOPIA
+  FINLAND
+  FIJI
+  FALKLAND_ISLANDS
+  MICRONESIA
+  FAROE_ISLANDS
+  FRANCE
+  GABON
+  UNITED_KINGDOM
+  GRENADA
+  GEORGIA
+  FRENCH_GUIANA
+  GUERNSEY
+  GHANA
+  GIBRALTAR
+  GREENLAND
+  GAMBIA
+  GUINEA
+  GUADELOUPE
+  EQUATORIAL_GUINEA
+  GREECE
+  SOUTH_GEORGIA_AND_THE_SOUTH_SANDWICH_ISLANDS
+  GUATEMALA
+  GUAM
+  GUINEA_BISSAU
+  GUYANA
+  HONG_KONG
+  HEARD_ISLAND_AND_MCDONALD_ISLANDS
+  HONDURAS
+  CROATIA
+  HAITI
+  HUNGARY
+  INDONESIA
+  IRELAND
+  ISRAEL
+  ISLE_OF_MAN
+  INDIA
+  BRITISH_INDIAN_OCEAN_TERRITORY
+  IRAQ
+  IRAN
+  ICELAND
+  ITALY
+  JERSEY
+  JAMAICA
+  JORDAN
+  JAPAN
+  KENYA
+  KYRGYZSTAN
+  CAMBODIA
+  KIRIBATI
+  COMOROS
+  SAINT_KITTS_AND_NEVIS
+  NORTH_KOREA
+  SOUTH_KOREA
+  KUWAIT
+  CAYMAN_ISLANDS
+  KAZAKHSTAN
+  LAOS
+  LEBANON
+  SAINT_LUCIA
+  LIECHTENSTEIN
+  SRI_LANKA
+  LIBERIA
+  LESOTHO
+  LITHUANIA
+  LUXEMBOURG
+  LATVIA
+  LIBYA
+  MOROCCO
+  MONACO
+  MOLDOVA
+  MONTENEGRO
+  SAINT_MARTIN
+  MADAGASCAR
+  MARSHALL_ISLANDS
+  NORTH_MACEDONIA
+  MALI
+  MYANMAR
+  MONGOLIA
+  MACAO
+  NORTHERN_MARIANA_ISLANDS
+  MARTINIQUE
+  MAURITANIA
+  MONTSERRAT
+  MALTA
+  MAURITIUS
+  MALDIVES
+  MALAWI
+  MEXICO
+  MALAYSIA
+  MOZAMBIQUE
+  NAMIBIA
+  NEW_CALEDONIA
+  NIGER
+  NORFOLK_ISLAND
+  NIGERIA
+  NICARAGUA
+  NETHERLANDS
+  NORWAY
+  NEPAL
+  NAURU
+  NIUE
+  NEW_ZEALAND
+  OMAN
+  PANAMA
+  PERU
+  FRENCH_POLYNESIA
+  PAPUA_NEW_GUINEA
+  PHILIPPINES
+  PAKISTAN
+  POLAND
+  SAINT_PIERRE_AND_MIQUELON
+  PITCAIRN
+  PUERTO_RICO
+  PALESTINE
+  PORTUGAL
+  PALAU
+  PARAGUAY
+  QATAR
+  REUNION
+  ROMANIA
+  SERBIA
+  RUSSIA
+  RWANDA
+  SAUDI_ARABIA
+  SOLOMON_ISLANDS
+  SEYCHELLES
+  SUDAN
+  SWEDEN
+  SINGAPORE
+  SAINT_HELENA
+  SLOVENIA
+  SVALBARD_AND_JAN_MAYEN
+  SLOVAKIA
+  SIERRA_LEONE
+  SAN_MARINO
+  SENEGAL
+  SOMALIA
+  SURINAME
+  SOUTH_SUDAN
+  SAO_TOME_AND_PRINCIPE
+  EL_SALVADOR
+  SINT_MAARTEN
+  SYRIA
+  ESWATINI
+  TURKS_AND_CAICOS_ISLANDS
+  CHAD
+  FRENCH_SOUTHERN_TERRITORIES
+  TOGO
+  THAILAND
+  TAJIKISTAN
+  TOKELAU
+  TIMOR_LESTE
+  TURKMENISTAN
+  TUNISIA
+  TONGA
+  TURKEY
+  TRINIDAD_AND_TOBAGO
+  TUVALU
+  TAIWAN
+  TANZANIA
+  UKRAINE
+  UGANDA
+  UNITED_STATES_MINOR_OUTLYING_ISLANDS
+  UNITED_STATES
+  URUGUAY
+  UZBEKISTAN
+  VATICAN_CITY
+  SAINT_VINCENT_AND_THE_GRENADINES
+  VENEZUELA
+  BRITISH_VIRGIN_ISLANDS
+  US_VIRGIN_ISLANDS
+  VIETNAM
+  VANUATU
+  WALLIS_AND_FUTUNA
+  SAMOA
+  KOSOVO
+  YEMEN
+  MAYOTTE
+  SOUTH_AFRICA
+  ZAMBIA
+  ZIMBABWE
+
+  @@map("countries")
   @@schema("public")
 }

@@ -3,12 +3,92 @@ import { OnboardingData } from '@/types/onboarding'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
+
+// Helper function to convert inches to cm
+function inchesToCm(inches: number): number {
+  return Math.round(inches * 2.54 * 10) / 10;
+}
+
+// Helper function to get measurement validation
+function getMeasurementValidation(value: number, fieldName: string) {
+  if (!value || value <= 0) return null;
+  
+  const ranges = {
+    neck: { min: 25, max: 60, name: "Neck" },
+    waist: { min: 50, max: 150, name: "Waist" },
+    hips: { min: 70, max: 150, name: "Hips" },
+  };
+  
+  const range = ranges[fieldName as keyof typeof ranges];
+  if (!range) return null;
+  
+  if (value < range.min) {
+    const inchesValue = Math.round(value / 2.54 * 10) / 10;
+    return {
+      type: "error" as const,
+      message: `${range.name} measurement seems too small (${value}cm). Did you mean ${inchesValue} inches? That would be ${inchesToCm(inchesValue)}cm.`,
+      suggestion: `Try ${inchesToCm(inchesValue)}cm instead.`
+    };
+  }
+  
+  // Warning thresholds based on new realistic ranges
+  if (value < range.min + 10) {
+    return {
+      type: "warning" as const,
+      message: `${range.name} measurement seems small (${value}cm). Please double-check. You can proceed with it.`,
+      suggestion: null
+    };
+  }
+  
+  if (value > range.max) {
+    return {
+      type: "error" as const,
+      message: `${range.name} measurement seems too large (${value}cm). Please check your measurement.`,
+      suggestion: null
+    };
+  }
+  
+  return {
+    type: "success" as const,
+    message: `${range.name} measurement looks good!`,
+    suggestion: null
+  };
+}
 
 export default function MeasurementsStep() {
   const {
     register,
     formState: { errors },
+    watch,
   } = useFormContext<OnboardingData>()
+
+  // Validation state for measurements
+  const [validationMessages, setValidationMessages] = useState<{
+    [key: string]: { type: 'error' | 'warning' | 'success'; message: string; suggestion: string | null } | null;
+  }>({});
+
+  // Watch for changes in measurement fields
+  const neckValue = watch('neck');
+  const waistValue = watch('waist');
+  const hipsValue = watch('hips');
+
+  // Update validation messages when values change
+  const updateValidation = (field: string, value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue > 0) {
+      const validation = getMeasurementValidation(numValue, field);
+      setValidationMessages(prev => ({
+        ...prev,
+        [field]: validation
+      }));
+    } else {
+      setValidationMessages(prev => ({
+        ...prev,
+        [field]: null
+      }));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -48,8 +128,13 @@ export default function MeasurementsStep() {
             id="neck"
             type="number"
             step="0.1"
-            placeholder="e.g., 38.5"
-            className="w-full md:w-1/2"
+            placeholder="e.g., 35.0"
+            className={`w-full md:w-1/2 ${
+              validationMessages.neck?.type === 'error' ? 'border-red-500' : 
+              validationMessages.neck?.type === 'warning' ? 'border-yellow-500' : 
+              validationMessages.neck?.type === 'success' ? 'border-green-500' : ''
+            }`}
+            onChange={(e) => updateValidation('neck', e.target.value)}
           />
           <p className="text-xs text-gray-500">
             Measure around the base of your neck
@@ -58,6 +143,18 @@ export default function MeasurementsStep() {
             <p className="text-strentor-red text-sm">
               {errors.neck.message}
             </p>
+          )}
+          {validationMessages.neck && (
+            <div className={`text-sm p-2 rounded-md ${
+              validationMessages.neck?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
+              validationMessages.neck?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
+              'text-green-700 bg-green-50 border border-green-200'
+            }`}>
+              <p>{validationMessages.neck.message}</p>
+              {validationMessages.neck.suggestion && (
+                <p className="font-medium mt-1">{validationMessages.neck.suggestion}</p>
+              )}
+            </div>
           )}
         </div>
 
@@ -71,8 +168,13 @@ export default function MeasurementsStep() {
             id="waist"
             type="number"
             step="0.1"
-            placeholder="e.g., 85.0"
-            className="w-full md:w-1/2"
+            placeholder="e.g., 75.0"
+            className={`w-full md:w-1/2 ${
+              validationMessages.waist?.type === 'error' ? 'border-red-500' : 
+              validationMessages.waist?.type === 'warning' ? 'border-yellow-500' : 
+              validationMessages.waist?.type === 'success' ? 'border-green-500' : ''
+            }`}
+            onChange={(e) => updateValidation('waist', e.target.value)}
           />
           <p className="text-xs text-gray-500">
             Measure around your natural waistline
@@ -81,6 +183,18 @@ export default function MeasurementsStep() {
             <p className="text-strentor-red text-sm">
               {errors.waist.message}
             </p>
+          )}
+          {validationMessages.waist && (
+            <div className={`text-sm p-2 rounded-md ${
+              validationMessages.waist?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
+              validationMessages.waist?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
+              'text-green-700 bg-green-50 border border-green-200'
+            }`}>
+              <p>{validationMessages.waist.message}</p>
+              {validationMessages.waist.suggestion && (
+                <p className="font-medium mt-1">{validationMessages.waist.suggestion}</p>
+              )}
+            </div>
           )}
         </div>
 
@@ -94,8 +208,13 @@ export default function MeasurementsStep() {
             id="hips"
             type="number"
             step="0.1"
-            placeholder="e.g., 95.0"
-            className="w-full md:w-1/2"
+            placeholder="e.g., 90.0"
+            className={`w-full md:w-1/2 ${
+              validationMessages.hips?.type === 'error' ? 'border-red-500' : 
+              validationMessages.hips?.type === 'warning' ? 'border-yellow-500' : 
+              validationMessages.hips?.type === 'success' ? 'border-green-500' : ''
+            }`}
+            onChange={(e) => updateValidation('hips', e.target.value)}
           />
           <p className="text-xs text-gray-500">
             Measure around the widest part of your hips
@@ -105,7 +224,20 @@ export default function MeasurementsStep() {
               {errors.hips.message}
             </p>
           )}
+          {validationMessages.hips && (
+            <div className={`text-sm p-2 rounded-md ${
+              validationMessages.hips?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
+              validationMessages.hips?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
+              'text-green-700 bg-green-50 border border-green-200'
+            }`}>
+              <p>{validationMessages.hips.message}</p>
+              {validationMessages.hips.suggestion && (
+                <p className="font-medium mt-1">{validationMessages.hips.suggestion}</p>
+              )}
+            </div>
+          )}
         </div>
+
       </div>
 
       {/* Measurement Tips */}

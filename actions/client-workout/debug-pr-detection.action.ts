@@ -195,7 +195,7 @@ async function debugPRDetectionHandler({
       existingPRs: existingPRsQuery.map(pr => ({
         exerciseId: pr.list_exercise_id,
         exerciseName: pr.workout_exercise_lists.name,
-        maxWeight: pr.max_weight,
+        maxWeight: pr.max_weight ?? 0,
         dateAchieved: pr.date_achieved.toISOString(),
       })),
       exerciseLogs,

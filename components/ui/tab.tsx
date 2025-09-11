@@ -8,7 +8,7 @@ interface TabProps {
   value: number;
   selected: boolean;
   setSelected: (value: number) => void;
-  discount?: boolean;
+  discount?: number;
 }
 
 export const Tab = ({
@@ -16,34 +16,34 @@ export const Tab = ({
   selected,
   value,
   setSelected,
-  discount = false,
+  discount,
 }: TabProps) => {
   return (
     <button
       onClick={() => setSelected(value)}
       className={cn(
-        "relative w-fit px-4 py-2 text-sm font-semibold capitalize text-foreground transition-colors",
+        "relative w-fit px-4 py-2 text-sm font-semibold capitalize text-foreground transition-colors focus:outline-none focus:ring-0",
         discount && "flex items-center justify-center gap-2.5",
       )}
     >
-      <span className="relative z-10">{text}</span>
+      <span className={cn("relative z-10", selected && "text-white")}>{text}</span>
       {selected && (
         <motion.span
           layoutId="tab"
           transition={{ type: "spring", duration: 0.4 }}
-          className="absolute inset-0 z-0 rounded-full bg-background shadow-sm"
+          className="absolute inset-0 z-0 rounded-full bg-primary shadow-sm"
         ></motion.span>
       )}
       {discount && (
         <Badge
           className={cn(
-            "relative z-10 whitespace-nowrap bg-gray-100 text-xs text-black shadow-none hover:bg-gray-100",
+            "relative z-10 whitespace-nowrap text-xs shadow-none",
             selected
-              ? "bg-[#F3F4F6] hover:bg-[#F3F4F6]"
-              : "bg-gray-300 hover:bg-gray-300",
+              ? "bg-white/20 text-white hover:bg-white/20"
+              : "bg-green-100 text-green-700 hover:bg-green-100",
           )}
         >
-          Save 35%
+          Save {discount}%
         </Badge>
       )}
     </button>

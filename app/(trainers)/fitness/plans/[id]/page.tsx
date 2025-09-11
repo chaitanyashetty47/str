@@ -99,6 +99,7 @@ export default async function EditPlanPage({
         name: ex.workout_exercise_lists.name,
         bodyPart: ex.workout_exercise_lists.type,
         thumbnail: ex.workout_exercise_lists.gif_url,
+        isRepsBased: ex.workout_exercise_lists.is_reps_based, // NEW: Include reps-based flag
         order: ex.order ?? 0,
         instructions: ex.instructions ?? "",
         sets,

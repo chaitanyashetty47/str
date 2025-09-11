@@ -5,8 +5,8 @@ import { User } from "@supabase/supabase-js";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { updateTrainerProfile } from "@/actions/profile/update-trainer-profile.action";
-import { getTrainerProfileDetails } from "@/actions/profile/get-trainer-profile-details.action";
+import { updateTrainerProfile } from "@/actions/profile/fitness/update-trainer-profile.action";
+import { getTrainerProfileDetails } from "@/actions/profile/fitness/get-trainer-profile-details.action";
 import { useAction } from "@/hooks/useAction";
 import { toast } from "sonner";
 

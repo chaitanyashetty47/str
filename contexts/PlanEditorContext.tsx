@@ -275,7 +275,7 @@ function reducer(state: PlanEditorState, action: PlanEditorAction): PlanEditorSt
               : [
                   {
                     setNumber: 1,
-                    weight: "",
+                    weight: action.exercise.isRepsBased ? "" : "", // Empty for both types initially
                     reps: "",
                     rest: 60,  // Default to 60 seconds instead of 0
                     notes: "",
@@ -547,7 +547,9 @@ export function getExerciseValidationStatus(exercise: ExerciseInPlan): {
   let hasEmptySets = false;
 
   exercise.sets.forEach((set) => {
-    if (!set.weight || !set.reps || set.rest < 0) {
+    // For reps-based exercises, weight is not required
+    const isWeightValid = exercise.isRepsBased || set.weight;
+    if (!isWeightValid || !set.reps || set.rest < 0) {
       hasEmptySets = true;
       emptySetNumbers.push(set.setNumber);
     }

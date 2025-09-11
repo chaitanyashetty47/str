@@ -11,7 +11,9 @@ import { BodyPart } from "@prisma/client";
 interface MaxLiftOutput {
   exerciseName: string;
   exerciseType: BodyPart;
-  maxWeight: number;
+  maxWeight?: number; // For weight-based exercises
+  maxReps?: number;   // For reps-based exercises
+  exerciseTypeEnum: "WEIGHT_BASED" | "REPS_BASED"; // Track exercise type
   dateAchieved: Date;
 }
 
@@ -57,7 +59,7 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
     // Convert to chart data format
     const chartDataFormatted = filteredData.map(lift => ({
       date: new Date(lift.dateAchieved),
-      weight: lift.maxWeight,
+      weight: lift.maxWeight ?? 0,
       exerciseName: lift.exerciseName,
     }));
 

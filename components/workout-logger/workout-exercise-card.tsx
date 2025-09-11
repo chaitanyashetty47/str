@@ -96,14 +96,18 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
 
   const handleSaveSet = (setNumber: number) => {
     const inputs = setInputs[setNumber];
-    if (!inputs?.weight || !inputs?.reps) return;
+    if (!inputs?.reps) return;
+    
+    // For reps-based exercises, weight is not required
+    if (!exercise.isRepsBased && !inputs?.weight) return;
 
-    const weightKg = parseFloat(inputs.weight);
+    const weightKg = exercise.isRepsBased ? 0 : parseFloat(inputs.weight);
     const reps = parseInt(inputs.reps);
     const rpe = inputs.rpe ? parseInt(inputs.rpe) : undefined;
 
     // Validate required fields
-    if (isNaN(weightKg) || isNaN(reps) || weightKg < 0 || reps < 0) return;
+    if (isNaN(reps) || reps < 0) return;
+    if (!exercise.isRepsBased && (isNaN(weightKg) || weightKg < 0)) return;
     
     // Check for RPE validation errors
     if (validationErrors[`${setNumber}-rpe`]) {
@@ -205,6 +209,11 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
           <Badge variant="secondary" className="text-xs">
             {exercise.bodyPart}
           </Badge>
+          {exercise.isRepsBased && (
+            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+              🏃 Reps-based
+            </Badge>
+          )}
           {exercise.instructions && (
             <Button
               variant="ghost"
@@ -242,9 +251,9 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
 
       {/* Sets Table */}
       <div className="space-y-2">
-        <div className="grid grid-cols-6 gap-2 text-xs font-medium text-gray-600 px-2">
+        <div className={`grid gap-2 text-xs font-medium text-gray-600 px-2 ${exercise.isRepsBased ? 'grid-cols-5' : 'grid-cols-6'}`}>
           <span>Set</span>
-          <span>Weight (kg)</span>
+          {!exercise.isRepsBased && <span>Weight (kg)</span>}
           <span>Reps</span>
           <span>RPE</span>
           <span>Target</span>
@@ -255,12 +264,14 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
           const inputs = getSetInputs(set.setNumber);
           const isCompleted = set.isCompleted;
           const isEditing = editingSets.has(set.setNumber);
-          const hasInputs = inputs.weight || inputs.reps;
+          const hasInputs = inputs.reps || (!exercise.isRepsBased && inputs.weight);
 
           return (
             <div
               key={set.setNumber}
-              className={`grid grid-cols-6 gap-2 items-center p-2 rounded-lg border ${
+              className={`grid gap-2 items-center p-2 rounded-lg border ${
+                exercise.isRepsBased ? 'grid-cols-5' : 'grid-cols-6'
+              } ${
                 isCompleted && !isEditing
                   ? 'bg-green-50 border-green-200' 
                   : hasInputs || isEditing
@@ -273,17 +284,22 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
                 {set.setNumber}
               </span>
 
-              {/* Weight Input */}
-              <Input
-                type="number"
-                placeholder={isCompleted ? set.loggedWeight?.toString() : set.targetWeight.toString()}
-                value={inputs.weight ?? ''}
-                onChange={(e) => updateSetInput(set.setNumber, 'weight', e.target.value)}
-                disabled={(isCompleted && !isEditing) || isPastDeadline}
-                className={`h-8 text-sm ${validationErrors[`${set.setNumber}-weight`] ? 'border-red-500' : ''}`}
-                step="0.5"
-                min="0"
-              />
+              {/* Weight Input - Hidden for reps-based exercises */}
+              {!exercise.isRepsBased && (
+                <Input
+                  type="number"
+                  placeholder={isCompleted ? set.loggedWeight?.toString() : set.targetWeight.toString()}
+                  value={inputs.weight ?? ''}
+                  onChange={(e) => updateSetInput(set.setNumber, 'weight', e.target.value)}
+                  disabled={(isCompleted && !isEditing) || isPastDeadline}
+                  className={`h-8 text-sm ${validationErrors[`${set.setNumber}-weight`] ? 'border-red-500' : ''}`}
+                  step="0.5"
+                  min="0"
+                />
+              )}
+              
+              {/* Spacer for reps-based exercises to maintain layout */}
+              {exercise.isRepsBased && <div className="h-8" />}
 
               {/* Reps Input */}
               <Input
@@ -325,7 +341,12 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
 
               {/* Target Display */}
               <div className="text-xs text-gray-600">
-                <div>{set.targetWeight}kg × {set.targetReps}</div>
+                <div>
+                  {exercise.isRepsBased 
+                    ? `${set.targetReps} reps` 
+                    : `${set.targetWeight}kg × ${set.targetReps}`
+                  }
+                </div>
                 {set.targetRpe && <div>RPE {set.targetRpe}</div>}
               </div>
 
@@ -346,7 +367,7 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
                   <Button
                     size="sm"
                     onClick={() => handleSaveSet(set.setNumber)}
-                    disabled={!inputs.weight || !inputs.reps || isSaving || !!validationErrors[`${set.setNumber}-rpe`] || isPastDeadline}
+                    disabled={(!inputs.weight && !exercise.isRepsBased) || !inputs.reps || isSaving || !!validationErrors[`${set.setNumber}-rpe`] || isPastDeadline}
                     className={`h-8 px-2 ${validationErrors[`${set.setNumber}-rpe`] ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={isPastDeadline ? `Logging deadline passed (${deadlineDate})` : undefined}
                   >
@@ -365,7 +386,7 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
                 <Button
                   size="sm"
                   onClick={() => handleSaveSet(set.setNumber)}
-                  disabled={!inputs.weight || !inputs.reps || isSaving || !!validationErrors[`${set.setNumber}-rpe`] || isPastDeadline}
+                  disabled={(!inputs.weight && !exercise.isRepsBased) || !inputs.reps || isSaving || !!validationErrors[`${set.setNumber}-rpe`] || isPastDeadline}
                   className={`h-8 px-2 ${validationErrors[`${set.setNumber}-rpe`] ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title={isPastDeadline ? `Logging deadline passed (${deadlineDate})` : undefined}
                 >

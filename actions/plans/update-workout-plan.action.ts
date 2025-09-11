@@ -490,7 +490,8 @@ async function processExercisesForDay(
           frontend_uid: exercise.uid, // Store UID for future matching
           workout_set_instructions: {
             create: exercise.sets.map((s) => {
-              // Convert weight to KG before storing
+              // For reps-based exercises, skip weight conversion
+              // For weight-based exercises, convert weight to KG before storing
               const weightValue = s.weight ? parseFloat(s.weight) : null;
               const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
               
@@ -499,7 +500,7 @@ async function processExercisesForDay(
                 set_number: s.setNumber,
                 reps: s.reps ? parseInt(s.reps, 10) || null : null,
                 intensity: intensityMode,
-                weight_prescribed: weightInKg,
+                weight_prescribed: weightInKg, // Will be null for reps-based exercises
                 rest_time: s.rest || null,
                 notes: s.notes,
               };
@@ -572,7 +573,8 @@ async function processSetsForExercise(
 
     if (existingSet) {
       // Update existing set
-      // Convert weight to KG before storing
+      // For reps-based exercises, skip weight conversion
+      // For weight-based exercises, convert weight to KG before storing
       const weightValue = set.weight ? parseFloat(set.weight) : null;
       const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
       
@@ -582,14 +584,15 @@ async function processSetsForExercise(
           set_number: set.setNumber,
           reps: set.reps ? parseInt(set.reps, 10) || null : null,
           intensity: intensityMode,
-          weight_prescribed: weightInKg,
+          weight_prescribed: weightInKg, // Will be null for reps-based exercises
           rest_time: set.rest || null,
           notes: set.notes,
         },
       });
     } else {
       // Create new set
-      // Convert weight to KG before storing
+      // For reps-based exercises, skip weight conversion
+      // For weight-based exercises, convert weight to KG before storing
       const weightValue = set.weight ? parseFloat(set.weight) : null;
       const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
       
@@ -600,7 +603,7 @@ async function processSetsForExercise(
           set_number: set.setNumber,
           reps: set.reps ? parseInt(set.reps, 10) || null : null,
           intensity: intensityMode,
-          weight_prescribed: weightInKg,
+          weight_prescribed: weightInKg, // Will be null for reps-based exercises
           rest_time: set.rest || null,
           notes: set.notes,
         },

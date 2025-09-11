@@ -6,7 +6,9 @@ import { BodyPart } from "@prisma/client";
 interface MaxLiftOutput {
   exerciseName: string;
   exerciseType: BodyPart;
-  maxWeight: number;
+  maxWeight?: number; // For weight-based exercises
+  maxReps?: number;   // For reps-based exercises
+  exerciseTypeEnum: "WEIGHT_BASED" | "REPS_BASED"; // NEW: Track exercise type
   dateAchieved: Date;
 }
 
@@ -32,6 +34,8 @@ export async function getMaxLiftsData(): Promise<MaxLiftsData> {
     select: {
       list_exercise_id: true,
       max_weight: true,
+      max_reps: true,        // NEW: Include max reps
+      exercise_type: true,   // NEW: Include exercise type
       date_achieved: true,
       workout_exercise_lists: {
         select: {
@@ -45,8 +49,10 @@ export async function getMaxLiftsData(): Promise<MaxLiftsData> {
   // Transform all max lifts data
   const allMaxLifts = maxLifts.map((lift) => ({
     exerciseName: lift.workout_exercise_lists.name,
-    maxWeight: lift.max_weight,
+    maxWeight: lift.max_weight ?? undefined,     // Convert null to undefined
+    maxReps: lift.max_reps ?? undefined,         // Convert null to undefined
     exerciseType: lift.workout_exercise_lists.type,
+    exerciseTypeEnum: lift.exercise_type, // NEW: Track exercise type enum
     dateAchieved: lift.date_achieved,
   }));
 
@@ -71,6 +77,7 @@ export async function getMaxLiftsData(): Promise<MaxLiftsData> {
     allMaxLifts,
   };
 }
+
 
 // Keep the original functions for backward compatibility (optional)
 export async function getMaxLifts(): Promise<MaxLiftOutput[]> {

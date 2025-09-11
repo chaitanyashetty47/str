@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { TriangleAlert } from 'lucide-react'
+import Image from 'next/image'
 
 import { completeOnboardingAction } from '@/actions/onboarding.action'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
@@ -41,9 +42,9 @@ export default function OnboardingWizard({ userEmail, userName }: OnboardingWiza
     defaultValues: {
       email: userEmail,
       name: userName,
-      weightUnit: 'KG',
-      heightUnit: 'CM', 
       activityLevel: 'SEDENTARY',
+      country: '', // Will be set by user selection
+      phone: '', // Optional field
       ...savedData // Load saved data
     }
   })
@@ -66,7 +67,7 @@ export default function OnboardingWizard({ userEmail, userName }: OnboardingWiza
   useEffect(() => {
     const subscription = methods.watch((data) => {
       // Only save if we have meaningful data (not just initial values)
-      if (data.name || data.weight || data.height) {
+      if (data.name || data.country || data.phone || data.weight || data.height) {
         console.log('💾 Auto-saving form data:', data)
         setSavedData(data as Partial<OnboardingData>)
       }
@@ -199,13 +200,8 @@ export default function OnboardingWizard({ userEmail, userName }: OnboardingWiza
           
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-strentor-red to-strentor-orange rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">S</span>
-              </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-strentor-red to-strentor-orange bg-clip-text text-transparent">
-                Strentor
-              </h1>
+            <div className="flex justify-center mb-4">
+              <Image src="/strentor.png" alt="Strentor Logo" width={150} height={120} className="w-32 h-24" />
             </div>
             <p className="text-gray-600 text-lg">
               Let's set up your profile to get started on your fitness journey

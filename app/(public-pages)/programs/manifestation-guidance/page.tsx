@@ -5,6 +5,7 @@ import ManifestationTrainerProfile from "@/components/programs/manifestation/Tra
 import ManifestationBanner from "@/components/programs/manifestation/Banner";
 import TransformationSteps from "@/components/programs/manifestation/TransformationSteps";
 import ManifestationTestimonials from "@/components/programs/manifestation/Testimonials"
+import ManifestationPricing from "@/components/programs/manifestation/ManifestationPricing"
 
 
 
@@ -17,6 +18,7 @@ export default function ManifestationPage() {
         <ManifestationTrainerProfile />
         <TransformationSteps />
         <ManifestationTestimonials />
+        <ManifestationPricing />
         <ManifestationBanner />
       </main>
       <Footer />

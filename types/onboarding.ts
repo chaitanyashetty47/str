@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { isValidPhoneNumber } from 'libphonenumber-js'
+import { isValidAlpha3Code } from '@/utils/country-mapping'
 import { ONBOARDING_FORM_KEYS } from '@/components/onboarding/constants/onboarding-constants'
 
 // Generate form field keys type from constants
@@ -18,17 +20,35 @@ export const onboardingSchema = z.object({
   // Step 1: Basic Info
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"), // Auto-filled
+  
+  country: z.string()
+    .min(3, "Please select a country")
+    .max(3, "Invalid country code")
+    .refine((code) => isValidAlpha3Code(code), "Invalid country selection"),
+    
+  phone: z.string()
+    .optional()
+    .refine((value) => {
+      if (!value || value.trim() === '') return true; // Optional field
+      try {
+        return isValidPhoneNumber(value);
+      } catch {
+        return false;
+      }
+    }, "Invalid phone number format")
+    .refine((value) => {
+      if (!value || value.trim() === '') return true;
+      return value.startsWith('+');
+    }, "Phone number must start with +"),
 
   // Step 2: Body Metrics
   weight: z.coerce.number()
-    .min(30, "Weight must be at least 30")
-    .max(300, "Weight must be less than 300"),
-  weightUnit: z.enum(["KG", "LB"]).default("KG"),
+    .min(30, "Weight must be at least 30kg")
+    .max(300, "Weight must be less than 300kg"),
   
   height: z.coerce.number()
-    .min(100, "Height must be at least 100")
-    .max(250, "Height must be less than 250"),
-  heightUnit: z.enum(["CM", "INCHES"]).default("CM"),
+    .min(100, "Height must be at least 100cm")
+    .max(250, "Height must be less than 250cm"),
   
   dateOfBirth: z.string()
     .refine(val => {
@@ -51,22 +71,23 @@ export const onboardingSchema = z.object({
 
   // Step 3: Optional Body Measurements
   neck: z.coerce.number()
-    .min(20, "Neck measurement must be at least 20cm")
+    .min(25, "Neck measurement must be at least 25cm")
     .max(60, "Neck measurement must be less than 60cm")
     .optional()
     .or(z.literal('')),
   
   waist: z.coerce.number()
     .min(50, "Waist measurement must be at least 50cm")
-    .max(200, "Waist measurement must be less than 200cm")
+    .max(150, "Waist measurement must be less than 150cm")
     .optional()
     .or(z.literal('')),
   
   hips: z.coerce.number()
-    .min(60, "Hip measurement must be at least 60cm")
-    .max(200, "Hip measurement must be less than 200cm")
+    .min(70, "Hip measurement must be at least 70cm")
+    .max(150, "Hip measurement must be less than 150cm")
     .optional()
-    .or(z.literal(''))
+    .or(z.literal('')),
+  
 })
 
 export type OnboardingData = z.infer<typeof onboardingSchema>

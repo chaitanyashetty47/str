@@ -11,7 +11,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Trophy, TrendingUp, Calendar, Dumbbell } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, Dumbbell, Video, ExternalLink, CheckCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Bar,
@@ -25,6 +25,7 @@ import {
 } from "recharts";
 
 import { useWeeklyAnalytics } from "@/hooks/use-workout-analytics";
+import { getWorkoutVideos } from "@/actions/client-workout/get-workout-videos.action";
 
 interface WeeklyAnalyticsProps {
   planId: string;
@@ -35,6 +36,8 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
   const { data, loading, error } = useWeeklyAnalytics(planId, weekNumber);
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
+  const [weekVideos, setWeekVideos] = useState<any[]>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
 
   // Set initial selections when data loads
   useEffect(() => {
@@ -45,6 +48,31 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
       setSelectedExerciseId(firstExercise.exerciseId);
     }
   }, [data]);
+
+  // Fetch video data for this week
+  useEffect(() => {
+    const fetchWeekVideos = async () => {
+      if (!planId) return;
+      
+      setVideosLoading(true);
+      try {
+        const result = await getWorkoutVideos({ planId });
+        if (result.data?.videos) {
+          // Filter videos for this specific week
+          const weekVideosData = result.data.videos.filter(
+            video => video.workoutDay.weekNumber === weekNumber
+          );
+          setWeekVideos(weekVideosData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch week videos:", error);
+      } finally {
+        setVideosLoading(false);
+      }
+    };
+
+    fetchWeekVideos();
+  }, [planId, weekNumber]);
 
   if (loading) {
     return (
@@ -99,7 +127,7 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
     }
     acc[dayKey].push(exercise);
     return acc;
-  }, {} as Record<string, typeof data.exercises>);
+  }, {} as Record<string, any[]>);
 
   // Get available days
   const availableDays = Object.keys(exercisesByDay).sort((a, b) => {
@@ -145,13 +173,15 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
   }
 
   // Prepare chart data for current exercise
-  const chartData = currentExercise.sets.map((set) => ({
+  const chartData = currentExercise.sets.map((set: any) => ({
     setNumber: `Set ${set.setNumber}`,
     orm: set.orm || 0,
     weight: set.weight || 0,
     reps: set.reps || 0,
     isCompleted: set.isCompleted,
     isPR: set.isPR,
+    // NEW: Add reps-based flag for conditional rendering
+    isRepsBased: currentExercise.isRepsBased || false,
   }));
 
   // Custom tooltip component
@@ -163,19 +193,36 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
           <p className="font-medium">{label}</p>
           {data.isCompleted ? (
             <>
-              <p className="text-sm text-muted-foreground">
-                Weight: {data.weight} kg
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Reps: {data.reps}
-              </p>
-              <p className="text-sm font-medium text-strentor-red">
-                ORM: {data.orm} kg
-              </p>
-              {data.isPR && (
-                <p className="text-sm font-bold text-yellow-600">
-                  🏆 New PR!
-                </p>
+              {data.isRepsBased ? (
+                // For reps-based exercises, show reps only
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Reps: {data.reps}
+                  </p>
+                  {data.isPR && (
+                    <p className="text-sm font-bold text-yellow-600">
+                      🏆 New PR! ({data.reps} reps)
+                    </p>
+                  )}
+                </>
+              ) : (
+                // For weight-based exercises, show weight, reps, and ORM
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Weight: {data.weight} kg
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Reps: {data.reps}
+                  </p>
+                  <p className="text-sm font-medium text-strentor-red">
+                    ORM: {data.orm} kg
+                  </p>
+                  {data.isPR && (
+                    <p className="text-sm font-bold text-yellow-600">
+                      🏆 New PR!
+                    </p>
+                  )}
+                </>
               )}
             </>
           ) : (
@@ -228,10 +275,10 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
                     variant="secondary"
                     className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
                   >
-                    {pr.exerciseName}: {pr.newPR} kg
+                    {pr.exerciseName}: {'newRepsPR' in pr && pr.newRepsPR ? `${pr.newRepsPR} reps` : `${pr.newPR} kg`}
                     {pr.improvement && (
                       <span className="ml-1 text-xs">
-                        (+{pr.improvement} kg)
+                        (+{pr.improvement} {'newRepsPR' in pr && pr.newRepsPR ? 'reps' : 'kg'})
                       </span>
                     )}
                   </Badge>
@@ -305,24 +352,51 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
 
           {/* Exercise Stats */}
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="text-center p-3 bg-muted/50 rounded-lg">
-              <p className="text-2xl font-bold text-strentor-red">
-                {currentExercise.bestORM || 0}
-              </p>
-              <p className="text-sm text-muted-foreground">Best ORM (kg)</p>
-            </div>
-            <div className="text-center p-3 bg-muted/50 rounded-lg">
-              <p className="text-2xl font-bold">
-                {Math.round(currentExercise.totalVolume)}
-              </p>
-              <p className="text-sm text-muted-foreground">Total Volume (kg)</p>
-            </div>
-            <div className="text-center p-3 bg-muted/50 rounded-lg">
-              <p className="text-2xl font-bold">
-                {currentExercise.completionRate}%
-              </p>
-              <p className="text-sm text-muted-foreground">Completion Rate</p>
-            </div>
+            {currentExercise.isRepsBased ? (
+              // For reps-based exercises, show max reps instead of ORM
+              <>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-2xl font-bold text-strentor-red">
+                    {currentExercise.bestReps || 0}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Best Reps</p>
+                </div>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-2xl font-bold">
+                    {currentExercise.totalReps || 0}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Total Reps</p>
+                </div>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-2xl font-bold">
+                    {currentExercise.completionRate}%
+                  </p>
+                  <p className="text-sm text-muted-foreground">Completion Rate</p>
+                </div>
+              </>
+            ) : (
+              // For weight-based exercises, show ORM and volume
+              <>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-2xl font-bold text-strentor-red">
+                    {currentExercise.bestORM || 0}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Best ORM (kg)</p>
+                </div>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-2xl font-bold">
+                    {Math.round(currentExercise.totalVolume)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Total Volume (kg)</p>
+                </div>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-2xl font-bold">
+                    {currentExercise.completionRate}%
+                  </p>
+                  <p className="text-sm text-muted-foreground">Completion Rate</p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Bar Chart */}
@@ -347,14 +421,14 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
                   className="text-xs"
                   tick={{ fontSize: 12 }}
                   label={{
-                    value: "ORM (kg)",
+                    value: currentExercise.isRepsBased ? "Reps" : "ORM (kg)",
                     angle: -90,
                     position: "insideLeft",
                   }}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="orm" radius={[4, 4, 0, 0]}>
-                  {chartData.map((entry, index) => (
+                <Bar dataKey={currentExercise.isRepsBased ? "reps" : "orm"} radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry: any, index: number) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={
@@ -369,6 +443,128 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Weekly Video Overview */}
+          <div className="mt-8">
+            <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Video className="h-5 w-5 text-strentor-red" />
+              Weekly Video Overview
+            </h4>
+            
+            {videosLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-strentor-red"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableDays.map((dayKey) => {
+                  const [dayNum, ...titleParts] = dayKey.split('-');
+                  const dayTitle = titleParts.join('-');
+                  const dayExercise = exercisesByDay[dayKey]?.[0];
+                  
+                  // Find video for this day
+                  const dayVideo = weekVideos.find(
+                    video => video.workoutDay.dayNumber === parseInt(dayNum)
+                  );
+                  
+                  return (
+                    <Card key={dayKey} className="relative">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <h5 className="font-medium">Day {dayNum}</h5>
+                            <p className="text-sm text-muted-foreground">{dayTitle}</p>
+                          </div>
+                          {dayVideo ? (
+                            <Badge 
+                              variant="outline" 
+                              className={dayVideo.reviewedAt 
+                                ? "text-green-600 border-green-600" 
+                                : "text-blue-600 border-blue-600"
+                              }
+                            >
+                              {dayVideo.reviewedAt ? (
+                                <>
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Reviewed
+                                </>
+                              ) : (
+                                <>
+                                  <Video className="h-3 w-3 mr-1" />
+                                  Uploaded
+                                </>
+                              )}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-orange-500 border-orange-500">
+                              <Clock className="h-3 w-3 mr-1" />
+                              No Video
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="text-xs text-muted-foreground mb-3">
+                          {dayExercise && (
+                            <>
+                              {new Date(dayExercise.dayDate).toLocaleDateString('en-US', { 
+                                weekday: 'short', 
+                                month: 'short', 
+                                day: 'numeric' 
+                              })}
+                            </>
+                          )}
+                        </div>
+                        
+                        {dayVideo ? (
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium">
+                              {dayVideo.videoTitle || "Untitled Video"}
+                            </div>
+                            
+                            <div className="text-xs text-muted-foreground">
+                              Uploaded: {new Date(dayVideo.uploadedAt).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(dayVideo.videoUrl, '_blank')}
+                                className="flex-1"
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                View Video
+                              </Button>
+                            </div>
+                            
+                            {dayVideo.trainerNotes && (
+                              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                                <strong>Trainer Notes:</strong> {dayVideo.trainerNotes}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">
+                              No video uploaded yet
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Encourage client to upload workout video
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Legend */}
@@ -396,15 +592,33 @@ export default function WeeklyAnalytics({ planId, weekNumber }: WeeklyAnalyticsP
               </h4>
               {exercisePRs.map((pr) => (
                 <div key={pr.exerciseId} className="text-sm text-yellow-700">
-                  <p>
-                    New Record: <strong>{pr.newPR} kg</strong>
-                  </p>
-                  <p>
-                    Achieved with: {pr.setDetails.weight} kg × {pr.setDetails.reps} reps
-                    (Set {pr.setDetails.setNumber})
-                  </p>
-                  {pr.improvement && (
-                    <p>Improvement: +{pr.improvement} kg</p>
+                  {'isRepsBased' in currentExercise && currentExercise.isRepsBased ? (
+                    // For reps-based exercises, show reps PR
+                    <>
+                      <p>
+                        New Record: <strong>{('newRepsPR' in pr && pr.newRepsPR) ? String(pr.newRepsPR) : '0'} reps</strong>
+                      </p>
+                      <p>
+                        Achieved in Set {pr.setDetails.setNumber}
+                      </p>
+                      {pr.improvement && (
+                        <p>Improvement: +{pr.improvement} reps</p>
+                      )}
+                    </>
+                  ) : (
+                    // For weight-based exercises, show weight PR
+                    <>
+                      <p>
+                        New Record: <strong>{pr.newPR} kg</strong>
+                      </p>
+                      <p>
+                        Achieved with: {pr.setDetails.weight} kg × {pr.setDetails.reps} reps
+                        (Set {pr.setDetails.setNumber})
+                      </p>
+                      {pr.improvement && (
+                        <p>Improvement: +{pr.improvement} kg</p>
+                      )}
+                    </>
                   )}
                 </div>
               ))}

@@ -15,9 +15,6 @@ export default function BodyMetricsStep() {
     formState: { errors },
   } = useFormContext<OnboardingData>()
 
-  const weightUnit = watch('weightUnit')
-  const heightUnit = watch('heightUnit')
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -31,75 +28,49 @@ export default function BodyMetricsStep() {
       </div>
 
       {/* Weight */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 space-y-2">
-          <Label htmlFor="weight" className="text-sm font-medium text-gray-700">
-            Current Weight *
-          </Label>
-          <Input
-            {...register('weight')}
-            id="weight"
-            type="number"
-            placeholder={weightUnit === 'KG' ? '70' : '154'}
-            className="w-full"
-          />
-          {errors.weight && (
-            <p className="text-strentor-red text-sm">
-              {errors.weight.message}
-            </p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-gray-700">Unit</Label>
-          <Select
-            value={weightUnit}
-            onValueChange={(value) => setValue('weightUnit', value as 'KG' | 'LB')}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="KG">kg</SelectItem>
-              <SelectItem value="LB">lbs</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="weight" className="text-sm font-medium text-gray-700">
+          Current Weight (kg) *
+        </Label>
+        <Input
+          {...register('weight')}
+          id="weight"
+          type="number"
+          step="0.1"
+          placeholder="70"
+          className="w-full"
+        />
+        <p className="text-xs text-gray-500">
+          Enter your weight in kilograms
+        </p>
+        {errors.weight && (
+          <p className="text-strentor-red text-sm">
+            {errors.weight.message}
+          </p>
+        )}
       </div>
 
       {/* Height */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 space-y-2">
-          <Label htmlFor="height" className="text-sm font-medium text-gray-700">
-            Height *
-          </Label>
-          <Input
-            {...register('height')}
-            id="height"
-            type="number"
-            placeholder={heightUnit === 'CM' ? '175' : '69'}
-            className="w-full"
-          />
-          {errors.height && (
-            <p className="text-strentor-red text-sm">
-              {errors.height.message}
-            </p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-gray-700">Unit</Label>
-          <Select
-            value={heightUnit}
-            onValueChange={(value) => setValue('heightUnit', value as 'CM' | 'INCHES')}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="CM">cm</SelectItem>
-              <SelectItem value="INCHES">inches</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="height" className="text-sm font-medium text-gray-700">
+          Height (cm) *
+        </Label>
+        <Input
+          {...register('height')}
+          id="height"
+          type="number"
+          step="0.1"
+          placeholder="175"
+          className="w-full"
+        />
+        <p className="text-xs text-gray-500">
+          Enter your height in centimeters
+        </p>
+        {errors.height && (
+          <p className="text-strentor-red text-sm">
+            {errors.height.message}
+          </p>
+        )}
       </div>
 
       {/* Date of Birth */}
@@ -151,10 +122,14 @@ export default function BodyMetricsStep() {
         <Label className="text-sm font-medium text-gray-700">
           Activity Level
         </Label>
-        <Select
-          value={watch('activityLevel')}
-          onValueChange={(value) => setValue('activityLevel', value as any)}
-        >
+        <Controller
+          name="activityLevel"
+          control={control}
+          render={({ field }) => (
+            <Select
+              value={field.value}
+              onValueChange={field.onChange}
+            >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -190,7 +165,9 @@ export default function BodyMetricsStep() {
               </div>
             </SelectItem>
           </SelectContent>
-        </Select>
+            </Select>
+          )}
+        />
         <p className="text-xs text-gray-500">
           This helps us calculate your calorie needs accurately
         </p>

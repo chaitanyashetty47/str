@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Sparkles, Zap, Crown, Star, BadgeCheck } from 'lucide-react';
+import { AlertCircle, Loader2, Crown, BadgeCheck } from 'lucide-react';
+import Image from 'next/image';
 import { SubscribeButton } from './subscribe-button';
 import { PricingHeader } from './PricingHeader';
 import { getPlanMatrix, PlanMatrixItem } from '@/actions/subscriptions/get-plan-matrix.action';
@@ -22,16 +23,66 @@ interface SettingsPricingSectionProps {
 }
 
 const billingOptions = [
-  { label: "Quarterly", value: 3 },
-  { label: "Semi-Annual", value: 6 },
-  { label: "Annual", value: 12 },
+  { label: "Quarterly", value: 3, discount: 10 },
+  { label: "Semi-Annual", value: 6, discount: 20 },
+  { label: "Annual", value: 12, discount: 30 },
 ];
 
+const categoryGradients = {
+  FITNESS: "from-blue-500 to-purple-500",
+  PSYCHOLOGY: "from-orange-500 to-red-500",
+  MANIFESTATION: "from-purple-500 to-pink-500",
+  ALL_IN_ONE: "from-green-500 to-emerald-500"
+};
+
 const categoryIcons = {
-  FITNESS: <Zap className="h-5 w-5" />,
-  PSYCHOLOGY: <Sparkles className="h-5 w-5" />,
-  MANIFESTATION: <Star className="h-5 w-5" />,
-  ALL_IN_ONE: <Crown className="h-5 w-5" />
+  FITNESS: (
+    <div className={`rounded-full bg-gradient-to-r ${categoryGradients.FITNESS} w-10 h-10 flex items-center justify-center flex-shrink-0`}>
+      <div className="relative w-6 h-6">
+        <Image
+          src="/fitness.svg"
+          alt="Fitness Training"
+          fill
+          sizes="24px"
+          className="object-contain"
+          priority
+        />
+      </div>
+    </div>
+  ),
+  PSYCHOLOGY: (
+    <div className={`rounded-full bg-gradient-to-r ${categoryGradients.PSYCHOLOGY} w-10 h-10 flex items-center justify-center flex-shrink-0`}>
+      <div className="relative w-6 h-6">
+        <Image
+          src="/brains.svg"
+          alt="Psychological Support"
+          fill
+          sizes="24px"
+          className="object-contain"
+          priority
+        />
+      </div>
+    </div>
+  ),
+  MANIFESTATION: (
+    <div className={`rounded-full bg-gradient-to-r ${categoryGradients.MANIFESTATION} w-10 h-10 flex items-center justify-center flex-shrink-0`}>
+      <div className="relative w-6 h-6">
+        <Image
+          src="/manifestation.png"
+          alt="Manifestation Guidance"
+          fill
+          sizes="24px"
+          className="object-contain"
+          priority
+        />
+      </div>
+    </div>
+  ),
+  ALL_IN_ONE: (
+    <div className={`rounded-full bg-gradient-to-r ${categoryGradients.ALL_IN_ONE} w-10 h-10 flex items-center justify-center flex-shrink-0`}>
+      <Crown className="h-6 w-6 text-white" />
+    </div>
+  )
 };
 
 
@@ -320,8 +371,9 @@ export function SettingsPricingSection({
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    {categoryIcons[plan.category as keyof typeof categoryIcons]}
+                    {categoryIcons[plan.category as keyof typeof categoryIcons] || <Crown className="h-5 w-5" />}
                     <CardTitle className="text-lg">{plan.name}</CardTitle>
+                    
                   </div>
                   {plan.buttonState === 'current' && (
                     <Badge variant="default" className="bg-green-500">
@@ -333,7 +385,25 @@ export function SettingsPricingSection({
                 {/* Price Section - Fixed Height for Alignment */}
                 <div className="mb-4">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-medium">₹{plan.price.toLocaleString()}</span>
+                    {/* Calculate original price based on billing cycle discount */}
+                    {(() => {
+                      const discountPercentage = plan.billing_cycle === 3 ? 10 : plan.billing_cycle === 6 ? 20 : 30;
+                      const originalPrice = Math.round(plan.price / (1 - discountPercentage / 100));
+                      const hasDiscount = discountPercentage > 0;
+                      
+                      return (
+                        <>
+                          {hasDiscount && (
+                            <span className="text-lg font-medium text-muted-foreground line-through">
+                              ₹{originalPrice.toLocaleString()}
+                            </span>
+                          )}
+                          <span className={`font-medium ${hasDiscount ? 'text-3xl text-green-600' : 'text-4xl'}`}>
+                            ₹{plan.price.toLocaleString()}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </div>
                   <p className="text-xs font-medium text-muted-foreground">
                     Billed every {plan.billing_cycle} months

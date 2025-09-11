@@ -130,30 +130,55 @@ async function saveSetHandler({
       });
       
       // PR TRACKING -----------------------------------------------------------
-      // Calculate estimated 1-RM using Epley formula capped at 12 reps
-      const cappedReps = Math.min(reps, 12);
-      const estimatedOneRm = Math.round(weightKg * (1 + cappedReps / 30));
       const exerciseId = setInstruction.workout_day_exercises.list_exercise_id;
+      
+      // Get exercise info to check if it's reps-based
+      const exerciseInfo = await prisma.workout_exercise_lists.findUnique({
+        where: { id: exerciseId },
+        select: { is_reps_based: true },
+      });
 
       const currentPr = await prisma.client_max_lifts.findFirst({
         where: {
           client_id: userId,
           list_exercise_id: exerciseId,
         },
-        orderBy: { max_weight: "desc" },
+        orderBy: exerciseInfo?.is_reps_based ? { max_reps: "desc" } : { max_weight: "desc" },
       });
 
-      if (!currentPr || estimatedOneRm > currentPr.max_weight) {
-        await prisma.client_max_lifts.create({
-          data: {
-            id: randomUUID(),
-            client_id: userId,
-            list_exercise_id: exerciseId,
-            max_weight: estimatedOneRm,
-            last_updated: new Date(),
-            date_achieved: scheduledDate, // use scheduled date for PR timeline
-          },
-        });
+      if (exerciseInfo?.is_reps_based) {
+        // For reps-based exercises, track max reps achieved
+        if (!currentPr || reps > (currentPr.max_reps || 0)) {
+          await prisma.client_max_lifts.create({
+            data: {
+              id: randomUUID(),
+              client_id: userId,
+              list_exercise_id: exerciseId,
+              max_reps: reps,
+              exercise_type: "REPS_BASED",
+              last_updated: new Date(),
+              date_achieved: scheduledDate, // use scheduled date for PR timeline
+            },
+          });
+        }
+      } else {
+        // For weight-based exercises, calculate estimated 1-RM using Epley formula capped at 12 reps
+        const cappedReps = Math.min(reps, 12);
+        const estimatedOneRm = Math.round(weightKg * (1 + cappedReps / 30));
+        
+        if (!currentPr || estimatedOneRm > (currentPr.max_weight || 0)) {
+          await prisma.client_max_lifts.create({
+            data: {
+              id: randomUUID(),
+              client_id: userId,
+              list_exercise_id: exerciseId,
+              max_weight: estimatedOneRm,
+              exercise_type: "WEIGHT_BASED",
+              last_updated: new Date(),
+              date_achieved: scheduledDate, // use scheduled date for PR timeline
+            },
+          });
+        }
       }
     }
 
@@ -363,30 +388,55 @@ async function bulkSaveExerciseHandler({
         });
         
         // PR TRACKING -----------------------------------------------------------
-        // Calculate estimated 1-RM using Epley formula capped at 12 reps
-        const cappedReps = Math.min(set.reps, 12);
-        const estimatedOneRm = Math.round(set.weightKg * (1 + cappedReps / 30));
         const exerciseId = dayExercise.list_exercise_id;
+        
+        // Get exercise info to check if it's reps-based
+        const exerciseInfo = await prisma.workout_exercise_lists.findUnique({
+          where: { id: exerciseId },
+          select: { is_reps_based: true },
+        });
 
         const currentPr = await prisma.client_max_lifts.findFirst({
           where: {
             client_id: userId,
             list_exercise_id: exerciseId,
           },
-          orderBy: { max_weight: "desc" },
+          orderBy: exerciseInfo?.is_reps_based ? { max_reps: "desc" } : { max_weight: "desc" },
         });
 
-        if (!currentPr || estimatedOneRm > currentPr.max_weight) {
-          await prisma.client_max_lifts.create({
-            data: {
-              id: randomUUID(),
-              client_id: userId,
-              list_exercise_id: exerciseId,
-              max_weight: estimatedOneRm,
-              last_updated: new Date(),
-              date_achieved: scheduledDate, // use scheduled date for PR timeline
-            },
-          });
+        if (exerciseInfo?.is_reps_based) {
+          // For reps-based exercises, track max reps achieved
+          if (!currentPr || set.reps > (currentPr.max_reps || 0)) {
+            await prisma.client_max_lifts.create({
+              data: {
+                id: randomUUID(),
+                client_id: userId,
+                list_exercise_id: exerciseId,
+                max_reps: set.reps,
+                exercise_type: "REPS_BASED",
+                last_updated: new Date(),
+                date_achieved: scheduledDate, // use scheduled date for PR timeline
+              },
+            });
+          }
+        } else {
+          // For weight-based exercises, calculate estimated 1-RM using Epley formula capped at 12 reps
+          const cappedReps = Math.min(set.reps, 12);
+          const estimatedOneRm = Math.round(set.weightKg * (1 + cappedReps / 30));
+          
+          if (!currentPr || estimatedOneRm > (currentPr.max_weight || 0)) {
+            await prisma.client_max_lifts.create({
+              data: {
+                id: randomUUID(),
+                client_id: userId,
+                list_exercise_id: exerciseId,
+                max_weight: estimatedOneRm,
+                exercise_type: "WEIGHT_BASED",
+                last_updated: new Date(),
+                date_achieved: scheduledDate, // use scheduled date for PR timeline
+              },
+            });
+          }
         }
       }
 

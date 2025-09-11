@@ -7,6 +7,7 @@ import FitnessHero from "@/components/programs/psychological/Hero"
 import SuccessStories from "@/components/programs/psychological/SuccessStories"
 import PsychologicalTestimonials from "@/components/programs/psychological/Testimonials"
 import TrainerProfile from "@/components/programs/psychological/TrainerProfile"
+import PsychologicalPricing from "@/components/programs/psychological/PsychologicalPricing"
 
 export default function FitnessPage() {
   return (
@@ -16,6 +17,7 @@ export default function FitnessPage() {
       <TrainerProfile />
       <SuccessStories />
       <PsychologicalTestimonials />
+      <PsychologicalPricing />
       <Banner />
       <Footer />
     </div>

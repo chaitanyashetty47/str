@@ -4,6 +4,7 @@ import { Tab } from "@/components/ui/tab";
 interface BillingOption {
   label: string;
   value: number;
+  discount?: number;
 }
 
 export const PricingHeader = ({
@@ -32,6 +33,7 @@ export const PricingHeader = ({
           value={opt.value}
           selected={selected === opt.value}
           setSelected={onSelect}
+          discount={opt.discount}
         />
       ))}
     </div>

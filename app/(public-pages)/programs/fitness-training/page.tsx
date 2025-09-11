@@ -8,6 +8,7 @@ import SuccessStories from "@/components/programs/fitness/SuccessStories"
 import Transformations from "@/components/programs/fitness/Transformations"
 import FitnessTestimonials from "@/components/programs/fitness/Testimonials"
 import TrainerProfile from "@/components/programs/fitness/TrainerProfile"
+import FitnessPricing from "@/components/programs/fitness/FitnessPricing"
 
 export default function FitnessPage() {
   return (
@@ -18,6 +19,7 @@ export default function FitnessPage() {
       <SuccessStories />
       <Transformations />
       <FitnessTestimonials />
+      <FitnessPricing />
       <Banner />
       <Footer />
     </div>

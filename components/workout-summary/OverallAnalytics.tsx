@@ -104,7 +104,7 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
     }
     acc[bodyPart].push(exercise);
     return acc;
-  }, {} as Record<string, typeof data.exercises>);
+  }, {} as Record<string, any[]>);
 
   // Get available body parts (sorted)
   const availableBodyParts = Object.keys(exercisesByBodyPart).sort();
@@ -145,13 +145,17 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
     );
   }
 
+  // Check if exercise is reps-based
+  const isRepsBased = 'isRepsBased' in currentExercise && currentExercise.isRepsBased;
+
   // Prepare chart data for current exercise - filter out weeks with no data
   const chartData = currentExercise.weeklyORMs
-    .filter(week => week.bestORM !== null)
-    .map((week) => ({
+    .filter((week: any) => isRepsBased ? ('bestReps' in week && week.bestReps !== null) : week.bestORM !== null)
+    .map((week: any) => ({
       week: `Week ${week.weekNumber}`,
       weekNumber: week.weekNumber,
       orm: week.bestORM || 0,
+      reps: ('bestReps' in week) ? (week.bestReps || 0) : 0,
       date: new Date(week.weekDate).toLocaleDateString('en-US', { 
         month: 'short', 
         day: 'numeric' 
@@ -161,19 +165,27 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
   // Calculate improvement stats
   const firstORM = chartData[0]?.orm || 0;
   const lastORM = chartData[chartData.length - 1]?.orm || 0;
-  const totalImprovement = lastORM - firstORM;
-  const improvementPercentage = firstORM > 0 ? ((totalImprovement / firstORM) * 100) : 0;
+  const firstReps = chartData[0]?.reps || 0;
+  const lastReps = chartData[chartData.length - 1]?.reps || 0;
+  const totalImprovement = isRepsBased ? (lastReps - firstReps) : (lastORM - firstORM);
+  const improvementPercentage = isRepsBased 
+    ? (firstReps > 0 ? ((totalImprovement / firstReps) * 100) : 0)
+    : (firstORM > 0 ? ((totalImprovement / firstORM) * 100) : 0);
 
   // Custom tooltip component
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const value = payload[0].value; // This is the actual value being displayed
       return (
         <div className="bg-background border rounded-lg p-3 shadow-lg">
           <p className="font-medium">{label}</p>
           <p className="text-sm text-muted-foreground">{data.date}</p>
           <p className="text-sm font-medium text-strentor-red">
-            Best ORM: {data.orm} kg
+            {isRepsBased 
+              ? `Best Reps: ${value}`
+              : `Best ORM: ${value} kg`
+            }
           </p>
         </div>
       );
@@ -298,7 +310,7 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
           <div className="text-center mb-6 p-4 bg-muted/30 rounded-lg">
             <h3 className="font-semibold text-lg">{currentExercise.exerciseName}</h3>
             <p className="text-sm text-muted-foreground">
-              {currentExercise.bodyPart.toLowerCase().replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              {currentExercise.bodyPart.toLowerCase().replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
             </p>
           </div>
 
@@ -306,15 +318,22 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <p className="text-2xl font-bold text-strentor-red">
-                {currentExercise.bestOverallORM || 0}
+                {isRepsBased 
+                  ? ('bestOverallReps' in currentExercise ? (currentExercise.bestOverallReps || 0) : 0)
+                  : (currentExercise.bestOverallORM || 0)
+                }
               </p>
-              <p className="text-sm text-muted-foreground">Peak ORM (kg)</p>
+              <p className="text-sm text-muted-foreground">
+                {isRepsBased ? "Peak Reps" : "Peak ORM (kg)"}
+              </p>
             </div>
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <p className={`text-2xl font-bold ${totalImprovement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {totalImprovement >= 0 ? '+' : ''}{totalImprovement.toFixed(1)}
               </p>
-              <p className="text-sm text-muted-foreground">Total Gain (kg)</p>
+              <p className="text-sm text-muted-foreground">
+                Total Gain ({isRepsBased ? 'reps' : 'kg'})
+              </p>
             </div>
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <p className={`text-2xl font-bold ${improvementPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -347,7 +366,7 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
                     className="text-xs"
                     tick={{ fontSize: 12 }}
                     label={{
-                      value: "ORM (kg)",
+                      value: isRepsBased ? "Reps" : "ORM (kg)",
                       angle: -90,
                       position: "insideLeft",
                     }}
@@ -357,7 +376,7 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
                   {/* Trend line */}
                   <Line
                     type="monotone"
-                    dataKey="orm"
+                    dataKey={isRepsBased ? "reps" : "orm"}
                     stroke="#ef4444"
                     strokeWidth={3}
                     dot={{ fill: "#ef4444", strokeWidth: 2, r: 6 }}
@@ -365,9 +384,9 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
                   />
                   
                   {/* Starting point reference line */}
-                  {firstORM > 0 && (
+                  {(isRepsBased ? firstReps > 0 : firstORM > 0) && (
                     <ReferenceLine
-                      y={firstORM}
+                      y={isRepsBased ? firstReps : firstORM}
                       stroke="#94a3b8"
                       strokeDasharray="5 5"
                       label={{ value: "Starting Point", position: "top" }}
@@ -396,7 +415,11 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">
-                    <strong>Best Performance:</strong> {currentExercise.bestOverallORM} kg
+                    <strong>Best Performance:</strong> {
+                      isRepsBased 
+                        ? `${('bestOverallReps' in currentExercise ? (currentExercise.bestOverallReps || 0) : 0)} reps`
+                        : `${currentExercise.bestOverallORM || 0} kg`
+                    }
                   </p>
                   <p className="text-muted-foreground">
                     <strong>Weeks with Data:</strong> {chartData.length} weeks
@@ -404,14 +427,20 @@ export default function OverallAnalytics({ planId }: OverallAnalyticsProps) {
                 </div>
                 <div>
                   <p className="text-muted-foreground">
-                    <strong>Latest ORM:</strong> {lastORM} kg
+                    <strong>Latest {isRepsBased ? 'Reps' : 'ORM'}:</strong> {
+                      isRepsBased 
+                        ? `${lastReps || 0} reps`
+                        : `${lastORM || 0} kg`
+                    }
                   </p>
                   <p className="text-muted-foreground">
                     <strong>Average Weekly Gain:</strong> {
                       chartData.length > 1 
-                        ? (totalImprovement / (chartData.length - 1)).toFixed(1)
+                        ? isRepsBased
+                          ? `${(totalImprovement / (chartData.length - 1)).toFixed(1)} reps`
+                          : `${(totalImprovement / (chartData.length - 1)).toFixed(1)} kg`
                         : '0'
-                    } kg
+                    }
                   </p>
                 </div>
               </div>

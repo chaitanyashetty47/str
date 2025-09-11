@@ -10,6 +10,7 @@ import Introduction from "@/components/landing/Introduction";
 import Featured from "@/components/landing/Featured";
 import PopupForm from "@/components/landing/PopupForm";
 import WhatsAppButton from "@/components/landing/WhatsAppButton";
+import Pricing from "@/components/landing/Pricing";
 
 
 export default function Home() {
@@ -22,10 +23,11 @@ export default function Home() {
       <Testimonials/>
       <ProgramsCard/>
       <Team/>
+      <Pricing/>
       <Banner/>
       <FAQSection/>
       <Footer/>
-      <PopupForm/>
+      {/* <PopupForm/> */}
       <WhatsAppButton/>
       
     </div>

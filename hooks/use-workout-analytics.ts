@@ -1,20 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { 
-  WeekAnalyticsData, 
-  OverallAnalyticsData,
+  WeekAnalyticsData as ClientWeekAnalyticsData, 
+  OverallAnalyticsData as ClientOverallAnalyticsData,
   getWeekAnalytics,
   getOverallAnalytics 
 } from '@/actions/client-workout/workout-analytics.action';
 import {
+  WeekAnalyticsData as TrainerWeekAnalyticsData,
+  OverallAnalyticsData as TrainerOverallAnalyticsData,
   getTrainerWeekAnalytics,
   getTrainerOverallAnalytics
 } from '@/actions/trainer-clients/trainer-workout-analytics.action';
 
 // Cache structure
 interface AnalyticsCache {
-  weeklyData: Map<string, { data: WeekAnalyticsData; timestamp: number }>;
-  overallData: Map<string, { data: OverallAnalyticsData; timestamp: number }>;
+  weeklyData: Map<string, { data: ClientWeekAnalyticsData | TrainerWeekAnalyticsData; timestamp: number }>;
+  overallData: Map<string, { data: ClientOverallAnalyticsData | TrainerOverallAnalyticsData; timestamp: number }>;
 }
 
 // Cache duration (5 minutes)
@@ -52,7 +54,7 @@ function getOverallCacheKey(planId: string, isTrainer: boolean): string {
 
 // Hook for weekly analytics with caching
 export function useWeeklyAnalytics(planId: string, weekNumber: number) {
-  const [data, setData] = useState<WeekAnalyticsData | null>(null);
+  const [data, setData] = useState<ClientWeekAnalyticsData | TrainerWeekAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
@@ -140,7 +142,7 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
 
 // Hook for overall analytics with caching
 export function useOverallAnalytics(planId: string) {
-  const [data, setData] = useState<OverallAnalyticsData | null>(null);
+  const [data, setData] = useState<ClientOverallAnalyticsData | TrainerOverallAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();

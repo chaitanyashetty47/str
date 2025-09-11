@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type WorkoutDay } from "@/actions/client-workout/client-weekly-workout.action";
 import { WorkoutExerciseCard } from "./workout-exercise-card";
+import { WorkoutVideoUpload } from "./workout-video-upload";
 import { isWorkoutDayPastDeadline, getWorkoutDeadlineDate } from "@/utils/date-utils";
 
 interface WorkoutDayCardProps {
@@ -141,6 +142,17 @@ export function WorkoutDayCard({ day, onSaveSet, isSaving }: WorkoutDayCardProps
               </AccordionItem>
             ))}
           </Accordion>
+        )}
+
+        {/* Workout Video Upload Section */}
+        {!isRestDay && (
+          <WorkoutVideoUpload 
+            workoutDayId={day.id}
+            existingVideo={day.video}
+            onVideoUploaded={() => {
+              // Optionally refresh data or show success state
+            }}
+          />
         )}
       </CardContent>
     </Card>
