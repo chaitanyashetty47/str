@@ -54,7 +54,7 @@ export interface WeekInPlan {
 export interface PlanEditorMeta {
   title: string;
   description: string;
-  startDate: Date;
+  startDate: string; // Only YYYY-MM-DD strings to avoid timezone issues
   durationWeeks: number;  //need to change it later
   category: WorkoutCategory;
   clientId: string;

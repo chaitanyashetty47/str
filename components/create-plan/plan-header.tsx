@@ -46,7 +46,15 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
   const dispatch = usePlanDispatch();
   const { validateAllSets, hasValidationErrors } = usePlanValidation();
 
-  const startMonday = startOfWeek(meta.startDate, { weekStartsOn: 1 });
+  // Helper function to parse startDate consistently
+  const parseStartDate = (startDate: Date | string): Date => {
+    if (typeof startDate === 'string') {
+      return new Date(startDate + 'T00:00:00');
+    }
+    return startDate;
+  };
+
+  const startMonday = startOfWeek(parseStartDate(meta.startDate), { weekStartsOn: 1 });
   const endDate = addDays(startMonday, meta.durationWeeks * 7 - 1);
 
   // Initialize React Hook Form with validation
@@ -56,7 +64,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
     values: {
       title: meta.title,
       description: meta.description,
-      startDate: meta.startDate,
+      startDate: parseStartDate(meta.startDate),
       durationWeeks: meta.durationWeeks,
       category: meta.category,
       clientId: meta.clientId,
@@ -80,10 +88,13 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
     // Only convert to Monday if it's not already a Monday
     const startDate = isMonday ? date : startOfWeek(date, { weekStartsOn: 1 });
     
+    // Convert to YYYY-MM-DD string to avoid timezone issues
+    const startDateString = format(startDate, 'yyyy-MM-dd');
+    
     setValue("startDate", startDate, { shouldValidate: true });
     dispatch({ 
       type: "UPDATE_META", 
-      payload: { ...meta, startDate: startDate } 
+      payload: { ...meta, startDate: startDateString } 
     });
     
     // Clear conflict error when date changes
@@ -211,22 +222,36 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
         type: "UPDATE_META", 
         payload: {
           ...validatedData,
-          // Use the validated startDate as-is (already handled in handleStartDateChange)
-          startDate: validatedData.startDate
+          // Convert Date to string for consistent handling
+          startDate: format(validatedData.startDate, 'yyyy-MM-dd')
         }
       });
 
+      // Debug: Check what we're sending
+      console.log('🔍 Frontend - validatedData.startDate:', validatedData.startDate);
+      console.log('🔍 Frontend - typeof validatedData.startDate:', typeof validatedData.startDate);
+      console.log('🔍 Frontend - state.meta.startDate:', state.meta.startDate);
+      console.log('🔍 Frontend - typeof state.meta.startDate:', typeof state.meta.startDate);
+      
       // Execute the action with the current state (will be updated by the time this runs)
       if (mode === "create" && trainerId) {
         await createAction.execute({ 
           trainerId, 
-          meta: { ...state.meta, ...validatedData }, 
+          meta: { 
+            ...state.meta, 
+            ...validatedData,
+            startDate: state.meta.startDate // Use the string from context
+          }, 
           weeks: state.weeks 
         });
       } else if (mode === "edit" && planId) {
         await updateAction.execute({ 
           id: planId, 
-          meta: { ...state.meta, ...validatedData }, 
+          meta: { 
+            ...state.meta, 
+            ...validatedData,
+            startDate: state.meta.startDate // Use the string from context
+          }, 
           weeks: state.weeks 
         });
       }
@@ -280,7 +305,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
               <FormLabel>Start Date</FormLabel>
               <FormControl>
                 <DatePicker
-                  date={field.value}
+                  date={typeof field.value === 'string' ? parseStartDate(field.value) : field.value}
                   onSelect={handleStartDateChange}
                   placeholder="Select start date"
                   className="w-full"

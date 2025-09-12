@@ -18,10 +18,15 @@ export const PlanHeaderSchema = z.object({
     .max(1000, "Description must be less than 1000 characters"),
   
   startDate: z
-    .date({ 
-      required_error: "Start date is required",
-      invalid_type_error: "Please select a valid start date"
-    }),
+    .union([
+      z.date({ 
+        required_error: "Start date is required",
+        invalid_type_error: "Please select a valid start date"
+      }),
+      z.string()
+        .min(1, "Start date is required")
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Start date must be in YYYY-MM-DD format")
+    ]),
   
   durationWeeks: z
     .number()

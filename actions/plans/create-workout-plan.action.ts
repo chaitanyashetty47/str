@@ -104,7 +104,7 @@ const WeekSchema = z.object({
 const MetaSchema = z.object({
   title: z.string(),
   description: z.string(),
-  startDate: z.coerce.date(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Start date must be in YYYY-MM-DD format"),
   durationWeeks: z.number().int().positive(),
   category: z.nativeEnum(WorkoutCategory),
   clientId: z.string().uuid(),
@@ -171,7 +171,7 @@ function prepareWorkoutPlanData(
       // Week 1 Day 2 = startDate + 1 day
       // Week 2 Day 1 = startDate + 7 days
       const calculatedDate = addDays(startDate, (week.weekNumber - 1) * 7 + (day.dayNumber - 1));
-      const dayDate = stripTimezone(calculatedDate);
+      const dayDate = calculatedDate; // Use UTC date directly, no timezone conversion
 
       // Prepare day data
       allDaysData.push({
@@ -256,15 +256,13 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
 
     // Debug: Log the exact dates we're receiving
     console.log('🔍 DEBUG - Raw meta.startDate:', meta.startDate);
-    console.log('🔍 DEBUG - meta.startDate.toISOString():', meta.startDate.toISOString());
-    console.log('🔍 DEBUG - meta.startDate.toString():', meta.startDate.toString());
-    console.log('🔍 DEBUG - meta.startDate.getTime():', meta.startDate.getTime());
+    console.log('🔍 DEBUG - Type of meta.startDate:', typeof meta.startDate);
     
-    // Use the exact start date provided by the user, but strip timezone info
-    // Convert to plain date (DD-MM-YYYY) to avoid timezone issues
-    const startDate = stripTimezone(meta.startDate);
-    console.log('🔍 DEBUG - After stripTimezone:', startDate);
-    console.log('🔍 DEBUG - After stripTimezone.toISOString():', startDate.toISOString());
+    // Parse startDate from YYYY-MM-DD string as local date (no timezone conversion)
+    const [year, month, day] = meta.startDate.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day); // month is 0-indexed
+    console.log('🔍 DEBUG - Parsed startDate:', startDate);
+    console.log('🔍 DEBUG - Parsed startDate.toISOString():', startDate.toISOString());
     
     const endDate = addDays(startDate, meta.durationWeeks * 7 - 1); // End date is start date + (weeks * 7 - 1) days
 

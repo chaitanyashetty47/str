@@ -18,7 +18,16 @@ import {
   type SetValidationError, 
   type ValidationSummary 
 } from "@/lib/schemas/plan-validation";
-import { startOfWeek } from "date-fns";
+import { startOfWeek, format } from "date-fns";
+
+// Helper function to convert Date | string to Date
+function parseStartDate(startDate: Date | string): Date {
+  if (typeof startDate === 'string') {
+    // Parse YYYY-MM-DD string as local date
+    return new Date(startDate + 'T00:00:00');
+  }
+  return startDate;
+}
 
 // ------------------------------------------------------------------
 // Action types (expand incrementally)
@@ -399,7 +408,7 @@ const initialState: PlanEditorState = {
   meta: {
     title: "New Routine",
     description: "",
-    startDate: startOfWeek(new Date(), { weekStartsOn: 1 }), // Always start on Monday of current week
+    startDate: format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'), // Store as string
     category: WorkoutCategory.HYPERTROPHY, // temp placeholder – cast for now
     clientId: "",
     durationWeeks: 1,
