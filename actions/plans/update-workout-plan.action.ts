@@ -476,24 +476,41 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         console.log('✅ Step 8: No new sets to create');
       }
 
-      // 9. Update existing days individually (optimized)
+      // 9. Update existing days individually (optimized with change detection)
       console.log('🔍 Step 9: Updating existing days...');
+      let daysUpdated = 0;
+      let daysSkipped = 0;
+      
       for (let i = 0; i < bulkData.daysToUpdate.length; i++) {
         const dayUpdate = bulkData.daysToUpdate[i];
-        console.log(`🔍 Updating day ${i + 1}/${bulkData.daysToUpdate.length} (ID: ${dayUpdate.id})`);
-        await tx.workout_days.update({
-          where: { id: dayUpdate.id },
-          data: {
-            title: dayUpdate.title,
-            day_date: dayUpdate.day_date,
-          },
-        });
+        
+        // Find the existing day to compare
+        const existingDay = existingDaysMap.get(`${dayUpdate.week_number}-${dayUpdate.day_number}`);
+        
+        if (existingDay) {
+          // Check if day needs updating
+          const dayNeedsUpdate = 
+            existingDay.title !== dayUpdate.title ||
+            existingDay.day_date.getTime() !== dayUpdate.day_date.getTime();
+          
+          if (dayNeedsUpdate) {
+            console.log(`🔍 Updating day ${i + 1}/${bulkData.daysToUpdate.length} (ID: ${dayUpdate.id})`);
+            await tx.workout_days.update({
+              where: { id: dayUpdate.id },
+              data: {
+                title: dayUpdate.title,
+                day_date: dayUpdate.day_date,
+              },
+            });
+            daysUpdated++;
+          } else {
+            console.log(`⏭️ Skipped day ${i + 1}/${bulkData.daysToUpdate.length} (ID: ${dayUpdate.id}) - no changes detected`);
+            daysSkipped++;
+          }
+        }
       }
-      if (bulkData.daysToUpdate.length > 0) {
-        console.log(`✅ Step 9: Updated ${bulkData.daysToUpdate.length} existing workout days`);
-      } else {
-        console.log('✅ Step 9: No existing days to update');
-      }
+      const dayOptimizationPercentage = (daysUpdated + daysSkipped) > 0 ? Math.round(daysSkipped / (daysUpdated + daysSkipped) * 100) : 0;
+      console.log(`📊 Day Processing Summary: ${daysUpdated} updated, ${daysSkipped} skipped (${dayOptimizationPercentage}% optimization)`);
 
       // 10. Process exercises for existing days (optimized with existing helper functions)
       console.log('🔍 Step 10: Processing exercises for existing days...');
@@ -624,19 +641,31 @@ async function processExercisesForDay(
     }
 
     if (existingExercise) {
-      console.log(`🔍 Updating existing exercise ${existingExercise.id} with ${exercise.sets.length} sets`);
-      // Update existing exercise - preserve ID, update all other fields
-      await tx.workout_day_exercises.update({
-        where: { id: existingExercise.id },
-        data: {
-          list_exercise_id: exercise.listExerciseId,
-          order: i + 1, // Update order based on current position
-          instructions: exercise.instructions || "",
-          notes: "",
-          frontend_uid: exercise.uid, // Ensure UID is stored for future updates
-        },
-      });
-      console.log(`✅ Updated exercise ${existingExercise.id}`);
+      // Check if exercise needs updating
+      const exerciseNeedsUpdate = 
+        existingExercise.list_exercise_id !== exercise.listExerciseId ||
+        existingExercise.order !== (i + 1) ||
+        existingExercise.instructions !== (exercise.instructions || "") ||
+        existingExercise.notes !== "" ||
+        existingExercise.frontend_uid !== exercise.uid;
+
+      if (exerciseNeedsUpdate) {
+        console.log(`🔍 Updating existing exercise ${existingExercise.id} with ${exercise.sets.length} sets`);
+        // Update existing exercise - preserve ID, update all other fields
+        await tx.workout_day_exercises.update({
+          where: { id: existingExercise.id },
+          data: {
+            list_exercise_id: exercise.listExerciseId,
+            order: i + 1, // Update order based on current position
+            instructions: exercise.instructions || "",
+            notes: "",
+            frontend_uid: exercise.uid, // Ensure UID is stored for future updates
+          },
+        });
+        console.log(`✅ Updated exercise ${existingExercise.id}`);
+      } else {
+        console.log(`⏭️ Skipped exercise ${existingExercise.id} (${exercise.name}) - no changes detected`);
+      }
 
       // Process sets for this exercise
       console.log(`🔍 Processing ${exercise.sets.length} sets for exercise ${existingExercise.id}`);
@@ -766,7 +795,11 @@ async function updateSetIfChanged(
   }
   
   // Compare notes (handle null/empty string conversion)
-  if (existingSet.notes !== incomingNotes) {
+  // Normalize both values: convert null/empty to null for comparison
+  const normalizedExistingNotes = existingSet.notes || null;
+  const normalizedIncomingNotes = incomingNotes || null;
+  
+  if (normalizedExistingNotes !== normalizedIncomingNotes) {
     updateData.notes = incomingNotes;
     changedFields.push(`notes: "${existingSet.notes}" → "${incomingNotes}"`);
   }
