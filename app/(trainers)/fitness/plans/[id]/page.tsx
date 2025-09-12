@@ -151,7 +151,7 @@ export default async function EditPlanPage({
     meta: {
       title: plan.title,
       description: plan.description ?? "",
-      startDate: plan.start_date,
+      startDate: plan.start_date.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD string
       durationWeeks: plan.duration_in_weeks,
       category: plan.category,
       clientId: plan.client_id,
