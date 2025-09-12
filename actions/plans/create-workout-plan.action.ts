@@ -296,13 +296,11 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
     );
     console.log(`⚡ Prepared ${workoutData.days.length} days, ${workoutData.exercises.length} exercises, ${workoutData.sets.length} sets`);
 
-    // Ensure fresh connection before transaction (fixes prod connection issues)
-    await prisma.$connect();
-    
     try {
       // Optimized transaction with bulk operations (4 DB calls instead of N×M×P×Q calls)
+      console.log('⚡ Starting bulk transaction with 5-minute timeout...');
       const createdPlan = await prisma.$transaction(async (tx) => {
-      console.log('⚡ Starting bulk transaction...');
+      console.log('⚡ Transaction started successfully');
 
       // 1. Create plan skeleton (1 DB call)
       const plan = await tx.workout_plans.create({
@@ -343,17 +341,20 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
         console.log('⚡ Bulk transaction completed successfully');
         return plan;
       }, {
-        timeout: 120000, // 120 seconds should be enough for bulk operations
+        timeout: 300000, // 5 minutes timeout for bulk operations
       });
 
+      console.log('✅ Workout plan creation completed successfully');
       return { data: { id: createdPlan.id } };
     } catch (e: any) {
       console.error('❌ Error creating workout plan:', e);
+      console.error('❌ Error details:', {
+        message: e.message,
+        code: e.code,
+        meta: e.meta,
+        stack: e.stack
+      });
       return { error: e.message };
-    } finally {
-      // Always disconnect after transaction (critical for prod environments)
-      await prisma.$disconnect();
-      console.log('🔌 Prisma connection closed after transaction');
     }
   } catch (e: any) {
     console.error('❌ Error in workout plan creation handler:', e);

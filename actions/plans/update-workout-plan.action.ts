@@ -363,24 +363,25 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
     // OPTIMIZATION: Prepare bulk update data in memory
     console.log('⚡ Preparing workout plan update data...');
     
-    // Ensure fresh connection before transaction (fixes prod connection issues)
-    await prisma.$connect();
-    
     try {
       // Optimized transaction with bulk operations (reduced DB calls)
+      console.log('⚡ Starting optimized update transaction with 5-minute timeout...');
       await prisma.$transaction(async (tx) => {
-      console.log('⚡ Starting optimized update transaction...');
+      console.log('⚡ Update transaction started successfully');
 
       // 1. Get the current plan data to check if start_date changed
+      console.log('🔍 Step 1: Getting current plan data...');
       const currentPlan = await tx.workout_plans.findUnique({
         where: { id },
         select: { start_date: true }
       });
+      console.log('✅ Step 1: Current plan data retrieved');
 
       const startDateChanged = currentPlan && 
         currentPlan.start_date.getTime() !== startDate.getTime();
 
       // 2. Update plan meta (1 DB call)
+      console.log('🔍 Step 2: Updating workout plan meta...');
       await tx.workout_plans.update({
         where: { id },
         data: {
@@ -394,9 +395,10 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
           status: meta.status,
         },
       });
-      console.log('✅ Updated workout plan meta');
+      console.log('✅ Step 2: Updated workout plan meta');
 
       // 3. Get existing structure for comparison (1 DB call)
+      console.log('🔍 Step 3: Getting existing structure for comparison...');
       const existingDays = await tx.workout_days.findMany({
         where: { 
           plan_id: id,
@@ -415,15 +417,19 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         },
         orderBy: [{ week_number: 'asc' }, { day_number: 'asc' }],
       }) as ExistingDay[];
+      console.log(`✅ Step 3: Retrieved ${existingDays.length} existing days`);
 
       // 4. Create lookup map for existing data
+      console.log('🔍 Step 4: Creating lookup map for existing data...');
       const existingDaysMap = new Map<string, ExistingDay>();
       existingDays.forEach(day => {
         const dayKey = `${day.week_number}-${day.day_number}`;
         existingDaysMap.set(dayKey, day);
       });
+      console.log(`✅ Step 4: Created lookup map with ${existingDaysMap.size} entries`);
 
       // 5. Prepare bulk update data
+      console.log('🔍 Step 5: Preparing bulk update data...');
       const bulkData = prepareBulkUpdateData(
         id,
         weeks,
@@ -432,36 +438,49 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         meta.intensityMode,
         existingDaysMap
       );
+      console.log('✅ Step 5: Bulk update data prepared');
 
       console.log(`⚡ Prepared ${bulkData.newDays.length} new days, ${bulkData.newExercises.length} new exercises, ${bulkData.newSets.length} new sets`);
       console.log(`⚡ Prepared ${bulkData.daysToUpdate.length} days to update`);
 
       // 6. Bulk create new days (1 DB call)
+      console.log('🔍 Step 6: Creating new days...');
       if (bulkData.newDays.length > 0) {
         await tx.workout_days.createMany({
           data: bulkData.newDays
         });
-        console.log(`✅ Created ${bulkData.newDays.length} new workout days`);
+        console.log(`✅ Step 6: Created ${bulkData.newDays.length} new workout days`);
+      } else {
+        console.log('✅ Step 6: No new days to create');
       }
 
       // 7. Bulk create new exercises (1 DB call)
+      console.log('🔍 Step 7: Creating new exercises...');
       if (bulkData.newExercises.length > 0) {
         await tx.workout_day_exercises.createMany({
           data: bulkData.newExercises
         });
-        console.log(`✅ Created ${bulkData.newExercises.length} new workout exercises`);
+        console.log(`✅ Step 7: Created ${bulkData.newExercises.length} new workout exercises`);
+      } else {
+        console.log('✅ Step 7: No new exercises to create');
       }
 
       // 8. Bulk create new sets (1 DB call)
+      console.log('🔍 Step 8: Creating new sets...');
       if (bulkData.newSets.length > 0) {
         await tx.workout_set_instructions.createMany({
           data: bulkData.newSets
         });
-        console.log(`✅ Created ${bulkData.newSets.length} new workout sets`);
+        console.log(`✅ Step 8: Created ${bulkData.newSets.length} new workout sets`);
+      } else {
+        console.log('✅ Step 8: No new sets to create');
       }
 
       // 9. Update existing days individually (optimized)
-      for (const dayUpdate of bulkData.daysToUpdate) {
+      console.log('🔍 Step 9: Updating existing days...');
+      for (let i = 0; i < bulkData.daysToUpdate.length; i++) {
+        const dayUpdate = bulkData.daysToUpdate[i];
+        console.log(`🔍 Updating day ${i + 1}/${bulkData.daysToUpdate.length} (ID: ${dayUpdate.id})`);
         await tx.workout_days.update({
           where: { id: dayUpdate.id },
           data: {
@@ -471,21 +490,29 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         });
       }
       if (bulkData.daysToUpdate.length > 0) {
-        console.log(`✅ Updated ${bulkData.daysToUpdate.length} existing workout days`);
+        console.log(`✅ Step 9: Updated ${bulkData.daysToUpdate.length} existing workout days`);
+      } else {
+        console.log('✅ Step 9: No existing days to update');
       }
 
       // 10. Process exercises for existing days (optimized with existing helper functions)
+      console.log('🔍 Step 10: Processing exercises for existing days...');
+      let processedDays = 0;
       for (const week of weeks) {
         for (const day of week.days) {
           const dayKey = `${week.weekNumber}-${day.dayNumber}`;
           const existingDay = existingDaysMap.get(dayKey);
 
           if (existingDay) {
+            processedDays++;
+            console.log(`🔍 Processing exercises for day ${processedDays} (${dayKey}) - ${day.exercises.length} exercises`);
             // Use existing optimized helper function for exercise processing
             await processExercisesForDay(tx, existingDay, day.exercises, trainerWeightUnit, meta.intensityMode);
+            console.log(`✅ Completed processing exercises for day ${dayKey}`);
           }
         }
       }
+      console.log(`✅ Step 10: Processed exercises for ${processedDays} days`);
 
       // 11. Handle removed days (soft delete by checking if any logs exist)
       const incomingDayKeys = new Set<string>();
@@ -530,17 +557,20 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
 
         console.log('⚡ Optimized update transaction completed successfully');
       }, {
-        timeout: 120000, // 120 seconds timeout for complex workout plan updates
+        timeout: 300000, // 5 minutes timeout for complex workout plan updates
       });
       
+      console.log('✅ Workout plan update completed successfully');
       return { data: { ok: true } };
     } catch (e: any) {
       console.error('❌ Error updating workout plan:', e);
+      console.error('❌ Error details:', {
+        message: e.message,
+        code: e.code,
+        meta: e.meta,
+        stack: e.stack
+      });
       return { error: e.message };
-    } finally {
-      // Always disconnect after transaction (critical for prod environments)
-      await prisma.$disconnect();
-      console.log('🔌 Prisma connection closed after transaction');
     }
   } catch (e: any) {
     console.error('❌ Error in workout plan update handler:', e);
@@ -558,6 +588,8 @@ async function processExercisesForDay(
   trainerWeightUnit: WeightUnit,
   intensityMode: IntensityMode = IntensityMode.ABSOLUTE
 ) {
+  console.log(`🔍 Processing ${incomingExercises.length} exercises for day ${existingDay.week_number}-${existingDay.day_number}`);
+  
   // Create maps for easier lookup - now using UID-based matching
   const existingExercisesByUid = new Map<string, ExistingExercise>();
   const existingExercisesByListId = new Map<string, ExistingExercise>();
@@ -570,10 +602,13 @@ async function processExercisesForDay(
     // Fallback: Map by list_exercise_id (for legacy exercises without UID)
     existingExercisesByListId.set(ex.list_exercise_id, ex);
   });
+  
+  console.log(`🔍 Found ${existingExercisesByUid.size} exercises by UID, ${existingExercisesByListId.size} by list ID`);
 
   // Process incoming exercises
   for (let i = 0; i < incomingExercises.length; i++) {
     const exercise = incomingExercises[i];
+    console.log(`🔍 Processing exercise ${i + 1}/${incomingExercises.length}: ${exercise.name} (UID: ${exercise.uid})`);
     
     // Try to match by UID first, then fallback to listExerciseId
     let existingExercise = existingExercisesByUid.get(exercise.uid);
@@ -587,6 +622,7 @@ async function processExercisesForDay(
     }
 
     if (existingExercise) {
+      console.log(`🔍 Updating existing exercise ${existingExercise.id} with ${exercise.sets.length} sets`);
       // Update existing exercise - preserve ID, update all other fields
       await tx.workout_day_exercises.update({
         where: { id: existingExercise.id },
@@ -598,10 +634,14 @@ async function processExercisesForDay(
           frontend_uid: exercise.uid, // Ensure UID is stored for future updates
         },
       });
+      console.log(`✅ Updated exercise ${existingExercise.id}`);
 
       // Process sets for this exercise
+      console.log(`🔍 Processing ${exercise.sets.length} sets for exercise ${existingExercise.id}`);
       await processSetsForExercise(tx, existingExercise, exercise.sets, trainerWeightUnit, intensityMode);
+      console.log(`✅ Completed processing sets for exercise ${existingExercise.id}`);
     } else {
+      console.log(`🔍 Creating new exercise with ${exercise.sets.length} sets`);
       // Create new exercise
       await tx.workout_day_exercises.create({
         data: {
@@ -633,6 +673,7 @@ async function processExercisesForDay(
           },
         },
       });
+      console.log(`✅ Created new exercise with ${exercise.sets.length} sets`);
     }
   }
 
@@ -686,17 +727,24 @@ async function processSetsForExercise(
   trainerWeightUnit: WeightUnit,
   intensityMode: IntensityMode = IntensityMode.ABSOLUTE
 ) {
+  console.log(`🔍 Processing ${incomingSets.length} sets for exercise ${existingExercise.id}`);
+  
   // Create map for existing sets by set_number
   const existingSetsMap = new Map<number, ExistingSet>();
   existingExercise.workout_set_instructions.forEach(set => {
     existingSetsMap.set(set.set_number, set);
   });
+  
+  console.log(`🔍 Found ${existingSetsMap.size} existing sets`);
 
   // Process incoming sets
-  for (const set of incomingSets) {
+  for (let i = 0; i < incomingSets.length; i++) {
+    const set = incomingSets[i];
+    console.log(`🔍 Processing set ${i + 1}/${incomingSets.length}: Set ${set.setNumber} (${set.reps} reps, ${set.weight} weight)`);
     const existingSet = existingSetsMap.get(set.setNumber);
 
     if (existingSet) {
+      console.log(`🔍 Updating existing set ${existingSet.id} (Set ${set.setNumber})`);
       // Update existing set
       // For reps-based exercises, skip weight conversion
       // For weight-based exercises, convert weight to KG before storing
@@ -714,7 +762,9 @@ async function processSetsForExercise(
           notes: set.notes,
         },
       });
+      console.log(`✅ Updated set ${existingSet.id}`);
     } else {
+      console.log(`🔍 Creating new set ${set.setNumber} for exercise ${existingExercise.id}`);
       // Create new set
       // For reps-based exercises, skip weight conversion
       // For weight-based exercises, convert weight to KG before storing
@@ -733,6 +783,7 @@ async function processSetsForExercise(
           notes: set.notes,
         },
       });
+      console.log(`✅ Created new set ${set.setNumber}`);
     }
   }
 
