@@ -63,7 +63,7 @@ export interface PlanEditorMeta {
    */
   intensityMode: IntensityMode;
   /**
-   * Workflow status of the plan (draft → published → archived).
+   * Workflow status of the plan (draft → published).
    */
   status: WorkoutPlanStatus;
   /**

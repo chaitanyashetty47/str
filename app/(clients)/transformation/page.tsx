@@ -1,22 +1,19 @@
 
-
 import { Suspense } from 'react';
 import { TransformationTabs } from '@/components/transformation/transformation-tabs';
 import { Camera } from 'lucide-react';
-import { createClient } from '@/utils/supabase/server';
-import { redirect } from 'next/navigation';
+import { validateServerRole } from '@/lib/server-role-validation';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "Transformation Photos - Strentor",
+  description: "Track your fitness journey with before and after photos. Document your progress, celebrate milestones, and visualize your transformation.",
+  keywords: ["transformation photos", "before after photos", "fitness progress", "body transformation", "progress tracking"],
+};
 
 async function TransformationPageContent() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return redirect("/sign-in?error=Session%20expired");
-  }
+  // Validate user authentication and CLIENT role
+  const { user } = await validateServerRole(['CLIENT']);
 
   return (
     <div className="container mx-auto p-6 space-y-6">

@@ -11,8 +11,7 @@ import UpcomingWorkouts, {
   UpcomingWorkoutsLoading,
 } from "@/components/upcoming-workouts";
 import ProgressGraphs from "@/components/progress-graphs";
-import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
+import { Metadata } from "next";
 
 import {
   getClientCurrentWorkoutPlan,
@@ -24,17 +23,17 @@ import { NoSubscriptionCard } from "@/components/dashboard/NoSubscriptionCard";
 import { NoWorkoutPlanCard } from "@/components/dashboard/NoWorkoutPlanCard";
 import { ActiveSubscriptionCard } from "@/components/dashboard/ActiveSubscriptionCard";
 import { Suspense } from "react";
+import { validateServerRole } from "@/lib/server-role-validation";
+
+export const metadata: Metadata = {
+  title: "Dashboard - Strentor",
+  description: "Your personal fitness dashboard. Track your workout progress, personal records, and fitness journey.",
+  keywords: ["fitness dashboard", "workout tracking", "personal records", "fitness progress"],
+};
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return redirect("/sign-in");
-  }
+  // Validate user authentication and CLIENT role
+  const { user } = await validateServerRole(['CLIENT']);
 
   // Parallel loading for better performance with caching strategy
   const [

@@ -12,10 +12,13 @@ import {
 } from "@/types/workout-plans-create/editor-state";
 import { v4 as uuidv4 } from "uuid";
 import { IntensityMode, WeightUnit } from "@prisma/client";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
 
-export const metadata = {
-  title: "Edit Workout Plan",
-  description: "Modify workout plan details and structure",
+export const metadata: Metadata = {
+  title: "Edit Workout Plan - Strentor",
+  description: "Modify and update workout plan details, exercises, and structure. Edit comprehensive training programs for your clients.",
+  keywords: ["edit workout plan", "modify workout plan", "workout plan editor", "training program", "fitness plan", "trainer tools"],
 };
 
 export default async function EditPlanPage({
@@ -23,6 +26,9 @@ export default async function EditPlanPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // Validate user authentication and FITNESS_TRAINER/FITNESS_TRAINER_ADMIN role
+  const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
+  
   const { id } = await params;
 
   // Enhanced authorization check

@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Users, Shield, LayoutDashboard } from "lucide-react";
+import { ChevronDown, Users, Shield, LayoutDashboard, Settings, GraduationCap } from "lucide-react";
 import Image from "next/image";
 
 // Internal components
@@ -42,6 +42,19 @@ const adminNavItems = [
     icon: Users,
     isActive: false,
   },
+  {
+    title: "Trainers",
+    url: "/admin/trainers",
+    icon: GraduationCap,
+    isActive: false,
+  },
+  {
+    title: "Settings",
+    url: "/admin/settings",
+    icon: Settings,
+    isActive: false,
+  },
+
 ];
 
 /**

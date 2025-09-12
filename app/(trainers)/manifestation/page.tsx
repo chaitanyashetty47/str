@@ -3,8 +3,19 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Calendar, User } from "lucide-react";
 import { getManifestationTrainerDashboardData } from "@/actions/manifestation-trainer.dashboard.action";
 import Link from "next/link";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Manifestation Trainer Dashboard - Strentor",
+  description: "Manage your manifestation clients, track goal progress, and provide comprehensive manifestation coaching. Professional manifestation trainer dashboard.",
+  keywords: ["manifestation trainer", "manifestation coaching", "goal setting", "manifestation dashboard", "client management", "trainer tools"],
+};
 
 export default async function ManifestationDashboard() {
+  // Validate user authentication and MANIFESTATION_TRAINER role
+  const { user } = await validateServerRole(['MANIFESTATION_TRAINER']);
+
   // Fetch data using the server action
   const dashboardData = await getManifestationTrainerDashboardData();
 

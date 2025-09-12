@@ -15,15 +15,15 @@ import { useTrainerClientOptions } from "@/hooks/use-trainer-client-options";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { ChevronsUpDown, Check } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePlanMeta, usePlanDispatch, usePlanValidation } from "@/contexts/PlanEditorContext";
-import { Switch } from "@/components/ui/switch";
 import { WorkoutPlanStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { createWorkoutPlan } from "@/actions/plans/create-workout-plan.action";
 import { updateWorkoutPlan } from "@/actions/plans/update-workout-plan.action";
 import { usePlanState } from "@/contexts/PlanEditorContext";
 import { useAction } from "@/hooks/useAction";
-import { archiveWorkoutPlan } from "@/actions/plans/archive-workout-plan.action";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -42,7 +42,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
   const router = useRouter();
   const state = usePlanState();
   
-  const { meta, toggleIntensity, setStatus } = usePlanMeta();
+  const { meta, setStatus } = usePlanMeta();
   const dispatch = usePlanDispatch();
   const { validateAllSets, hasValidationErrors } = usePlanValidation();
 
@@ -171,17 +171,6 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
         setConflictError(null);
         toast.error("Failed to update workout plan. Please try again.");
       }
-    },
-  });
-
-  const archiveAction = useAction(archiveWorkoutPlan, {
-    onSuccess: () => {
-      toast.success("Workout plan archived successfully!");
-      router.refresh();
-    },
-    onError: (error) => {
-      console.error("Error archiving plan:", error);
-      toast.error("Failed to archive workout plan. Please try again.");
     },
   });
 
@@ -467,52 +456,74 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
         )}
       />
 
-      {/* Intensity toggle & status buttons */}
+      {/* Status and Action Buttons */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-4">
-        {/* Toggle */}
+        
+        {/* Status Badge */}
         <div className="flex items-center gap-2">
-          <Label className="text-xs">ABS</Label>
-          <Switch
-            checked={meta.intensityMode === IntensityMode.PERCENT}
-            onCheckedChange={() => toggleIntensity()}
-          />
-          <Label className="text-xs">1-RM&nbsp;%</Label>
+          <span className="text-sm text-muted-foreground">Status:</span>
+          <Badge 
+            variant={meta.status === WorkoutPlanStatus.PUBLISHED ? "default" : "secondary"}
+            className={cn(
+              meta.status === WorkoutPlanStatus.PUBLISHED 
+                ? "bg-green-100 text-green-800 hover:bg-green-200" 
+                : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+            )}
+          >
+            {meta.status === WorkoutPlanStatus.PUBLISHED ? "Published" : "Draft"}
+          </Badge>
         </div>
 
-        {/* Status buttons */}
-        <div className="flex gap-2 w-full md:w-auto">
-          <Button
-            size="sm"
-            type="button"
-            variant={meta.status === WorkoutPlanStatus.DRAFT ? "default" : "outline"}
-            onClick={() => handleValidatedSave(WorkoutPlanStatus.DRAFT)}
-            disabled={createAction.isLoading || updateAction.isLoading || isSubmitting}
-          >
-            {mode === "create" ? "Save Draft" : "Update Draft"}
-          </Button>
-          <Button
-            size="sm"
-            type="button"
-            variant={meta.status === WorkoutPlanStatus.PUBLISHED ? "default" : "secondary"}
-            onClick={() => handleValidatedSave(WorkoutPlanStatus.PUBLISHED)}
-            disabled={createAction.isLoading || updateAction.isLoading || isSubmitting}
-          >
-            {mode === "create" ? "Publish" : "Republish"}
-          </Button>
-          {mode === "edit" && (
-            <Button
-              size="sm"
-              type="button"
-              variant="destructive"
-              disabled={archiveAction.isLoading || createAction.isLoading || updateAction.isLoading || isSubmitting}
-              onClick={() => {
-                archiveAction.execute({ id: planId!, archive: meta.status !== WorkoutPlanStatus.ARCHIVED });
-              }}
-            >
-              {meta.status === WorkoutPlanStatus.ARCHIVED ? "Unarchive" : "Archive"}
-            </Button>
-          )}
-        </div>
+        {/* Action Buttons */}
+        <TooltipProvider>
+          <div className="flex gap-2 w-full md:w-auto">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleValidatedSave(WorkoutPlanStatus.DRAFT)}
+                  disabled={createAction.isLoading || updateAction.isLoading || isSubmitting}
+                >
+                  Save Draft
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Save changes without publishing to client</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="default"
+                  onClick={() => handleValidatedSave(WorkoutPlanStatus.PUBLISHED)}
+                  disabled={createAction.isLoading || updateAction.isLoading || isSubmitting}
+                >
+                  {mode === "create" 
+                    ? "Publish Plan" 
+                    : meta.status === WorkoutPlanStatus.PUBLISHED 
+                      ? "Update Published Plan" 
+                      : "Publish Plan"
+                  }
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {mode === "create" 
+                    ? "Make plan available to client" 
+                    : meta.status === WorkoutPlanStatus.PUBLISHED 
+                      ? "Update the published plan for client" 
+                      : "Make plan available to client"
+                  }
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </div>
 
       </form>

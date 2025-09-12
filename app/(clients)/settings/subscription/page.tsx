@@ -1,23 +1,23 @@
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { signOutAction } from "@/app/actions";
 import { SettingsContent } from "@/components/settings/settings-content";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { createClient } from "@/utils/supabase/server";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Subscription Settings - Strentor",
+  description: "Manage your subscription settings and billing information. View your current plan, update payment methods, and manage your fitness subscriptions.",
+  keywords: ["subscription settings", "billing", "payment methods", "subscription management", "fitness plans"],
+};
 
 export default async function SettingsSubscriptionPage() {
+  // Validate user authentication and CLIENT role
+  const { user } = await validateServerRole(['CLIENT']);
+  
   const supabase = await createClient();
-
-  // Get user data
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return redirect("/sign-in?error=Session%20expired");
-  }
 
   // Get profile data
   const { data: profile, error: profileError } = await supabase

@@ -16,12 +16,11 @@ import {
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
-import { GripVertical, MoreHorizontal, Plus, Trash2, AlertCircle, AlertTriangle } from "lucide-react";
+import { GripVertical, MoreHorizontal, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ExerciseInPlan } from "@/types/workout-plans-create/editor-state";
 import { usePlanDispatch, usePlanMeta, usePlanValidation } from "@/contexts/PlanEditorContext";
 import { useClientMaxLifts } from "@/hooks/use-client-max-lifts";
-import { IntensityMode } from "@prisma/client";
 import { SetRow } from "./set-row";
 
 interface Props {
@@ -70,10 +69,6 @@ export function ExerciseContainer({ exercise, weekNumber, dayNumber, dragHandleP
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="secondary" className="w-fit text-[10px] flex items-center gap-1">
                 {exercise.bodyPart}
-                {meta.intensityMode === IntensityMode.PERCENT && !oneRM && (
-                  <span className="text-xs text-destructive flex flex-row flex-nowrap" 
-                  > <AlertCircle className="w-3 h-3 text-destructivem mr-1" /> No 1-RM data</span>
-                )}
               </Badge>
               {/* Sets Count Badge */}
               <Badge variant="outline" className="text-[10px]">
@@ -130,13 +125,31 @@ export function ExerciseContainer({ exercise, weekNumber, dayNumber, dragHandleP
             dayNumber={dayNumber}
             exerciseUid={exercise.uid}
             oneRM={oneRM}
-            intensityMode={meta.intensityMode}
             isRepsBased={exercise.isRepsBased} // NEW: Pass reps-based flag
           />
         ))}
 
-        {/* Exercise Notes */}
-        <div className="space-y-2">
+       
+
+        {/* Add set button */}
+        <Button
+          variant="default"
+          size="sm"
+          className="w-full justify-center bg-strentor-blue text-white hover:bg-blue-700"
+          onClick={() =>
+            dispatch({
+              type: "ADD_SET",
+              week: weekNumber,
+              day: dayNumber,
+              exercise: exercise,
+            })
+          }
+        >
+          <Plus className="w-4 h-4 mr-1" /> Add Set
+        </Button>
+
+         {/* Exercise Notes */}
+         <div className="space-y-2">
           <label className="text-sm font-medium text-muted-foreground">
             Exercise Notes
           </label>
@@ -156,23 +169,6 @@ export function ExerciseContainer({ exercise, weekNumber, dayNumber, dragHandleP
             className="min-h-[80px] text-sm"
           />
         </div>
-
-        {/* Add set button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-center text-strentor-blue"
-          onClick={() =>
-            dispatch({
-              type: "ADD_SET",
-              week: weekNumber,
-              day: dayNumber,
-              exercise: exercise,
-            })
-          }
-        >
-          <Plus className="w-4 h-4 mr-1" /> Add Set
-        </Button>
       </CardContent>
     </Card>
   );

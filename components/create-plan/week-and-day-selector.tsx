@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { addDays, format } from "date-fns";
+import { addDays } from "date-fns";
 import { GripVertical, Plus, MoreHorizontal, CheckCircle2 } from "lucide-react";
 
 import { usePlanState, usePlanDispatch, usePlanHelpers } from "../../contexts/PlanEditorContext";
@@ -18,15 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-/**
- * Format a Monday–Sunday range label for the given week index.
- */
-function formatWeekRange(startDate: Date, weekIndex: number) {
-  const monday = addDays(startDate, weekIndex * 7);
-  const sunday = addDays(monday, 6);
-  return `${format(monday, "dd MMM")} – ${format(sunday, "dd MMM")}`;
-}
+import { formatWeekRange } from "@/utils/date-utils";
 
 export function WeekAndDaySelector() {
   const { weeks, selectedWeek, selectedDay, meta } = usePlanState();
@@ -75,7 +67,7 @@ export function WeekAndDaySelector() {
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm text-muted-foreground">Total: {totalDays} days</span>
-        <Button variant="outline" size="sm" onClick={addWeek}>
+        <Button variant="outline" size="sm" className="bg-primary text-primary-foreground" onClick={addWeek}>
           <Plus className="h-4 w-4 mr-1" />
           Add Week
         </Button>
@@ -105,7 +97,7 @@ export function WeekAndDaySelector() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
-                    {formatWeekRange(meta.startDate, idx)}
+                    {formatWeekRange(addDays(meta.startDate, idx * 7))}
                   </span>
                   {/* Placeholder kebab menu */}
                   <DropdownMenu>
@@ -121,12 +113,12 @@ export function WeekAndDaySelector() {
                         {
                           e.stopPropagation();
                           dispatch({ type: "DUPLICATE_WEEK", week: week.weekNumber });
-                        }}>Duplicate Week (todo)</DropdownMenuItem>
+                        }}>Duplicate Week</DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) =>
                         {
                           e.stopPropagation();
                           dispatch({ type: "DELETE_WEEK", week: week.weekNumber });
-                        }}>Delete Week (todo)</DropdownMenuItem>
+                        }}>Delete Week</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

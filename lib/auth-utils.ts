@@ -131,15 +131,27 @@ export function canAccessRoute(
 ): boolean {
   // Define route access rules with new role structure
   const routeRules = {
+    // CLIENT-ONLY routes
+    '/calculator': ['CLIENT'],
+    '/plans': ['CLIENT'], 
+    '/transformation': ['CLIENT'],
+    '/settings': ['CLIENT'],
+    '/pricing': ['CLIENT'],
+    '/personal-records': ['CLIENT'],
+    '/workout-plan': ['CLIENT'],
+    '/dashboard': ['CLIENT'],
+    
+    // TRAINER-ONLY routes
     '/fitness': ['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN', 'TRAINER'], // Legacy TRAINER maps to fitness
     '/psychological': ['PSYCHOLOGY_TRAINER'],
     '/manifestation': ['MANIFESTATION_TRAINER'],
+    
+    // ADMIN-ONLY routes
     '/admin': ['ADMIN', 'FITNESS_TRAINER_ADMIN'],
-    '/profile': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
-    '/workouts': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
-    '/subscriptions': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
-    '/dashboard': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
-    '/home': ['CLIENT', 'TRAINER', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
+    
+    // SHARED routes - accessible by all authenticated users
+    '/protected': ['CLIENT', 'FITNESS_TRAINER', 'PSYCHOLOGY_TRAINER', 'MANIFESTATION_TRAINER', 'FITNESS_TRAINER_ADMIN', 'ADMIN'],
+    
     // Legacy /training route - redirect to /fitness
     '/training': ['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN', 'TRAINER'],
   };

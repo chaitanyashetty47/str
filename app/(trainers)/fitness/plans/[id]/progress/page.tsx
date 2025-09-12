@@ -1,12 +1,23 @@
 import { getTrainerClientWorkoutPlanFull } from "@/actions/trainer-clients/get-trainer-client-workout-plan-summary.action";
 import WeekColumnSelection from "@/components/workout-summary/WeekColumnSelection";
 import PRDebugPanel from "@/components/workout-summary/PRDebugPanel";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Workout Plan Progress - Strentor",
+  description: "Track client progress and analyze workout performance. View detailed progress reports, personal records, and training analytics.",
+  keywords: ["workout progress", "client progress", "training analytics", "progress tracking", "personal records", "trainer tools"],
+};
 
 export default async function TrainerWorkoutPlanSummaryPage({ 
   params 
 }: { 
   params: Promise<{ id: string }> 
 }) {
+  // Validate user authentication and FITNESS_TRAINER/FITNESS_TRAINER_ADMIN role
+  const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
+  
   const { id: planId } = await params;
   
   // Fetch the workout plan with trainer authorization

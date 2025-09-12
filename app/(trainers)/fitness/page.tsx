@@ -5,8 +5,19 @@ import { Users, Activity, Calendar, User, Weight, ArrowRight } from "lucide-reac
 import { getTrainerDashboardData } from "@/actions/trainer.dashboard.action";
 import { NewlyAssignedClientsCard } from "@/components/dashboard/NewlyAssignedClientsCard";
 import Link from "next/link";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Fitness Trainer Dashboard - Strentor",
+  description: "Manage your fitness clients, workout plans, and track progress. Access comprehensive tools for personal training and client management.",
+  keywords: ["fitness trainer", "personal trainer", "client management", "workout plans", "fitness dashboard", "trainer tools"],
+};
 
 export default async function TrainerDashboard() {
+  // Validate user authentication and FITNESS_TRAINER/FITNESS_TRAINER_ADMIN role
+  const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
+  
   // Fetch data using the server action
   const dashboardData = await getTrainerDashboardData();
 

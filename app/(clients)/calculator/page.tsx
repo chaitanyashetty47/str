@@ -2,8 +2,19 @@ import PageHeaderTemplate from "@/components/page-header-template";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Scale, Target, Zap, TrendingUp, Heart, Dumbbell, CalculatorIcon } from "lucide-react";
 import Link from "next/link";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Fitness Calculators - Strentor",
+  description: "Comprehensive collection of fitness and health calculators. Calculate BMI, BMR, body fat, calorie needs, ideal weight, and more to optimize your training.",
+  keywords: ["fitness calculators", "BMI calculator", "BMR calculator", "body fat calculator", "calorie calculator", "health tools"],
+};
 
 export default async function Calculator() {
+  // Validate user authentication and CLIENT role
+  const { user } = await validateServerRole(['CLIENT']);
+  
   const calculators = [
     {
       title: "BMI Calculator",
@@ -95,6 +106,3 @@ export default async function Calculator() {
     </div>
   );
 }
-  
-
-  

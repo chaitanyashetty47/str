@@ -1,25 +1,26 @@
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SettingsContent } from "@/components/settings/settings-content";
 import { SettingsHeader, SettingsActions } from "@/components/settings/settings-header";
 import { FormMessage, Message } from "@/components/form-message";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { createClient } from "@/utils/supabase/server";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Settings - Strentor",
+  description: "Manage your personal information, preferences, and account settings. Update your profile, change password, and customize your fitness experience.",
+  keywords: ["settings", "profile management", "account settings", "user preferences", "personal information"],
+};
 
 export default async function SettingsPage(props: {
   searchParams: Promise<Message>;
 }) {
   const searchParams = await props.searchParams;
+  
+  // Validate user authentication and CLIENT role
+  const { user } = await validateServerRole(['CLIENT']);
+  
   const supabase = await createClient();
-
-  // Get user data
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return redirect("/sign-in?error=Session%20expired");
-  }
 
   // Get profile data
   const { data: profile, error: profileError } = await supabase
@@ -31,8 +32,6 @@ export default async function SettingsPage(props: {
   if (profileError && profileError.code !== "PGRST116") {
     console.error("Error fetching profile:", profileError);
   }
-
-
 
   return (
     <div className="flex-1 w-full flex flex-col gap-8 px-4 md:px-8 py-8">

@@ -1,15 +1,18 @@
 import { getProfileDetails } from "@/actions/profile/get-profile-details.action";
 import { redirect } from "next/navigation";
 import { MacroCalculator } from "@/components/calculator/macro-split/MacroCalculator";
-import { createClient } from "@/utils/supabase/server";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Macro Split Calculator - Strentor",
+  description: "Calculate optimal macronutrient distribution for your fitness goals. Get personalized protein, carbs, and fat recommendations for muscle gain, weight loss, or maintenance.",
+  keywords: ["macro calculator", "macronutrient calculator", "protein calculator", "carb calculator", "fat calculator", "nutrition planning"],
+};
+
 export default async function MacroSplitPage() {
-  
-  //Check if user is logged in
-  const supabase = await createClient();
-  const { data: user } = await supabase.auth.getUser();
-  if(!user) {
-    return redirect("/sign-in");
-  }
+  // Validate user authentication and CLIENT role
+  const { user } = await validateServerRole(['CLIENT']);
 
   const profileDetails = await getProfileDetails();
 

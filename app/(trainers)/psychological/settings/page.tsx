@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ManifestationTrainerProfileForm } from "@/components/profile/manifestation-trainer-profile-form";
+import { PsychologyTrainerProfileForm } from "@/components/profile/psychology-trainer-profile-form";
 import { SettingsHeader, SettingsActions } from "@/components/settings/settings-header";
 import { FormMessage, Message } from "@/components/form-message";
 import { createClient } from "@/utils/supabase/server";
@@ -7,16 +7,16 @@ import { validateServerRole } from "@/lib/server-role-validation";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Manifestation Trainer Settings - Strentor",
-  description: "Manage your manifestation trainer profile, update credentials, and customize your professional settings. Comprehensive profile management for manifestation trainers.",
-  keywords: ["manifestation trainer settings", "profile management", "trainer credentials", "professional settings", "manifestation trainer profile", "trainer tools"],
+  title: "Psychology Trainer Settings - Strentor",
+  description: "Manage your psychology trainer profile, update credentials, and customize your professional settings. Comprehensive profile management for psychology trainers.",
+  keywords: ["psychology trainer settings", "profile management", "trainer credentials", "professional settings", "psychology trainer profile", "trainer tools"],
 };
 
 export default async function SettingsPage(props: {
   searchParams: Promise<Message>;
 }) {
-  // Validate user authentication and MANIFESTATION_TRAINER role
-  const { user } = await validateServerRole(['MANIFESTATION_TRAINER']);
+  // Validate user authentication and PSYCHOLOGY_TRAINER role
+  const { user } = await validateServerRole(['PSYCHOLOGY_TRAINER']);
   
   const searchParams = await props.searchParams;
   const supabase = await createClient();
@@ -52,11 +52,11 @@ export default async function SettingsPage(props: {
         <CardHeader>
           <CardTitle>Settings</CardTitle>
           <CardDescription>
-            Manage your manifestation trainer profile and account information
+            Manage your psychology trainer profile and account information
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ManifestationTrainerProfileForm user={user} />
+          <PsychologyTrainerProfileForm user={user} />
         </CardContent>
       </Card>
     </div>

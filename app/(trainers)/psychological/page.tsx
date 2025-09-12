@@ -3,8 +3,19 @@ import { Badge } from "@/components/ui/badge";
 import { Users, User } from "lucide-react";
 import { getPsychologicalTrainerDashboardData } from "@/actions/psychological-trainer.dashboard.action";
 import Link from "next/link";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Psychology Trainer Dashboard - Strentor",
+  description: "Manage your psychology clients, track mental health progress, and provide comprehensive psychological support. Professional psychology trainer dashboard.",
+  keywords: ["psychology trainer", "mental health coaching", "psychology dashboard", "client management", "psychological support", "trainer tools"],
+};
 
 export default async function PsychologicalDashboard() {
+  // Validate user authentication and PSYCHOLOGY_TRAINER role
+  const { user } = await validateServerRole(['PSYCHOLOGY_TRAINER']);
+
   // Fetch data using the server action
   const dashboardData = await getPsychologicalTrainerDashboardData();
 

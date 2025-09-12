@@ -49,12 +49,14 @@ export function DayContainer({weekNumber, dayNumber}: {weekNumber: number, dayNu
       id={`week-${weekNumber}-day-${dayNumber}`}
       className="rounded-lg border border-muted-foreground/10 shadow-sm scroll-mt-6"
     >
-      <CardHeader className="py-4 px-6">
-        <CardTitle className="flex items-center gap-3 text-sm sm:text-base font-semibold">
-          <span className="whitespace-nowrap">Day {dayNumber}</span>
-          <Badge variant="outline" className="text-[11px] px-3 py-0.5 leading-none">
-            Week {weekNumber}
-          </Badge>
+      <CardHeader className="py-6 px-6">
+        <CardTitle className="flex flex-col items-center gap-3 text-center">
+          <div className="flex items-center gap-3">
+            <span className="text-xl font-bold text-gray-900">Day {dayNumber}</span>
+            <Badge variant="outline" className="text-xs px-2 py-1 bg-gray-100 text-gray-600">
+              Week {weekNumber}
+            </Badge>
+          </div>
           <Input
             type="text"
             value={currentTitle}
@@ -62,12 +64,9 @@ export function DayContainer({weekNumber, dayNumber}: {weekNumber: number, dayNu
               dispatch({ type: "RENAME_DAY", week: weekNumber, day: dayNumber, newName: e.target.value })
             }
             placeholder="Day title"
-            className="ml-4 flex-1 min-w-0 h-8 text-sm"
+            className="w-full max-w-md h-10 text-center text-base font-medium border-gray-200 focus:border-blue-500"
           />
         </CardTitle>
-        {/* <CardDescription>
-          <span className="text-sm font-bold">Day {dayNumber}</span>
-        </CardDescription> */}
       </CardHeader>
       <CardContent className="space-y-6">
         <DndContext

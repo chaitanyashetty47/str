@@ -14,7 +14,6 @@ const STATUS_OPTIONS = [
   { label: "All Statuses", value: "all" },
   { label: "Draft", value: "DRAFT" },
   { label: "Published", value: "PUBLISHED" },
-  { label: "Archived", value: "ARCHIVED" },
 ] as const;
 
 const DATE_STATUS_OPTIONS = [

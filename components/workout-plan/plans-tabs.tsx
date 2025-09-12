@@ -55,14 +55,12 @@ export default function PlansTabs() {
       <TabsList className="flex gap-2 rounded-full">
         <TabsTrigger value="active">Active</TabsTrigger>
         <TabsTrigger value="drafted">Drafted</TabsTrigger>
-        <TabsTrigger value="archived">Archived</TabsTrigger>
         <TabsTrigger value="previous">Previous</TabsTrigger>
         <TabsTrigger value="all">All</TabsTrigger>
       </TabsList>
 
       <TabsContent value="active">{renderGrid(data?.active)}</TabsContent>
       <TabsContent value="drafted">{renderGrid(data?.drafted)}</TabsContent>
-      <TabsContent value="archived">{renderGrid(data?.archived)}</TabsContent>
       <TabsContent value="previous">{renderGrid(data?.previous)}</TabsContent>
       <TabsContent value="all">{renderGrid(data?.all)}</TabsContent>
     </Tabs>

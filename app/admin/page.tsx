@@ -2,37 +2,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, CreditCard, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
 import { getAdminDashboardData } from "@/actions/admin/admin.dashboard.action";
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
 import { RecentSalesCard } from "@/components/admin/recent-sales-card";
 import { UserSignupsChart } from "@/components/admin/user-signups-chart";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
 
-// Role-based access control
-async function checkAdminAccess() {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  
-  if (error || !user) {
-    redirect("/login");
-  }
-
-  // Get user profile to check role
-  const { data: userProfile } = await supabase
-    .from("users_profile")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!userProfile || (userProfile.role as string !== 'ADMIN' && userProfile.role as string !== 'FITNESS_TRAINER_ADMIN')) {
-    redirect("/unauthorized");
-  }
-
-  return { userId: user.id, role: userProfile.role };
-}
+export const metadata: Metadata = {
+  title: "Admin Dashboard - Strentor",
+  description: "Comprehensive admin dashboard for managing users, trainers, subscriptions, and platform analytics. Monitor growth metrics and system performance.",
+  keywords: ["admin dashboard", "user management", "trainer management", "subscription analytics", "platform metrics", "admin tools"],
+};
 
 export default async function AdminPage() {
-  // Check admin access first
-  await checkAdminAccess();
+  // Validate user authentication and ADMIN/FITNESS_TRAINER_ADMIN role
+  const { user } = await validateServerRole(['ADMIN', 'FITNESS_TRAINER_ADMIN']);
 
   // Fetch dashboard data
   let dashboardData;

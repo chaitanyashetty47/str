@@ -9,7 +9,7 @@ import { usePlanDispatch, usePlanWeightUnit, usePlanValidation } from "@/context
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { getDisplayWeight } from "@/utils/weight";
-import { IntensityMode, WeightUnit } from "@prisma/client";
+import { WeightUnit } from "@prisma/client";
 
 interface SetRowProps {
   weekNumber: number;
@@ -21,7 +21,6 @@ interface SetRowProps {
   rest: number;
   notes: string;
   oneRM?: number;
-  intensityMode: IntensityMode;
   isRepsBased: boolean; // NEW: Indicates if exercise is reps-based
 }
 
@@ -35,7 +34,6 @@ export function SetRow({
   rest,
   notes,
   oneRM,
-  intensityMode,
   isRepsBased,
 }: SetRowProps) {
   const dispatch = usePlanDispatch();
@@ -105,17 +103,9 @@ export function SetRow({
               placeholder="0"
             />
             <span className="text-xs text-muted-foreground">
-              {intensityMode === IntensityMode.ABSOLUTE ? getWeightUnitLabel() : "%"}
+              {getWeightUnitLabel()}
             </span>
           </div>
-          {/* Display absolute conversion when in % mode and numeric weight */}
-          {intensityMode === IntensityMode.PERCENT && !!Number(weight) && (
-            <span className="text-[10px] text-muted-foreground ml-1">
-              {oneRM
-                ? getDisplayWeight(Number(weight), intensityMode, oneRM, userWeightUnit)
-                : "No 1-RM"}
-            </span>
-          )}
           {/* Weight validation error */}
           {hasWeightError && (
             <span className="text-[10px] text-destructive ml-1">

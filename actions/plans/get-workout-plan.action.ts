@@ -17,7 +17,6 @@ const InputSchema = z.object({});
 export type PlansGrouped = {
   active: any[];
   drafted: any[];
-  archived: any[];
   previous: any[];
   all: any[];
 };
@@ -67,21 +66,19 @@ async function handler(): Promise<ActionState<z.infer<typeof InputSchema>, Plans
     });
 
     const drafted = plans.filter((p) => p.status === "DRAFT").map(mapClient);
-    const archived = plans.filter((p) => p.status === "ARCHIVED").map(mapClient);
     const active = plans
       .filter(
         (p) => p.status === "PUBLISHED" && new Date(p.end_date) >= today,
       )
       .map(mapClient);
     const previous = plans
-      .filter((p) => new Date(p.end_date) < today)
+      .filter((p) => new Date(p.end_date) < today || p.status === "ARCHIVED")
       .map(mapClient);
 
     return {
       data: {
         active,
         drafted,
-        archived,
         previous,
         all: plans.map(mapClient),
       },

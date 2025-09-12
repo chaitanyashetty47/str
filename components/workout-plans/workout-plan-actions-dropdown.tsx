@@ -26,13 +26,13 @@ export function WorkoutPlanActionsDropdown({ plan }: WorkoutPlanActionsDropdownP
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
-          <Link href={`/training/plans/${plan.id}/edit`} className="flex items-center">
+          <Link href={`/fitness/plans/${plan.id}`} className="flex items-center">
             <Edit className="mr-2 h-4 w-4" />
             Edit Plan
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href={`/training/plans/${plan.id}/progress`} className="flex items-center">
+          <Link href={`/fitness/plans/${plan.id}/progress`} className="flex items-center">
             <Eye className="mr-2 h-4 w-4" />
             View Progress
           </Link>

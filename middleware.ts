@@ -20,8 +20,26 @@ export const config = {
     "/training/:path*",
     "/profile/:path*",
     "/workouts/:path*",
+    //Admin routes
     "/admin/:path*",
+    //Onboarding routes
     "/onboarding/:path*",
+    // Trainer routes
+    "/fitness/:path*",
+    "/psychological/:path*",
+    "/manifestation/:path*",
+    // Client routes
+    "/calculator/:path*",
+    "/plans/:path*",
+    "/transformation/:path*",
+    "/settings/:path*",
+    "/pricing/:path*",
+    "/personal-records/:path*",
+    "/workout-plan/:path*",
+    "/dashboard/:path*",
+    "/sign-in",
+    "/sign-up",
+    "/forgot-password",
     "/",
   ],
 };

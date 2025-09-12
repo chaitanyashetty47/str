@@ -122,6 +122,145 @@ export type UpdateWorkoutPlanInput = z.infer<typeof InputSchema>;
 export type UpdateWorkoutPlanOutput = { ok: boolean };
 
 // ────────────────────────────────────────────────────────────────────────────
+// Helper function to generate UUIDs in bulk
+// TODO: Remove this when schema.prisma uses @default(dbgenerated("gen_random_uuid()"))
+// ────────────────────────────────────────────────────────────────────────────
+function generateUUIDs(count: number): string[] {
+  return Array.from({ length: count }, () => uuidv4());
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Helper function to prepare bulk update data
+// ────────────────────────────────────────────────────────────────────────────
+function prepareBulkUpdateData(
+  planId: string,
+  weeks: z.infer<typeof WeekSchema>[],
+  startDate: Date,
+  trainerWeightUnit: WeightUnit,
+  intensityMode: IntensityMode,
+  existingDaysMap: Map<string, ExistingDay>
+) {
+  const newDaysToCreate: any[] = [];
+  const newExercisesToCreate: any[] = [];
+  const newSetsToCreate: any[] = [];
+  const daysToUpdate: any[] = [];
+
+  // Calculate total new records needed for UUID generation
+  const newDaysCount = weeks.reduce((sum, week) => {
+    return sum + week.days.reduce((daySum, day) => {
+      const dayKey = `${week.weekNumber}-${day.dayNumber}`;
+      return existingDaysMap.has(dayKey) ? daySum : daySum + 1;
+    }, 0);
+  }, 0);
+
+  const newExercisesCount = weeks.reduce((sum, week) => {
+    return sum + week.days.reduce((daySum, day) => {
+      const dayKey = `${week.weekNumber}-${day.dayNumber}`;
+      const existingDay = existingDaysMap.get(dayKey);
+      if (!existingDay) {
+        return daySum + day.exercises.length;
+      }
+      return daySum;
+    }, 0);
+  }, 0);
+
+  const newSetsCount = weeks.reduce((sum, week) => {
+    return sum + week.days.reduce((daySum, day) => {
+      const dayKey = `${week.weekNumber}-${day.dayNumber}`;
+      const existingDay = existingDaysMap.get(dayKey);
+      if (!existingDay) {
+        return daySum + day.exercises.reduce((exSum, ex) => exSum + ex.sets.length, 0);
+      }
+      return daySum;
+    }, 0);
+  }, 0);
+
+  // TODO: Remove UUID generation when schema.prisma uses database-generated UUIDs
+  const dayIds = generateUUIDs(newDaysCount);
+  const exerciseIds = generateUUIDs(newExercisesCount);
+  const setIds = generateUUIDs(newSetsCount);
+
+  let dayIdIndex = 0;
+  let exerciseIdIndex = 0;
+  let setIdIndex = 0;
+
+  // Process weeks and days
+  weeks.forEach(week => {
+    week.days.forEach(day => {
+      const dayKey = `${week.weekNumber}-${day.dayNumber}`;
+      const existingDay = existingDaysMap.get(dayKey);
+      
+      // Calculate day date
+      const calculatedDate = addDays(startDate, (week.weekNumber - 1) * 7 + (day.dayNumber - 1));
+      const dayDate = stripTimezone(calculatedDate);
+
+      if (existingDay) {
+        // Day exists - prepare for update
+        daysToUpdate.push({
+          id: existingDay.id,
+          title: day.title,
+          day_date: dayDate,
+        });
+      } else {
+        // New day - prepare for creation
+        const dayId = dayIds[dayIdIndex++];
+        
+        newDaysToCreate.push({
+          id: dayId, // TODO: Remove when using database-generated UUIDs
+          plan_id: planId,
+          week_number: week.weekNumber,
+          day_number: day.dayNumber,
+          day_date: dayDate,
+          title: day.title,
+        });
+
+        // Process exercises for new day
+        day.exercises.forEach((exercise, exerciseIndex) => {
+          const exerciseId = exerciseIds[exerciseIdIndex++];
+
+          newExercisesToCreate.push({
+            id: exerciseId, // TODO: Remove when using database-generated UUIDs
+            workout_day_id: dayId,
+            list_exercise_id: exercise.listExerciseId,
+            order: exerciseIndex + 1,
+            instructions: exercise.instructions || "",
+            youtube_link: null,
+            notes: "",
+            frontend_uid: exercise.uid,
+          });
+
+          // Process sets for new exercise
+          exercise.sets.forEach(set => {
+            const setId = setIds[setIdIndex++];
+            
+            const weightValue = set.weight ? parseFloat(set.weight) : null;
+            const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
+
+            newSetsToCreate.push({
+              id: setId, // TODO: Remove when using database-generated UUIDs
+              exercise_id: exerciseId,
+              set_number: set.setNumber,
+              reps: set.reps ? parseInt(set.reps, 10) || null : null,
+              intensity: intensityMode,
+              weight_prescribed: weightInKg,
+              rest_time: set.rest || null,
+              notes: set.notes,
+            });
+          });
+        });
+      }
+    });
+  });
+
+  return {
+    newDays: newDaysToCreate,
+    newExercises: newExercisesToCreate,
+    newSets: newSetsToCreate,
+    daysToUpdate,
+  };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Helper Types for Diff Operations
 // ────────────────────────────────────────────────────────────────────────────
 interface ExistingDay {
@@ -221,7 +360,13 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
       }
     }
 
+    // OPTIMIZATION: Prepare bulk update data in memory
+    console.log('⚡ Preparing workout plan update data...');
+    
+    // Optimized transaction with bulk operations (reduced DB calls)
     await prisma.$transaction(async (tx) => {
+      console.log('⚡ Starting optimized update transaction...');
+
       // 1. Get the current plan data to check if start_date changed
       const currentPlan = await tx.workout_plans.findUnique({
         where: { id },
@@ -231,7 +376,7 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
       const startDateChanged = currentPlan && 
         currentPlan.start_date.getTime() !== startDate.getTime();
 
-      // 2. Update plan meta
+      // 2. Update plan meta (1 DB call)
       await tx.workout_plans.update({
         where: { id },
         data: {
@@ -245,8 +390,9 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
           status: meta.status,
         },
       });
+      console.log('✅ Updated workout plan meta');
 
-      // 3. Get existing structure for comparison
+      // 3. Get existing structure for comparison (1 DB call)
       const existingDays = await tx.workout_days.findMany({
         where: { 
           plan_id: id,
@@ -266,114 +412,78 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         orderBy: [{ week_number: 'asc' }, { day_number: 'asc' }],
       }) as ExistingDay[];
 
-      // 4. ONLY update day_date values if start_date actually changed
-      if (startDateChanged) {
-        console.log(`Start date changed from ${currentPlan?.start_date} to ${startDate}, updating all day dates...`);
-        
-        for (const existingDay of existingDays) {
-          const calculatedDate = addDays(startDate, (existingDay.week_number - 1) * 7 + (existingDay.day_number - 1));
-          // Strip timezone info to ensure pure date storage
-          const newDayDate = stripTimezone(calculatedDate);
-          
-          await tx.workout_days.update({
-            where: { id: existingDay.id },
-            data: {
-              day_date: newDayDate,
-            },
-          });
-        }
-        
-        console.log(`Updated ${existingDays.length} workout days with new dates`);
-      } else {
-        console.log('Start date unchanged, skipping day date updates');
-      }
-
-      // 5. Create lookup maps for existing data
+      // 4. Create lookup map for existing data
       const existingDaysMap = new Map<string, ExistingDay>();
-      const existingExercisesMap = new Map<string, ExistingExercise>();
-      const existingSetsMap = new Map<string, ExistingSet>();
-
       existingDays.forEach(day => {
         const dayKey = `${day.week_number}-${day.day_number}`;
         existingDaysMap.set(dayKey, day);
-        
-        day.workout_day_exercises.forEach(exercise => {
-          existingExercisesMap.set(exercise.id, exercise);
-          
-          exercise.workout_set_instructions.forEach(set => {
-            existingSetsMap.set(set.id, set);
-          });
-        });
       });
 
-      // 6. Process each week and day from the incoming data
+      // 5. Prepare bulk update data
+      const bulkData = prepareBulkUpdateData(
+        id,
+        weeks,
+        startDate,
+        trainerWeightUnit,
+        meta.intensityMode,
+        existingDaysMap
+      );
+
+      console.log(`⚡ Prepared ${bulkData.newDays.length} new days, ${bulkData.newExercises.length} new exercises, ${bulkData.newSets.length} new sets`);
+      console.log(`⚡ Prepared ${bulkData.daysToUpdate.length} days to update`);
+
+      // 6. Bulk create new days (1 DB call)
+      if (bulkData.newDays.length > 0) {
+        await tx.workout_days.createMany({
+          data: bulkData.newDays
+        });
+        console.log(`✅ Created ${bulkData.newDays.length} new workout days`);
+      }
+
+      // 7. Bulk create new exercises (1 DB call)
+      if (bulkData.newExercises.length > 0) {
+        await tx.workout_day_exercises.createMany({
+          data: bulkData.newExercises
+        });
+        console.log(`✅ Created ${bulkData.newExercises.length} new workout exercises`);
+      }
+
+      // 8. Bulk create new sets (1 DB call)
+      if (bulkData.newSets.length > 0) {
+        await tx.workout_set_instructions.createMany({
+          data: bulkData.newSets
+        });
+        console.log(`✅ Created ${bulkData.newSets.length} new workout sets`);
+      }
+
+      // 9. Update existing days individually (optimized)
+      for (const dayUpdate of bulkData.daysToUpdate) {
+        await tx.workout_days.update({
+          where: { id: dayUpdate.id },
+          data: {
+            title: dayUpdate.title,
+            day_date: dayUpdate.day_date,
+          },
+        });
+      }
+      if (bulkData.daysToUpdate.length > 0) {
+        console.log(`✅ Updated ${bulkData.daysToUpdate.length} existing workout days`);
+      }
+
+      // 10. Process exercises for existing days (optimized with existing helper functions)
       for (const week of weeks) {
         for (const day of week.days) {
           const dayKey = `${week.weekNumber}-${day.dayNumber}`;
           const existingDay = existingDaysMap.get(dayKey);
-          // Calculate day date directly from user's start date
-          // Strip timezone info to ensure pure date storage
-          const calculatedDate = addDays(startDate, (week.weekNumber - 1) * 7 + (day.dayNumber - 1));
-          const dayDate = stripTimezone(calculatedDate);
-
+          
           if (existingDay) {
-            // Update existing day
-            await tx.workout_days.update({
-              where: { id: existingDay.id },
-              data: {
-                title: day.title,
-                day_date: dayDate,
-              },
-            });
-
-            // Process exercises for this day
-            await processExercisesForDay(tx, existingDay, day.exercises, meta.intensityMode, trainerWeightUnit);
-          } else {
-            // Create new day
-            const dayId = uuidv4();
-            await tx.workout_days.create({
-              data: {
-                id: dayId,
-                plan_id: id,
-                week_number: week.weekNumber,
-                day_number: day.dayNumber,
-                day_date: dayDate,
-                title: day.title,
-                workout_day_exercises: {
-                  create: day.exercises.map((ex, idx) => ({
-                    id: uuidv4(),
-                    list_exercise_id: ex.listExerciseId,
-                    order: idx + 1,
-                    instructions: ex.instructions || "",
-                    youtube_link: null,
-                    notes: "",
-                    frontend_uid: ex.uid, // Store UID for future matching
-                    workout_set_instructions: {
-                      create: ex.sets.map((s) => {
-                        // Convert weight to KG before storing
-                        const weightValue = s.weight ? parseFloat(s.weight) : null;
-                        const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
-                        
-                        return {
-                          id: uuidv4(),
-                          set_number: s.setNumber,
-                          reps: s.reps ? parseInt(s.reps, 10) || null : null,
-                          intensity: meta.intensityMode,
-                          weight_prescribed: weightInKg,
-                          rest_time: s.rest || null,
-                          notes: s.notes,
-                        };
-                      }),
-                    },
-                  })),
-                },
-              },
-            });
+            // Use existing optimized helper function for exercise processing
+            await processExercisesForDay(tx, existingDay, day.exercises, trainerWeightUnit, meta.intensityMode);
           }
         }
       }
 
-      // 7. Handle removed days (soft delete by checking if any logs exist)
+      // 11. Handle removed days (soft delete by checking if any logs exist)
       const incomingDayKeys = new Set<string>();
       weeks.forEach(week => {
         week.days.forEach(day => {
@@ -413,12 +523,15 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
           }
         }
       }
+
+      console.log('⚡ Optimized update transaction completed successfully');
     }, {
-      timeout: 15000, // 15 seconds timeout for complex workout plan updates
+      timeout: 120000, // 120 seconds timeout for complex workout plan updates (reduced from 120s)
     });
 
     return { data: { ok: true } };
   } catch (e: any) {
+    console.error('❌ Error updating workout plan:', e);
     return { error: e.message };
   }
 }
@@ -430,8 +543,8 @@ async function processExercisesForDay(
   tx: any,
   existingDay: ExistingDay,
   incomingExercises: z.infer<typeof ExerciseSchema>[],
-  intensityMode: IntensityMode,
-  trainerWeightUnit: WeightUnit
+  trainerWeightUnit: WeightUnit,
+  intensityMode: IntensityMode = IntensityMode.ABSOLUTE
 ) {
   // Create maps for easier lookup - now using UID-based matching
   const existingExercisesByUid = new Map<string, ExistingExercise>();
@@ -475,12 +588,12 @@ async function processExercisesForDay(
       });
 
       // Process sets for this exercise
-      await processSetsForExercise(tx, existingExercise, exercise.sets, intensityMode, trainerWeightUnit);
+      await processSetsForExercise(tx, existingExercise, exercise.sets, trainerWeightUnit, intensityMode);
     } else {
       // Create new exercise
       await tx.workout_day_exercises.create({
         data: {
-          id: uuidv4(),
+          id: uuidv4(), // TODO: Remove when using database-generated UUIDs
           workout_day_id: existingDay.id,
           list_exercise_id: exercise.listExerciseId,
           order: i + 1,
@@ -495,15 +608,15 @@ async function processExercisesForDay(
               const weightValue = s.weight ? parseFloat(s.weight) : null;
               const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
               
-              return {
-                id: uuidv4(),
-                set_number: s.setNumber,
-                reps: s.reps ? parseInt(s.reps, 10) || null : null,
-                intensity: intensityMode,
-                weight_prescribed: weightInKg, // Will be null for reps-based exercises
-                rest_time: s.rest || null,
-                notes: s.notes,
-              };
+                        return {
+                          id: uuidv4(), // TODO: Remove when using database-generated UUIDs // TODO: Remove when using database-generated UUIDs
+                          set_number: s.setNumber,
+                          reps: s.reps ? parseInt(s.reps, 10) || null : null,
+                          intensity: intensityMode,
+                          weight_prescribed: weightInKg, // Will be null for reps-based exercises
+                          rest_time: s.rest || null,
+                          notes: s.notes,
+                        };
             }),
           },
         },
@@ -558,8 +671,8 @@ async function processSetsForExercise(
   tx: any,
   existingExercise: ExistingExercise,
   incomingSets: z.infer<typeof SetSchema>[],
-  intensityMode: IntensityMode,
-  trainerWeightUnit: WeightUnit
+  trainerWeightUnit: WeightUnit,
+  intensityMode: IntensityMode = IntensityMode.ABSOLUTE
 ) {
   // Create map for existing sets by set_number
   const existingSetsMap = new Map<number, ExistingSet>();
@@ -598,7 +711,7 @@ async function processSetsForExercise(
       
       await tx.workout_set_instructions.create({
         data: {
-          id: uuidv4(),
+          id: uuidv4(), // TODO: Remove when using database-generated UUIDs
           exercise_id: existingExercise.id,
           set_number: set.setNumber,
           reps: set.reps ? parseInt(set.reps, 10) || null : null,

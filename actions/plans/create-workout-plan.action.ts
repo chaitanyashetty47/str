@@ -122,7 +122,117 @@ export type CreateWorkoutPlanInput = z.infer<typeof InputSchema>;
 export type CreateWorkoutPlanOutput = { id: string };
 
 // ────────────────────────────────────────────────────────────────────────────
-// Handler
+// Helper function to generate UUIDs in bulk
+// TODO: Remove this when schema.prisma uses @default(dbgenerated("gen_random_uuid()"))
+// ────────────────────────────────────────────────────────────────────────────
+function generateUUIDs(count: number): string[] {
+  return Array.from({ length: count }, () => uuidv4());
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Helper function to prepare all workout plan data in memory (bulk optimization)
+// ────────────────────────────────────────────────────────────────────────────
+function prepareWorkoutPlanData(
+  planId: string,
+  weeks: z.infer<typeof WeekSchema>[],
+  startDate: Date,
+  trainerWeightUnit: WeightUnit,
+  intensityMode: IntensityMode
+) {
+  // Calculate total records needed for UUID generation
+  const totalDays = weeks.reduce((sum, week) => sum + week.days.length, 0);
+  const totalExercises = weeks.reduce((sum, week) => 
+    sum + week.days.reduce((daySum, day) => daySum + day.exercises.length, 0), 0);
+  const totalSets = weeks.reduce((sum, week) => 
+    sum + week.days.reduce((daySum, day) => 
+      daySum + day.exercises.reduce((exSum, ex) => exSum + ex.sets.length, 0), 0), 0);
+
+  // TODO: Remove UUID generation when schema.prisma uses database-generated UUIDs
+  const dayIds = generateUUIDs(totalDays);
+  const exerciseIds = generateUUIDs(totalExercises);
+  const setIds = generateUUIDs(totalSets);
+
+  // Prepare data arrays for bulk operations
+  const allDaysData: any[] = [];
+  const allExercisesData: any[] = [];
+  const allSetsData: any[] = [];
+
+  let dayIdIndex = 0;
+  let exerciseIdIndex = 0;
+  let setIdIndex = 0;
+
+  // Process all weeks/days/exercises/sets in memory
+  weeks.forEach(week => {
+    week.days.forEach(day => {
+      const dayId = dayIds[dayIdIndex++];
+      
+      // Calculate day date directly from user's start date
+      // Week 1 Day 1 = startDate + 0 days
+      // Week 1 Day 2 = startDate + 1 day
+      // Week 2 Day 1 = startDate + 7 days
+      const calculatedDate = addDays(startDate, (week.weekNumber - 1) * 7 + (day.dayNumber - 1));
+      const dayDate = stripTimezone(calculatedDate);
+
+      // Prepare day data
+      allDaysData.push({
+        id: dayId, // TODO: Remove when using database-generated UUIDs
+        plan_id: planId,
+        week_number: week.weekNumber,
+        day_number: day.dayNumber,
+        day_date: dayDate,
+        title: day.title,
+      });
+
+      // Process exercises for this day
+      day.exercises.forEach((exercise, exerciseIndex) => {
+        const exerciseId = exerciseIds[exerciseIdIndex++];
+
+        // Prepare exercise data
+        allExercisesData.push({
+          id: exerciseId, // TODO: Remove when using database-generated UUIDs
+          workout_day_id: dayId,
+          list_exercise_id: exercise.listExerciseId,
+          order: exerciseIndex + 1,
+          instructions: exercise.instructions || "",
+          youtube_link: null,
+          notes: "",
+          frontend_uid: exercise.uid, // Store frontend UID for future updates
+        });
+
+        // Process sets for this exercise
+        exercise.sets.forEach(set => {
+          const setId = setIds[setIdIndex++];
+          
+          // For reps-based exercises, skip weight conversion
+          // For weight-based exercises, convert weight to KG before storing
+          const weightValue = set.weight ? parseFloat(set.weight) : null;
+          const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
+
+          // Prepare set data
+          allSetsData.push({
+            id: setId, // TODO: Remove when using database-generated UUIDs
+            exercise_id: exerciseId,
+            set_number: set.setNumber,
+            reps: set.reps ? parseInt(set.reps, 10) || null : null,
+            intensity: intensityMode,
+            weight_prescribed: weightInKg, // Will be null for reps-based exercises
+            rest_time: set.rest || null,
+            notes: set.notes,
+          });
+        });
+      });
+    });
+  });
+
+  return {
+    days: allDaysData,
+    exercises: allExercisesData,
+    sets: allSetsData,
+  };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Handler (Optimized with bulk operations)
 // ────────────────────────────────────────────────────────────────────────────
 async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
   try {
@@ -172,13 +282,28 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
       }
     }
 
-    // Wrap everything in a transaction so either all inserts succeed or none.
-    // Increase timeout for complex workout plans with many days/exercises
+    // TODO: Remove manual UUID generation when schema.prisma uses database-generated UUIDs
+    const planId = uuidv4();
+
+    // OPTIMIZATION: Prepare all data in memory before transaction (bulk operations)
+    console.log('⚡ Preparing workout plan data in memory...');
+    const workoutData = prepareWorkoutPlanData(
+      planId,
+      weeks,
+      startDate,
+      trainerWeightUnit,
+      meta.intensityMode
+    );
+    console.log(`⚡ Prepared ${workoutData.days.length} days, ${workoutData.exercises.length} exercises, ${workoutData.sets.length} sets`);
+
+    // Optimized transaction with bulk operations (4 DB calls instead of N×M×P×Q calls)
     const createdPlan = await prisma.$transaction(async (tx) => {
-      // 1. Insert plan skeleton
+      console.log('⚡ Starting bulk transaction...');
+
+      // 1. Create plan skeleton (1 DB call)
       const plan = await tx.workout_plans.create({
         data: {
-          id: uuidv4(),
+          id: planId, // TODO: Remove when using database-generated UUIDs
           title: meta.title,
           description: meta.description,
           trainer_id: trainerId,
@@ -191,67 +316,35 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
           status: meta.status,
         },
       });
+      console.log('✅ Created workout plan');
 
-      // 2. Insert weeks → days → exercises → sets
-      for (const week of weeks) {
-        for (const day of week.days) {
-          const dayId = uuidv4();
-          // Calculate day date directly from user's start date
-          // Week 1 Day 1 = startDate + 0 days
-          // Week 1 Day 2 = startDate + 1 day
-          // Week 2 Day 1 = startDate + 7 days
-          // Strip timezone info to ensure pure date storage
-          const calculatedDate = addDays(startDate, (week.weekNumber - 1) * 7 + (day.dayNumber - 1));
-          const dayDate = stripTimezone(calculatedDate);
+      // 2. Bulk insert workout days (1 DB call)
+      await tx.workout_days.createMany({
+        data: workoutData.days
+      });
+      console.log(`✅ Created ${workoutData.days.length} workout days`);
 
-          await tx.workout_days.create({
-            data: {
-              id: dayId,
-              plan_id: plan.id,
-              week_number: week.weekNumber,
-              day_number: day.dayNumber,
-              day_date: dayDate,
-              title: day.title,
-              workout_day_exercises: {
-                create: day.exercises.map((ex, idx) => ({
-                  id: uuidv4(),
-                  list_exercise_id: ex.listExerciseId,
-                  order: idx + 1,
-                  instructions: ex.instructions || "",
-                  youtube_link: null,
-                  notes: "",
-                  workout_set_instructions: {
-                    create: ex.sets.map((s) => {
-                      // For reps-based exercises, skip weight conversion
-                      // For weight-based exercises, convert weight to KG before storing
-                      const weightValue = s.weight ? parseFloat(s.weight) : null;
-                      const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
-                      
-                      return {
-                        id: uuidv4(),
-                        set_number: s.setNumber,
-                        reps: s.reps ? parseInt(s.reps, 10) || null : null,
-                        intensity: meta.intensityMode,
-                        weight_prescribed: weightInKg, // Will be null for reps-based exercises
-                        rest_time: s.rest || null,
-                        notes: s.notes,
-                      };
-                    }),
-                  },
-                })),
-              },
-            },
-          });
-        }
-      }
+      // 3. Bulk insert workout exercises (1 DB call)
+      await tx.workout_day_exercises.createMany({
+        data: workoutData.exercises
+      });
+      console.log(`✅ Created ${workoutData.exercises.length} workout exercises`);
 
+      // 4. Bulk insert workout sets (1 DB call)
+      await tx.workout_set_instructions.createMany({
+        data: workoutData.sets
+      });
+      console.log(`✅ Created ${workoutData.sets.length} workout sets`);
+
+      console.log('⚡ Bulk transaction completed successfully');
       return plan;
     }, {
-      timeout: 15000, // 15 seconds timeout for complex workout plans
+      timeout: 120000, // 120 seconds should be enough for bulk operations (reduced from 120s)
     });
 
     return { data: { id: createdPlan.id } };
   } catch (e: any) {
+    console.error('❌ Error creating workout plan:', e);
     return { error: e.message };
   }
 }

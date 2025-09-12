@@ -3,7 +3,6 @@ import { Providers } from "@/components/providers/Providers";
 import "./globals.css";
 import localFont from 'next/font/local';
 import { GoogleAnalytics } from '@next/third-parties/google'
-import { Toaster } from "sonner";
 import Script from "next/script";
 import { Metadata } from "next";
 
@@ -44,7 +43,6 @@ export default function RootLayout({
               <main className="min-h-screen">
               {children}
               </main>
-            <Toaster />
           </Providers>
           <Script src="https://checkout.razorpay.com/v1/checkout.js" />
           <Script

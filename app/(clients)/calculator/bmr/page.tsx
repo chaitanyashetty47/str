@@ -1,17 +1,18 @@
 import { getProfileDetails } from "@/actions/profile/get-profile-details.action";
 import { redirect } from "next/navigation";
 import { BMRCalculator } from "@/components/calculator/bmr/BMRCalculator";
-import { createClient } from "@/utils/supabase/server";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "BMR Calculator - Strentor",
+  description: "Calculate your Basal Metabolic Rate (BMR) using the Mifflin-St Jeor equation. Determine your daily calorie needs for weight management and fitness goals.",
+  keywords: ["BMR calculator", "basal metabolic rate", "calorie calculator", "metabolism", "daily calorie needs"],
+};
 
 export default async function BMRCalculatorPage() {
-
-   //Check if user is logged in
-   const supabase = await createClient();
-   const { data: user } = await supabase.auth.getUser();
-   if(!user) {
-     return redirect("/sign-in");
-   }
- 
+  // Validate user authentication and CLIENT role
+  const { user } = await validateServerRole(['CLIENT']);
 
   const profileDetails = await getProfileDetails();
 

@@ -59,7 +59,25 @@ export const updateSession = async (request: NextRequest) => {
 
 
      // Protected routes that require authentication
-     const protectedRoutes = ['/protected', '/training', '/fitness', '/psychological', '/manifestation', '/profile', '/workouts', '/admin'];
+     const protectedRoutes = [
+       '/protected', 
+       '/training', 
+       '/fitness', 
+       '/psychological', 
+       '/manifestation', 
+       '/profile', 
+       '/workouts', 
+       '/admin',
+       // Client routes
+       '/calculator',
+       '/plans',
+       '/transformation',
+       '/settings',
+       '/pricing',
+       '/personal-records',
+       '/workout-plan',
+       '/dashboard'
+     ];
      const isProtectedRoute = protectedRoutes.some(route => 
        pathname.startsWith(route)
      );
@@ -122,6 +140,13 @@ export const updateSession = async (request: NextRequest) => {
       
       if (claims) {
         
+        // Redirect authenticated users away from auth pages
+        const authPages = ['/sign-in', '/sign-up', '/forgot-password'];
+        if (authPages.includes(pathname)) {
+          const defaultRoute = getDefaultRouteForRole(claims.user_role);
+          return NextResponse.redirect(new URL(defaultRoute, request.url));
+        }
+        
         // Check if user can access the route
         if (!canAccessRoute(claims.user_role, pathname)) {
           return NextResponse.redirect(new URL('/unauthorized', request.url));
@@ -165,9 +190,26 @@ export const updateSession = async (request: NextRequest) => {
           .eq("id", user.id)
           .single();
         
-        if (!roleError && userData && pathname === "/") {
-          const defaultRoute = getDefaultRouteForRole(userData.role);
-          return NextResponse.redirect(new URL(defaultRoute, request.url));
+        if (!roleError && userData) {
+          // Redirect authenticated users away from auth pages (fallback)
+          const authPages = ['/sign-in', '/sign-up', '/forgot-password'];
+          if (authPages.includes(pathname)) {
+            const defaultRoute = getDefaultRouteForRole(userData.role);
+            return NextResponse.redirect(new URL(defaultRoute, request.url));
+          }
+          
+          if (pathname === "/") {
+            const defaultRoute = getDefaultRouteForRole(userData.role);
+            return NextResponse.redirect(new URL(defaultRoute, request.url));
+          }
+        } else {
+          // Invalid or missing user role - redirect to sign-in with redirectTo
+          const authPages = ['/sign-in', '/sign-up', '/forgot-password'];
+          if (authPages.includes(pathname)) {
+            const redirectUrl = new URL('/sign-in', request.url);
+            redirectUrl.searchParams.set('redirectTo', pathname);
+            return NextResponse.redirect(redirectUrl);
+          }
         }
       }
     }

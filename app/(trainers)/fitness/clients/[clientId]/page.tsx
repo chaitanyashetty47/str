@@ -2,12 +2,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Client Profile - Strentor",
+  description: "View detailed client information, workout history, and progress tracking. Comprehensive client profile management for fitness trainers.",
+  keywords: ["client profile", "client details", "workout history", "progress tracking", "fitness trainer", "client management"],
+};
 
 interface ClientProfilePageProps {
   params: Promise<{ clientId: string }>;
 }
 
 export default async function ClientProfilePage({ params }: ClientProfilePageProps) {
+  // Validate user authentication and FITNESS_TRAINER/FITNESS_TRAINER_ADMIN role
+  const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
+  
   const { clientId } = await params;
 
   return (

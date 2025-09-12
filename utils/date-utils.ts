@@ -1,6 +1,7 @@
 /**
  * Date utility functions for workout scheduling
  */
+import { addDays, format } from "date-fns";
 
 /**
  * Strip timezone information from a Date object to create a pure date
@@ -103,4 +104,14 @@ export function getWorkoutDeadlineDate(dayDateString: string): string {
     day: 'numeric',
     year: 'numeric'
   });
-} 
+}
+
+/**
+ * Format week range for display (e.g., "Aug 23 - Aug 29")
+ * @param startDate - The start date of the week
+ * @returns Formatted week range string
+ */
+export function formatWeekRange(startDate: Date): string {
+  const endDate = addDays(startDate, 6);
+  return `${format(startDate, "MMM d")} - ${format(endDate, "MMM d")}`;
+}

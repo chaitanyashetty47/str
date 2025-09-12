@@ -4,24 +4,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getDefaultRouteForRole } from '@/lib/auth-utils';
-import DashboardLayoutWrapper from "@/components/dashboard/dashboard-layout-fitness";
+import DashboardLayoutWrapper from "@/components/dashboard/dashboard-layout-psychological";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isFitnessTrainer, loading } = useAuth();
+  const { user, isPsychologyTrainer, loading } = useAuth();
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && !isFitnessTrainer) {
+    if (!loading && user && !isPsychologyTrainer) {
       setIsRedirecting(true);
       const defaultRoute = getDefaultRouteForRole(user.role);
       router.push(defaultRoute);
     }
-  }, [user, isFitnessTrainer, loading, router]);
+  }, [user, isPsychologyTrainer, loading, router]);
 
   // Show skeleton loading while checking auth
   if (loading) {

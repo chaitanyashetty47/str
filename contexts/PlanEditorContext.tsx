@@ -32,7 +32,6 @@ export type PlanEditorAction =
   | { type: "DELETE_DAY"; week: number; day: number }
   | { type: "UPDATE_META"; payload: Partial<PlanEditorMeta>}
   | {type: "SET_STATUS"; status: WorkoutPlanStatus}
-  | {type: "TOGGLE_INTENSITY_MODE"}
   | {type: "RENAME_DAY"; week: number; day: number; newName: string}
   | {type: "ADD_EXERCISE"; week: number; day: number; exercise: ExerciseInPlan}
   | {type: "DELETE_EXERCISE"; week: number; day: number; exercise: ExerciseInPlan}
@@ -374,12 +373,6 @@ function reducer(state: PlanEditorState, action: PlanEditorAction): PlanEditorSt
         break;
       }
 
-      case "TOGGLE_INTENSITY_MODE": {
-        draft.meta.intensityMode =
-          draft.meta.intensityMode === IntensityMode.ABSOLUTE ? IntensityMode.PERCENT : IntensityMode.ABSOLUTE;
-        break;
-      }
-
       case "SET_STATUS": {
         draft.meta.status = action.status;
         break;
@@ -590,7 +583,6 @@ export function usePlanMeta() {
   const dispatch = usePlanDispatch();
   return {
     meta: state.meta,
-    toggleIntensity: () => dispatch({ type: "TOGGLE_INTENSITY_MODE" }),
     setStatus: (status: WorkoutPlanStatus) => dispatch({ type: "SET_STATUS", status }),
   } as const;
 }

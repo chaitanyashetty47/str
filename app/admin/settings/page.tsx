@@ -1,25 +1,25 @@
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PsychologyTrainerProfileForm } from "@/components/profile/psychology-trainer-profile-form";
+import { AdminProfileForm } from "@/components/profile/admin-profile-form";
 import { SettingsHeader, SettingsActions } from "@/components/settings/settings-header";
 import { FormMessage, Message } from "@/components/form-message";
+import { createClient } from "@/utils/supabase/server";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Admin Settings - Strentor",
+  description: "Manage your admin profile, update credentials, and customize platform settings. Comprehensive admin profile management and account configuration.",
+  keywords: ["admin settings", "profile management", "admin credentials", "platform settings", "admin profile", "admin tools"],
+};
 
 export default async function SettingsPage(props: {
   searchParams: Promise<Message>;
 }) {
+  // Validate user authentication and ADMIN/FITNESS_TRAINER_ADMIN role
+  const { user } = await validateServerRole(['ADMIN', 'FITNESS_TRAINER_ADMIN']);
+  
   const searchParams = await props.searchParams;
   const supabase = await createClient();
-
-  // Get user data
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return redirect("/sign-in?error=Session%20expired");
-  }
 
   // Get profile data
   const { data: profile, error: profileError } = await supabase
@@ -52,11 +52,11 @@ export default async function SettingsPage(props: {
         <CardHeader>
           <CardTitle>Settings</CardTitle>
           <CardDescription>
-            Manage your psychology trainer profile and account information
+            Manage your admin profile and account information
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PsychologyTrainerProfileForm user={user} />
+          <AdminProfileForm user={user} />
         </CardContent>
       </Card>
     </div>
