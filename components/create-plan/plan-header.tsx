@@ -72,11 +72,18 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
 
   const handleStartDateChange = (date: Date | undefined) => {
     if (!date) return;
-    const monday = startOfWeek(date, { weekStartsOn: 1 });
-    setValue("startDate", monday, { shouldValidate: true });
+    
+    // Check if the selected date is already a Monday
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const isMonday = dayOfWeek === 1;
+    
+    // Only convert to Monday if it's not already a Monday
+    const startDate = isMonday ? date : startOfWeek(date, { weekStartsOn: 1 });
+    
+    setValue("startDate", startDate, { shouldValidate: true });
     dispatch({ 
       type: "UPDATE_META", 
-      payload: { ...meta, startDate: monday } 
+      payload: { ...meta, startDate: startDate } 
     });
     
     // Clear conflict error when date changes
@@ -204,8 +211,8 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
         type: "UPDATE_META", 
         payload: {
           ...validatedData,
-          // Ensure startDate is set to Monday
-          startDate: startOfWeek(validatedData.startDate, { weekStartsOn: 1 })
+          // Use the validated startDate as-is (already handled in handleStartDateChange)
+          startDate: validatedData.startDate
         }
       });
 

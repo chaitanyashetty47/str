@@ -10,9 +10,9 @@ import { addDays, format } from "date-fns";
  * @returns A new Date object with only date components (no time/timezone)
  */
 export function stripTimezone(date: Date): Date {
-  // Create a new date using UTC to avoid timezone offset issues
+  // Create a new date using the local date components to preserve the exact date
   // This ensures the date is exactly what the user selected, regardless of timezone
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 /**
