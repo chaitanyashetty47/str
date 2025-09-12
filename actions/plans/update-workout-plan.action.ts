@@ -198,6 +198,8 @@ function prepareBulkUpdateData(
         // Day exists - prepare for update
         daysToUpdate.push({
           id: existingDay.id,
+          week_number: week.weekNumber,
+          day_number: day.dayNumber,
           title: day.title,
           day_date: dayDate,
         });
@@ -485,13 +487,27 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         const dayUpdate = bulkData.daysToUpdate[i];
         
         // Find the existing day to compare
-        const existingDay = existingDaysMap.get(`${dayUpdate.week_number}-${dayUpdate.day_number}`);
+        const lookupKey = `${dayUpdate.week_number}-${dayUpdate.day_number}`;
+        const existingDay = existingDaysMap.get(lookupKey);
+        
+        console.log(`🔍 DEBUG - Day ${i + 1}/${bulkData.daysToUpdate.length}:`);
+        console.log(`  Lookup key: "${lookupKey}"`);
+        console.log(`  Existing day found: ${!!existingDay}`);
         
         if (existingDay) {
+          console.log(`  Existing title: "${existingDay.title}"`);
+          console.log(`  Incoming title: "${dayUpdate.title}"`);
+          console.log(`  Existing date: ${existingDay.day_date}`);
+          console.log(`  Incoming date: ${dayUpdate.day_date}`);
+          console.log(`  Title match: ${existingDay.title === dayUpdate.title}`);
+          console.log(`  Date match: ${existingDay.day_date.getTime() === dayUpdate.day_date.getTime()}`);
+          
           // Check if day needs updating
           const dayNeedsUpdate = 
             existingDay.title !== dayUpdate.title ||
             existingDay.day_date.getTime() !== dayUpdate.day_date.getTime();
+          
+          console.log(`  Day needs update: ${dayNeedsUpdate}`);
           
           if (dayNeedsUpdate) {
             console.log(`🔍 Updating day ${i + 1}/${bulkData.daysToUpdate.length} (ID: ${dayUpdate.id})`);
@@ -507,6 +523,9 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
             console.log(`⏭️ Skipped day ${i + 1}/${bulkData.daysToUpdate.length} (ID: ${dayUpdate.id}) - no changes detected`);
             daysSkipped++;
           }
+        } else {
+          console.log(`❌ ERROR: No existing day found for key "${lookupKey}"`);
+          console.log(`  Available keys in map:`, Array.from(existingDaysMap.keys()));
         }
       }
       const dayOptimizationPercentage = (daysUpdated + daysSkipped) > 0 ? Math.round(daysSkipped / (daysUpdated + daysSkipped) * 100) : 0;
