@@ -263,7 +263,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
             </FormItem>
           )}
         />
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Start Date Field */}
         <FormField
           control={form.control}
@@ -284,7 +284,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
               {conflictError && (
                 <Alert variant="destructive" className="mt-2">
                   <AlertTitle>Plan Conflict</AlertTitle>
-                  <AlertDescription className="text-sm">
+                  <AlertDescription className="text-xs md:text-sm break-words">
                     {conflictError}
                   </AlertDescription>
                 </Alert>
@@ -440,8 +440,8 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
                 className={cn(
                   "resize-none",                      // disable manual resizing
                   "rounded-2xl",                      // more circular corners
-                  "p-4",                              // increase padding for size
-                  "h-40",                             // custom height (can be changed)
+                  "p-3 md:p-4",                       // responsive padding
+                  "h-32 md:h-40",                     // responsive height
                   "focus-visible:outline-none",       // remove default blue outline
                   "focus-visible:ring-2",             // enable ring
                   "focus-visible:ring-black",         // black ring color
@@ -457,7 +457,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
       />
 
       {/* Status and Action Buttons */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
         
         {/* Status Badge */}
         <div className="flex items-center gap-2">
@@ -476,7 +476,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
 
         {/* Action Buttons */}
         <TooltipProvider>
-          <div className="flex gap-2 w-full md:w-auto">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

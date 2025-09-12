@@ -20,7 +20,12 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatWeekRange } from "@/utils/date-utils";
 
-export function WeekAndDaySelector() {
+interface WeekAndDaySelectorProps {
+  isMobile?: boolean;
+  onDaySelect?: () => void;
+}
+
+export function WeekAndDaySelector({ isMobile = false, onDaySelect }: WeekAndDaySelectorProps) {
   const { weeks, selectedWeek, selectedDay, meta } = usePlanState();
   const dispatch = usePlanDispatch();
   const { canAddDay, canDeleteDay, getTotalDays } = usePlanHelpers();
@@ -43,16 +48,30 @@ export function WeekAndDaySelector() {
   const selectDay = (weekNum: number, dayNum: 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
     dispatch({ type: "SELECT_WEEK_DAY", week: weekNum, day: dayNum });
     
-    // Smooth scroll to the selected day
-    const targetId = `week-${weekNum}-day-${dayNum}`;
-    const targetElement = document.getElementById(targetId);
+    // Call mobile callback to close sheet if provided
+    if (onDaySelect) {
+      onDaySelect();
+    }
     
-    if (targetElement) {
-      targetElement.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start',
-        inline: 'nearest'
-      });
+    // Smooth scroll to the selected day (with delay for mobile sheet closing)
+    const scrollToTarget = () => {
+      const targetId = `week-${weekNum}-day-${dayNum}`;
+      const targetElement = document.getElementById(targetId);
+      
+      if (targetElement) {
+        targetElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    };
+    
+    // Add delay for mobile to allow sheet to close first
+    if (isMobile) {
+      setTimeout(scrollToTarget, 300);
+    } else {
+      scrollToTarget();
     }
   };
 
@@ -63,7 +82,12 @@ export function WeekAndDaySelector() {
   };
 
   return (
-    <aside className="border-r bg-gray-50 p-4 overflow-y-auto w-[320px] sticky top-0 h-[calc(100vh-4rem)] z-10">
+    <aside className={cn(
+      "bg-gray-50 overflow-y-auto z-10",
+      isMobile 
+        ? "w-full h-full p-3" 
+        : "p-3 md:p-4 w-full md:w-[260px] lg:w-[320px] md:h-auto lg:h-[calc(100vh-4rem)]"
+    )}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm text-muted-foreground">Total: {totalDays} days</span>

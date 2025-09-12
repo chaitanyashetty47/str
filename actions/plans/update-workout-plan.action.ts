@@ -363,8 +363,12 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
     // OPTIMIZATION: Prepare bulk update data in memory
     console.log('⚡ Preparing workout plan update data...');
     
-    // Optimized transaction with bulk operations (reduced DB calls)
-    await prisma.$transaction(async (tx) => {
+    // Ensure fresh connection before transaction (fixes prod connection issues)
+    await prisma.$connect();
+    
+    try {
+      // Optimized transaction with bulk operations (reduced DB calls)
+      await prisma.$transaction(async (tx) => {
       console.log('⚡ Starting optimized update transaction...');
 
       // 1. Get the current plan data to check if start_date changed
@@ -475,7 +479,7 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         for (const day of week.days) {
           const dayKey = `${week.weekNumber}-${day.dayNumber}`;
           const existingDay = existingDaysMap.get(dayKey);
-          
+
           if (existingDay) {
             // Use existing optimized helper function for exercise processing
             await processExercisesForDay(tx, existingDay, day.exercises, trainerWeightUnit, meta.intensityMode);
@@ -524,14 +528,22 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         }
       }
 
-      console.log('⚡ Optimized update transaction completed successfully');
-    }, {
-      timeout: 120000, // 120 seconds timeout for complex workout plan updates (reduced from 120s)
-    });
-
-    return { data: { ok: true } };
+        console.log('⚡ Optimized update transaction completed successfully');
+      }, {
+        timeout: 120000, // 120 seconds timeout for complex workout plan updates
+      });
+      
+      return { data: { ok: true } };
+    } catch (e: any) {
+      console.error('❌ Error updating workout plan:', e);
+      return { error: e.message };
+    } finally {
+      // Always disconnect after transaction (critical for prod environments)
+      await prisma.$disconnect();
+      console.log('🔌 Prisma connection closed after transaction');
+    }
   } catch (e: any) {
-    console.error('❌ Error updating workout plan:', e);
+    console.error('❌ Error in workout plan update handler:', e);
     return { error: e.message };
   }
 }
@@ -608,15 +620,15 @@ async function processExercisesForDay(
               const weightValue = s.weight ? parseFloat(s.weight) : null;
               const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
               
-                        return {
+              return {
                           id: uuidv4(), // TODO: Remove when using database-generated UUIDs // TODO: Remove when using database-generated UUIDs
-                          set_number: s.setNumber,
-                          reps: s.reps ? parseInt(s.reps, 10) || null : null,
+                set_number: s.setNumber,
+                reps: s.reps ? parseInt(s.reps, 10) || null : null,
                           intensity: intensityMode,
-                          weight_prescribed: weightInKg, // Will be null for reps-based exercises
-                          rest_time: s.rest || null,
-                          notes: s.notes,
-                        };
+                weight_prescribed: weightInKg, // Will be null for reps-based exercises
+                rest_time: s.rest || null,
+                notes: s.notes,
+              };
             }),
           },
         },
