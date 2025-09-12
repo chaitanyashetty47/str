@@ -720,6 +720,81 @@ async function processExercisesForDay(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Helper function to update set only if changed
+// ────────────────────────────────────────────────────────────────────────────
+async function updateSetIfChanged(
+  tx: any,
+  existingSet: ExistingSet,
+  incomingSet: z.infer<typeof SetSchema>,
+  trainerWeightUnit: WeightUnit,
+  intensityMode: IntensityMode
+) {
+  const weightValue = incomingSet.weight ? parseFloat(incomingSet.weight) : null;
+  const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
+  
+  // Convert incoming data to match database format
+  const incomingReps = incomingSet.reps ? parseInt(incomingSet.reps, 10) || null : null;
+  const incomingRest = incomingSet.rest || null;
+  const incomingNotes = incomingSet.notes || null;
+  
+  // Build update data only for changed fields
+  const updateData: any = {};
+  const changedFields: string[] = [];
+  
+  // Compare set_number
+  if (existingSet.set_number !== incomingSet.setNumber) {
+    updateData.set_number = incomingSet.setNumber;
+    changedFields.push(`set_number: ${existingSet.set_number} → ${incomingSet.setNumber}`);
+  }
+  
+  // Compare reps (handle null/empty string conversion)
+  if (existingSet.reps !== incomingReps) {
+    updateData.reps = incomingReps;
+    changedFields.push(`reps: ${existingSet.reps} → ${incomingReps}`);
+  }
+  
+  // Compare weight (handle precision and null conversion)
+  if (existingSet.weight_prescribed !== weightInKg) {
+    updateData.weight_prescribed = weightInKg;
+    changedFields.push(`weight: ${existingSet.weight_prescribed} → ${weightInKg}`);
+  }
+  
+  // Compare rest_time
+  if (existingSet.rest_time !== incomingRest) {
+    updateData.rest_time = incomingRest;
+    changedFields.push(`rest: ${existingSet.rest_time} → ${incomingRest}`);
+  }
+  
+  // Compare notes (handle null/empty string conversion)
+  if (existingSet.notes !== incomingNotes) {
+    updateData.notes = incomingNotes;
+    changedFields.push(`notes: "${existingSet.notes}" → "${incomingNotes}"`);
+  }
+  
+  // Compare intensity (this might always be the same, but let's check)
+  if (existingSet.intensity !== intensityMode) {
+    updateData.intensity = intensityMode;
+    changedFields.push(`intensity: ${existingSet.intensity} → ${intensityMode}`);
+  }
+  
+  // Only update if there are changes
+  if (Object.keys(updateData).length > 0) {
+    console.log(`🔍 Updating set ${existingSet.id} (Set ${incomingSet.setNumber}) - ${Object.keys(updateData).length} fields changed:`);
+    console.log(`   Changes: ${changedFields.join(', ')}`);
+    
+    await tx.workout_set_instructions.update({
+      where: { id: existingSet.id },
+      data: updateData,
+    });
+    console.log(`✅ Updated set ${existingSet.id}`);
+    return true; // Indicates update was performed
+  } else {
+    console.log(`⏭️ Skipped set ${existingSet.id} (Set ${incomingSet.setNumber}) - no changes detected`);
+    return false; // Indicates no update was needed
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Helper function to process sets within an exercise
 // ────────────────────────────────────────────────────────────────────────────
 async function processSetsForExercise(
@@ -730,6 +805,10 @@ async function processSetsForExercise(
   intensityMode: IntensityMode = IntensityMode.ABSOLUTE
 ) {
   console.log(`🔍 Processing ${incomingSets.length} sets for exercise ${existingExercise.id}`);
+  
+  // Statistics tracking
+  let setsUpdated = 0;
+  let setsSkipped = 0;
   
   // Create map for existing sets by set_number
   const existingSetsMap = new Map<number, ExistingSet>();
@@ -746,25 +825,13 @@ async function processSetsForExercise(
     const existingSet = existingSetsMap.get(set.setNumber);
 
     if (existingSet) {
-      console.log(`🔍 Updating existing set ${existingSet.id} (Set ${set.setNumber})`);
-      // Update existing set
-      // For reps-based exercises, skip weight conversion
-      // For weight-based exercises, convert weight to KG before storing
-      const weightValue = set.weight ? parseFloat(set.weight) : null;
-      const weightInKg = weightValue ? convertToKg(weightValue, trainerWeightUnit) : null;
-      
-      await tx.workout_set_instructions.update({
-        where: { id: existingSet.id },
-        data: {
-          set_number: set.setNumber,
-          reps: set.reps ? parseInt(set.reps, 10) || null : null,
-          intensity: intensityMode,
-          weight_prescribed: weightInKg, // Will be null for reps-based exercises
-          rest_time: set.rest || null,
-          notes: set.notes,
-        },
-      });
-      console.log(`✅ Updated set ${existingSet.id}`);
+      // Use change detection to only update if needed
+      const wasUpdated = await updateSetIfChanged(tx, existingSet, set, trainerWeightUnit, intensityMode);
+      if (wasUpdated) {
+        setsUpdated++;
+      } else {
+        setsSkipped++;
+      }
     } else {
       console.log(`🔍 Creating new set ${set.setNumber} for exercise ${existingExercise.id}`);
       // Create new set
@@ -786,6 +853,7 @@ async function processSetsForExercise(
         },
       });
       console.log(`✅ Created new set ${set.setNumber}`);
+      setsUpdated++; // Count new creations as updates
     }
   }
 
@@ -818,6 +886,11 @@ async function processSetsForExercise(
       }
     }
   }
+  
+  // Statistics summary
+  const totalSets = setsUpdated + setsSkipped;
+  const optimizationPercentage = totalSets > 0 ? Math.round(setsSkipped / totalSets * 100) : 0;
+  console.log(`📊 Set Processing Summary: ${setsUpdated} updated, ${setsSkipped} skipped (${optimizationPercentage}% optimization)`);
 }
 
 export const updateWorkoutPlan = createSafeAction<UpdateWorkoutPlanInput, UpdateWorkoutPlanOutput>(
