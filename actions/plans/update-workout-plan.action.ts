@@ -513,6 +513,7 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
         }
       }
       console.log(`✅ Step 10: Processed exercises for ${processedDays} days`);
+      console.log(`📊 TRANSACTION PROGRESS: All ${processedDays} days processed successfully`);
 
       // 11. Handle removed days (soft delete by checking if any logs exist)
       const incomingDayKeys = new Set<string>();
@@ -556,6 +557,7 @@ async function handler({ id, meta, weeks }: UpdateWorkoutPlanInput) {
       }
 
         console.log('⚡ Optimized update transaction completed successfully');
+        console.log('🎉 ALL TRANSACTION STEPS COMPLETED - TRANSACTION SUCCESSFUL');
       }, {
         timeout: 300000, // 5 minutes timeout for complex workout plan updates
       });
