@@ -101,7 +101,7 @@ export default async function DashboardPage() {
           <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <Button variant="outline" className="w-full bg-primary hover:bg-primary/90 text-white" asChild>
-              <Link href="/profile">
+              <Link href="/settings">
                 <User className="mr-2 h-5 w-5" />
                 Update Profile
               </Link>
