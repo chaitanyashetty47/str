@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthUser({
           id: user.id,
           email: user.email!,
+          name: user.user_metadata?.full_name, // Use name from auth metadata
           role: claims.user_role,
           subscriptions: claims.subscriptions,
           profileCompleted: claims.profile_completed,

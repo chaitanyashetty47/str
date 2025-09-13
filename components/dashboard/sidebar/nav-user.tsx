@@ -9,7 +9,7 @@ import {
   LogOut,
   Sparkles,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 // Internal components
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,16 +41,18 @@ import { useAuth } from "@/contexts/AuthContext";
  */
 export function NavUser() {
   const router = useRouter();
+  const pathname = usePathname();
   const { isMobile } = useSidebar();
 
   const { user, signOut, loading } = useAuth();
+  
 
   // While loading, render nothing – the sidebar skeleton already provides
   // a placeholder for this area. Alternatively we could show a spinner.
   if (loading) return null;
 
   // Fallbacks in case some fields are missing (e.g. during onboarding)
-  const displayName = user?.email?.split("@")[0] ?? "User";
+  const displayName = user?.name ?? user?.email?.split("@")[0] ?? "User";
   const displayEmail = user?.email ?? "";
   const avatarSrc = "/avatars/avatar.png"; // TODO: replace with real avatar url when available
 
@@ -62,7 +64,40 @@ export function NavUser() {
     router.push("/settings/subscription");
   }
   const handleAccountClick = async() => {
-    router.push("/settings");
+    if (!user?.role) return;
+    
+    // Role-based navigation logic
+    switch (user.role) {
+      case 'CLIENT':
+        router.push("/settings");
+        break;
+      case 'FITNESS_TRAINER':
+        router.push("/fitness/settings");
+        break;
+      case 'PSYCHOLOGY_TRAINER':
+        router.push("/psychological/settings");
+        break;
+      case 'MANIFESTATION_TRAINER':
+        router.push("/manifestation/settings");
+        break;
+      case 'ADMIN':
+        router.push("/admin/settings");
+        break;
+      case 'FITNESS_TRAINER_ADMIN':
+        // Route based on current path
+        if (pathname.startsWith('/fitness')) {
+          router.push("/fitness/settings");
+        } else if (pathname.startsWith('/admin')) {
+          router.push("/admin/settings");
+        } else {
+          // Default to fitness settings if not on specific route
+          router.push("/fitness/settings");
+        }
+        break;
+      default:
+        // Fallback to client settings
+        router.push("/settings");
+    }
   }
   return (
     <SidebarMenu>
@@ -123,26 +158,19 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* <DropdownMenuGroup>
-              <DropdownMenuItem role="menuitem">
-                <Sparkles aria-hidden="true" />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator /> */}
+
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={handleAccountClick} role="menuitem">
                 <BadgeCheck aria-hidden="true" />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleBillingClick} role="menuitem">
-                <CreditCard aria-hidden="true" />
-                Billing
-              </DropdownMenuItem>
-              {/* <DropdownMenuItem role="menuitem">
-                <Bell aria-hidden="true" />
-                Notifications
-              </DropdownMenuItem> */}
+              {/* Only show billing for CLIENT users */}
+              {user?.role === 'CLIENT' && (
+                <DropdownMenuItem onClick={handleBillingClick} role="menuitem">
+                  <CreditCard aria-hidden="true" />
+                  Billing
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} role="menuitem">

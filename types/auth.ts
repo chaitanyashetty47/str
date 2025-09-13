@@ -47,6 +47,7 @@ export interface CustomClaims {
 export interface AuthUser {
   id: string; // Supabase auth ID and User ID
   email: string;
+  name?: string; // User's display name from profile
   role: UserRole;
   subscriptions?: UserSubscriptions; // Only for CLIENT
   platformAccess?: PlatformAccess; // Only for TRAINER/ADMIN roles

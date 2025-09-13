@@ -119,43 +119,77 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(result);
-  } catch (error) {
+  } catch (error:any) {
     console.error('Error cancelling subscription:', error);
     
-    // Handle specific Razorpay errors
-    if (error instanceof Error) {
-      if (error.message.includes('expired')) {
+    // Handle Razorpay API errors
+    // Razorpay SDK typically puts the API response in error.response.data or error.data
+    const razorpayError = error.response?.data || error.data;
+    
+    if (razorpayError?.error?.description) {
+      const description = razorpayError.error.description;
+      const code = razorpayError.error.code;
+      
+      console.log('Razorpay error:', { code, description });
+      
+      // Handle specific Razorpay error cases
+      if (description.includes('expired') || description.includes('not cancellable in expired status')) {
         return NextResponse.json(
           { error: 'Cannot cancel expired subscription' },
           { status: 400 }
         );
       }
-      if (error.message.includes('already cancelled')) {
+      
+      if (description.includes('already cancelled') || description.includes('already canceled')) {
         return NextResponse.json(
           { error: 'Subscription is already cancelled' },
           { status: 400 }
         );
       }
-      if (error.message.includes('not found') || error.message.includes('permission')) {
+      
+      if (description.includes('not found') || description.includes('permission')) {
         return NextResponse.json(
-          { error: error.message },
+          { error: 'Subscription not found or access denied' },
           { status: 404 }
         );
       }
-      if (error.message.includes('Only active subscriptions')) {
+      
+      if (description.includes('Only active subscriptions') || description.includes('active state')) {
         return NextResponse.json(
-          { error: error.message },
+          { error: 'Only active subscriptions can be cancelled' },
           { status: 400 }
         );
       }
-      if (error.message.includes('already requested')) {
+      
+      // Return the actual Razorpay error description for other cases
+      return NextResponse.json(
+        { error: description },
+        { status: 400 }
+      );
+    }
+    
+    // Handle JavaScript errors (network issues, etc.)
+    if (error instanceof Error) {
+      console.error('JavaScript error:', error.message);
+      
+      // Check if it's a network or connection error
+      if (error.message.includes('ECONNREFUSED') || error.message.includes('timeout')) {
         return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
+          { error: 'Payment service temporarily unavailable. Please try again.' },
+          { status: 503 }
+        );
+      }
+      
+      // Check for authentication errors
+      if (error.message.includes('unauthorized') || error.message.includes('401')) {
+        return NextResponse.json(
+          { error: 'Payment service authentication failed' },
+          { status: 500 }
         );
       }
     }
 
+    // Generic fallback for unknown errors
     return NextResponse.json(
       { error: 'Failed to cancel subscription. Please try again.' },
       { status: 500 }
