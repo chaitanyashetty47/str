@@ -28,7 +28,7 @@ export default function WeekProgressIndicator({ planId, planStartDate, weekDurat
 
   return (
     <div className="w-fit shadow-md rounded-md p-4">
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-4 sm:gap-6 lg:gap-8 flex-wrap justify-center">
         {/* Previous weeks: darker red ✅ Current week: red + ring ✅ Upcoming weeks: lighter red */}
         {Array.from({ length: weekDuration }).map((_, index) => {
           const weekNumber = index + 1;

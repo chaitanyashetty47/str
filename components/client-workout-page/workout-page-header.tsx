@@ -114,9 +114,9 @@ export default function WorkoutPageHeader({
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-2 mt-3">
+            <div className="space-y-4 mt-3">
               {planId ? (
-                <Link href={`/workout/${planId}?startDate=${getCurrentWeekRange().startDate}&endDate=${getCurrentWeekRange().endDate}`}>
+                <Link href={`/workout/${planId}?weekNumber=${progress?.currentWeek}`}>
                   <Button size="sm" className="w-full bg-strentor-red text-white hover:bg-strentor-red/90 hover:text-white">
                     Start Current Week
                   </Button>
@@ -126,10 +126,9 @@ export default function WorkoutPageHeader({
                   Start Current Week
                 </Button>
               )}
-              
               {planId && (
                 <Link href={`/workout-plan/${planId}/summary`}>
-                  <Button size="sm" variant="outline" className="w-full border-strentor-red text-strentor-red hover:bg-strentor-red hover:text-white">
+                  <Button size="sm" variant="outline" className="w-full border-strentor-red text-strentor-red hover:bg-strentor-red hover:text-white mt-2">
                     View Analytics & Progress
                   </Button>
                 </Link>

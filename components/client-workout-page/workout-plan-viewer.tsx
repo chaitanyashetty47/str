@@ -46,17 +46,19 @@ export default function WorkoutPlanViewer({ plan }: WorkoutPlanViewerProps) {
   return (
     <div className="space-y-6">
       {/* Header with Log Workout Button */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold">{plan.title}</h1>
           <p className="text-sm text-gray-600">{plan.description}</p>
         </div>
-        <Link href={`/workout/${plan.id}?weekNumber=${selectedWeek}`}>
-          <Button className="bg-strentor-orange hover:bg-strentor-orange/90">
-            <Dumbbell className="h-4 w-4 mr-2" />
-            Log Workout For Week {selectedWeek}
-          </Button>
-        </Link>
+        <div className="flex-shrink-0">
+          <Link href={`/workout/${plan.id}?weekNumber=${selectedWeek}`}>
+            <Button className="bg-strentor-orange hover:bg-strentor-orange/90 w-full lg:w-auto">
+              <Dumbbell className="h-4 w-4 mr-2" />
+              Log Workout For Week {selectedWeek}
+            </Button>
+          </Link>
+        </div>
       </div>
       <WeekProgressIndicator
         planId={plan.id}
