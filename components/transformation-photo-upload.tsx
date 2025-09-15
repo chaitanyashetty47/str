@@ -1,3 +1,19 @@
+// COMMENTED OUT - Transformation photos feature disabled
+/*
+'use client';
+
+import { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// Removed server action import - now using API route
+import { toast } from 'sonner';
+
+// COMMENTED OUT - Transformation photos feature disabled
+/*
 'use client';
 
 import { useState, useRef } from 'react';
@@ -179,88 +195,89 @@ export function TransformationPhotoUpload({ userId, onUploadComplete }: Transfor
         <CardTitle>Upload Transformation Photo</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Photo Type Selection */}
-        <div className="space-y-2">
-          <Label htmlFor="photoType">Photo Type</Label>
-          <Select value={photoType} onValueChange={(value: 'BEFORE' | 'AFTER') => setPhotoType(value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BEFORE">Before</SelectItem>
-              <SelectItem value="AFTER">After</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Photo Type Selection */
+//         <div className="space-y-2">
+//           <Label htmlFor="photoType">Photo Type</Label>
+//           <Select value={photoType} onValueChange={(value: 'BEFORE' | 'AFTER') => setPhotoType(value)}>
+//             <SelectTrigger>
+//               <SelectValue />
+//             </SelectTrigger>
+//             <SelectContent>
+//               <SelectItem value="BEFORE">Before</SelectItem>
+//               <SelectItem value="AFTER">After</SelectItem>
+//             </SelectContent>
+//           </Select>
+//         </div>
 
-        {/* Privacy Setting */}
-        <div className="space-y-2">
-          <Label htmlFor="privacy">Privacy Setting</Label>
-          <Select value={privacySetting} onValueChange={(value: 'PRIVATE' | 'PUBLIC') => setPrivacySetting(value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="PRIVATE">Private</SelectItem>
-              <SelectItem value="PUBLIC">Public</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+//         {/* Privacy Setting */}
+//         <div className="space-y-2">
+//           <Label htmlFor="privacy">Privacy Setting</Label>
+//           <Select value={privacySetting} onValueChange={(value: 'PRIVATE' | 'PUBLIC') => setPrivacySetting(value)}>
+//             <SelectTrigger>
+//               <SelectValue />
+//             </SelectTrigger>
+//             <SelectContent>
+//               <SelectItem value="PRIVATE">Private</SelectItem>
+//               <SelectItem value="PUBLIC">Public</SelectItem>
+//             </SelectContent>
+//           </Select>
+//         </div>
 
-        {/* File Upload */}
-        <div className="space-y-2">
-          <Label htmlFor="photo">Select Photo</Label>
-          <Input
-            ref={fileInputRef}
-            id="photo"
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelect}
-            disabled={isUploading}
-          />
-          {selectedFile && (
-            <p className="text-sm text-muted-foreground">
-              Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-            </p>
-          )}
-        </div>
+//         {/* File Upload */}
+//         <div className="space-y-2">
+//           <Label htmlFor="photo">Select Photo</Label>
+//           <Input
+//             ref={fileInputRef}
+//             id="photo"
+//             type="file"
+//             accept="image/*"
+//             onChange={handleFileSelect}
+//             disabled={isUploading}
+//           />
+//           {selectedFile && (
+//             <p className="text-sm text-muted-foreground">
+//               Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+//             </p>
+//           )}
+//         </div>
 
-        {/* Description */}
-        <div className="space-y-2">
-          <Label htmlFor="description">Description (Optional)</Label>
-          <Textarea
-            id="description"
-            placeholder="Add a description for your transformation photo..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            disabled={isUploading}
-          />
-        </div>
+//         {/* Description */}
+//         <div className="space-y-2">
+//           <Label htmlFor="description">Description (Optional)</Label>
+//           <Textarea
+//             id="description"
+//             placeholder="Add a description for your transformation photo..."
+//             value={description}
+//             onChange={(e) => setDescription(e.target.value)}
+//             disabled={isUploading}
+//           />
+//         </div>
 
-        {/* Upload Progress */}
-        {isUploading && (
-          <div className="space-y-2">
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Uploading... {uploadProgress}%
-            </p>
-          </div>
-        )}
+//         {/* Upload Progress */}
+//         {isUploading && (
+//           <div className="space-y-2">
+//             <div className="w-full bg-gray-200 rounded-full h-2">
+//               <div
+//                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+//                 style={{ width: `${uploadProgress}%` }}
+//               />
+//             </div>
+//             <p className="text-sm text-muted-foreground">
+//               Uploading... {uploadProgress}%
+//             </p>
+//           </div>
+//         )}
 
-        {/* Upload Button */}
-        <Button
-          onClick={handleUpload}
-          disabled={!selectedFile || isUploading}
-          className="w-full"
-        >
-          {isUploading ? 'Uploading...' : 'Upload Photo'}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-} 
+//         {/* Upload Button */}
+//         <Button
+//           onClick={handleUpload}
+//           disabled={!selectedFile || isUploading}
+//           className="w-full"
+//         >
+//           {isUploading ? 'Uploading...' : 'Upload Photo'}
+//         </Button>
+//       </CardContent>
+//     </Card>
+//   );
+// }
+// */ 

@@ -1,3 +1,5 @@
+// COMMENTED OUT - Transformation photos feature disabled
+/*
 import { createSafeAction, ActionState } from '@/lib/create-safe-action';
 import { z } from 'zod';
 import prisma from '@/utils/prisma/server';
@@ -80,4 +82,5 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
   }
 };
 
-export const getUserPhotos = createSafeAction(schema, handler); 
+export const getUserPhotos = createSafeAction(schema, handler);
+*/ 

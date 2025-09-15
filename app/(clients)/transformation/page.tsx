@@ -1,4 +1,17 @@
+export default async function TransformationPage() {  
 
+  return (
+    <div>
+      <h1>Transformation Photos</h1>
+    </div>
+  );
+}
+
+
+
+
+
+/*
 import { Suspense } from 'react';
 import { TransformationTabs } from '@/components/transformation/transformation-tabs';
 import { Camera } from 'lucide-react';
@@ -46,3 +59,4 @@ export default function TransformationPage() {
     </Suspense>
   );
 }
+*/

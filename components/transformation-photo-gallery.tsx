@@ -1,3 +1,5 @@
+// COMMENTED OUT - Transformation photos feature disabled
+/*
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -96,101 +98,102 @@ export function TransformationPhotoGallery({ userId, onPhotoSelect }: Transforma
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Photo Type</label>
-          <Select value={photoTypeFilter} onValueChange={(value: 'BEFORE' | 'AFTER' | 'ALL') => setPhotoTypeFilter(value)}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All</SelectItem>
-              <SelectItem value="BEFORE">Before</SelectItem>
-              <SelectItem value="AFTER">After</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Filters */
+//       <div className="flex gap-4">
+//         <div className="space-y-2">
+//           <label className="text-sm font-medium">Photo Type</label>
+//           <Select value={photoTypeFilter} onValueChange={(value: 'BEFORE' | 'AFTER' | 'ALL') => setPhotoTypeFilter(value)}>
+//             <SelectTrigger className="w-32">
+//               <SelectValue />
+//             </SelectTrigger>
+//             <SelectContent>
+//               <SelectItem value="ALL">All</SelectItem>
+//               <SelectItem value="BEFORE">Before</SelectItem>
+//               <SelectItem value="AFTER">After</SelectItem>
+//             </SelectContent>
+//           </Select>
+//         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Privacy</label>
-          <Select value={privacyFilter} onValueChange={(value: 'PRIVATE' | 'PUBLIC' | 'ALL') => setPrivacyFilter(value)}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All</SelectItem>
-              <SelectItem value="PRIVATE">Private</SelectItem>
-              <SelectItem value="PUBLIC">Public</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+//         <div className="space-y-2">
+//           <label className="text-sm font-medium">Privacy</label>
+//           <Select value={privacyFilter} onValueChange={(value: 'PRIVATE' | 'PUBLIC' | 'ALL') => setPrivacyFilter(value)}>
+//             <SelectTrigger className="w-32">
+//               <SelectValue />
+//             </SelectTrigger>
+//             <SelectContent>
+//               <SelectItem value="ALL">All</SelectItem>
+//               <SelectItem value="PRIVATE">Private</SelectItem>
+//               <SelectItem value="PUBLIC">Public</SelectItem>
+//             </SelectContent>
+//           </Select>
+//         </div>
+//       </div>
 
-      {/* Photo Grid */}
-      {filteredPhotos.length === 0 ? (
-        <Card>
-          <CardContent className="flex items-center justify-center p-8">
-            <div className="text-center space-y-2">
-              <div className="text-muted-foreground">No photos found</div>
-              <div className="text-sm text-muted-foreground">
-                Upload your first transformation photo to get started
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredPhotos.map((photo) => (
-            <Card key={photo.id} className="overflow-hidden">
-              <div className="aspect-square relative">
-                <img
-                  src={photo.imageUrl}
-                  alt={`${photo.photoType} transformation photo`}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                <div className="absolute top-2 right-2 flex gap-1">
-                  <Badge variant={photo.photoType === 'BEFORE' ? 'secondary' : 'default'}>
-                    {photo.photoType}
-                  </Badge>
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    {photo.privacySetting === 'PRIVATE' ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    {photo.privacySetting}
-                  </Badge>
-                </div>
-              </div>
+//       {/* Photo Grid */}
+//       {filteredPhotos.length === 0 ? (
+//         <Card>
+//           <CardContent className="flex items-center justify-center p-8">
+//             <div className="text-center space-y-2">
+//               <div className="text-muted-foreground">No photos found</div>
+//               <div className="text-sm text-muted-foreground">
+//                 Upload your first transformation photo to get started
+//               </div>
+//             </div>
+//           </CardContent>
+//         </Card>
+//       ) : (
+//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+//           {filteredPhotos.map((photo) => (
+//             <Card key={photo.id} className="overflow-hidden">
+//               <div className="aspect-square relative">
+//                 <img
+//                   src={photo.imageUrl}
+//                   alt={`${photo.photoType} transformation photo`}
+//                   className="w-full h-full object-cover"
+//                   loading="lazy"
+//                 />
+//                 <div className="absolute top-2 right-2 flex gap-1">
+//                   <Badge variant={photo.photoType === 'BEFORE' ? 'secondary' : 'default'}>
+//                     {photo.photoType}
+//                   </Badge>
+//                   <Badge variant="outline" className="flex items-center gap-1">
+//                     {photo.privacySetting === 'PRIVATE' ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+//                     {photo.privacySetting}
+//                   </Badge>
+//                 </div>
+//               </div>
               
-              <CardContent className="p-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    <span>{format(photo.photoDate, 'MMM dd, yyyy')}</span>
-                  </div>
+//               <CardContent className="p-4">
+//                 <div className="space-y-2">
+//                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
+//                     <Calendar className="w-4 h-4" />
+//                     <span>{format(photo.photoDate, 'MMM dd, yyyy')}</span>
+//                   </div>
                   
-                  {photo.description && (
-                    <div className="flex items-start gap-2 text-sm">
-                      <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      <p className="text-muted-foreground line-clamp-2">{photo.description}</p>
-                    </div>
-                  )}
+//                   {photo.description && (
+//                     <div className="flex items-start gap-2 text-sm">
+//                       <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
+//                       <p className="text-muted-foreground line-clamp-2">{photo.description}</p>
+//                     </div>
+//                   )}
                   
-                  {onPhotoSelect && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onPhotoSelect(photo.id)}
-                      className="w-full"
-                    >
-                      View Details
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-} 
+//                   {onPhotoSelect && (
+//                     <Button
+//                       variant="outline"
+//                       size="sm"
+//                       onClick={() => onPhotoSelect(photo.id)}
+//                       className="w-full"
+//                     >
+//                       View Details
+//                     </Button>
+//                   )}
+//                 </div>
+//               </CardContent>
+//             </Card>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+// */ 

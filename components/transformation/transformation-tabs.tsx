@@ -1,3 +1,5 @@
+// COMMENTED OUT - Transformation photos feature disabled
+/*
 'use client';
 
 import { useState } from 'react';
@@ -71,4 +73,5 @@ export function TransformationTabs({ userId }: TransformationTabsProps) {
       </TabsContent>
     </Tabs>
   );
-} 
+}
+*/ 

@@ -1,3 +1,14 @@
+
+// Transformation photos feature disabled
+// This file is kept for future implementation
+
+export async function GET() {
+  return new Response('Feature disabled', { status: 501 });
+}
+
+
+// COMMENTED OUT - Transformation photos feature disabled
+/*
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/utils/prisma/prismaClient';
@@ -79,3 +90,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+*/

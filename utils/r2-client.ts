@@ -1,3 +1,5 @@
+// COMMENTED OUT - Transformation photos feature disabled
+/*
 import { S3Client } from '@aws-sdk/client-s3';
 
 // Debug R2 configuration
@@ -30,4 +32,5 @@ console.log('⚙️ [R2] Client configuration:', {
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   bucket: R2_CONFIG.bucket,
   publicBaseUrl: R2_CONFIG.publicBaseUrl,
-}); 
+});
+*/ 
