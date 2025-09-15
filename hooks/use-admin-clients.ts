@@ -54,7 +54,10 @@ export const useAdminClients = () => {
     }
   );
 
-  const data = swrData || {
+  const data = swrData ? {
+    ...swrData,
+    clients: swrData.clients || [], // Add safety check
+  } : {
     clients: [],
     total: 0,
     page: 0,
@@ -66,7 +69,7 @@ export const useAdminClients = () => {
 
   // Filter clients based on current filters (client-side filtering for additional criteria)
   const filteredClients = useMemo(() => {
-    return data.clients.filter((client) => {
+    return (data.clients || []).filter((client) => {
       // Additional client-side filtering can be added here if needed
       return true;
     });
