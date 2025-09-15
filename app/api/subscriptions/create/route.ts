@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     // Get user details from users_profile table
     const userData = await prisma.users_profile.findUnique({
       where: { id: userId },
-      select: { email: true, name: true }
+      select: { email: true, name: true, phone: true }
     });
     
     if (!userData) {
@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
         prefill: {
           name: userData.name,
           email: userData.email,
+          ...(userData.phone && { contact: userData.phone })
         },
         notes: {
           user_id: userId,

@@ -51,6 +51,9 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
   try {
     // Get all subscription plans
     const allPlans = await prisma.subscription_plans.findMany({
+      where:{
+        is_active: true
+      },
       orderBy: [
         { category: 'asc' },
         { billing_cycle: 'asc' }
@@ -176,8 +179,16 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         }
       } else if (plan.category === 'ALL_IN_ONE' && activeSubscriptions.length > 1) {
         // ALL_IN_ONE with multiple active subscriptions - show actionable cancel option
+        // Get available categories dynamically
+        const availableCategories = allPlans
+          .filter(p => p.category !== 'ALL_IN_ONE')
+          .map(p => p.category);
+        
+        const userActiveCategories = activeSubscriptions.map(sub => sub.subscription_plans.category);
+        const conflictCategories = userActiveCategories.filter(cat => availableCategories.includes(cat));
+        
         buttonState = 'conflict_all_in_one';
-        buttonText = 'Cancel other plans first';
+        buttonText = `Cancel ${conflictCategories.join(' and ')} to get All-in-One`;
         action = { 
           //type: 'cancel_first',
           type: 'disabled',

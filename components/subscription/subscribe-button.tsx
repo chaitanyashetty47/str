@@ -246,13 +246,13 @@ export function SubscribeButton({
             console.log('Current subscription ID in modal:', subscriptionId);
             if (subscriptionId) {
               try {
-                const cancelResponse = await fetch('/api/subscriptions/cancel', {
+                const cancelResponse = await fetch('/api/subscriptions/mark-cancelled', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    razorpaySubscriptionId: subscriptionId,
+                    subscriptionId: subscriptionId,
                     reason: 'USER_CANCELLED'
                   }),
                 });

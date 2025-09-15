@@ -138,8 +138,15 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
   };
 
   const getStatusBadge = (subscription: SubscriptionWithPlan) => {
-    if (subscription.cancelRequestedAt) {
-      return <Badge variant="destructive">Cancellation Scheduled</Badge>;
+    // Check if cancellation is requested but still active
+    if (subscription.cancelRequestedAt && subscription.status === 'ACTIVE') {
+      const endDate = subscription.currentEnd ? 
+        new Date(subscription.currentEnd).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        }) : 'Soon';
+      return <Badge variant="destructive">Active Until {endDate}</Badge>;
     }
     
     switch (subscription.status) {
@@ -282,7 +289,8 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
                   <p className="text-sm font-medium">Cancellation Scheduled</p>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Your subscription will remain active until {formatDate(subscription.currentEnd)}
+                  Your subscription will remain active until {formatDate(subscription.currentEnd)}. 
+                  You'll lose access to premium features after this date.
                 </p>
               </div>
             )}

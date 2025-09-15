@@ -43,9 +43,25 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
   const { userId } = data;
 
   try {
+    const now = new Date();
+    
     const subscriptions = await prisma.user_subscriptions.findMany({
       where: {
         user_id: userId,
+        // Include active subscriptions and cancelled-but-active subscriptions
+        OR: [
+          // Regular active subscriptions
+          {
+            status: { in: ['ACTIVE', 'CREATED', 'AUTHENTICATED', 'PENDING'] },
+            cancel_requested_at: null,
+          },
+          // Cancelled subscriptions that are still within their cycle
+          {
+            status: 'ACTIVE', // Keep as ACTIVE until webhook confirms
+            cancel_requested_at: { not: null },
+            current_end: { gte: now }, // Still within current cycle
+          },
+        ],
       },
       include: {
         subscription_plans: true,
@@ -55,7 +71,24 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       },
     });
 
-    const data = subscriptions.map((sub) => ({
+    console.log("The subscriptions are", subscriptions);
+
+    // Additional filtering to ensure we don't show expired cancelled subscriptions
+    const filteredSubscriptions = subscriptions.filter((sub) => {
+      // Regular active subscriptions
+      if (!sub.cancel_requested_at) {
+        return true;
+      }
+      
+      // Cancelled subscriptions - only show if still within cycle
+      if (sub.cancel_requested_at && sub.current_end) {
+        return new Date(sub.current_end) > now;
+      }
+      
+      return false;
+    });
+
+    const data = filteredSubscriptions.map((sub) => ({
       id: sub.id,
       status: sub.status || 'ACTIVE',
       startDate: sub.start_date?.toISOString() || '',

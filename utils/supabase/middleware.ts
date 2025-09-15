@@ -151,8 +151,8 @@ export const updateSession = async (request: NextRequest) => {
         if (!canAccessRoute(claims.user_role, pathname)) {
           return NextResponse.redirect(new URL('/unauthorized', request.url));
         }
-        console.log("claims work well")
-        console.log(claims)
+        // console.log("claims work well")
+        // console.log(claims)
 
         // Redirect incomplete profiles to onboarding
         if (!claims.profile_completed && 

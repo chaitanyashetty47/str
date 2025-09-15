@@ -47,57 +47,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use Prisma transaction for atomic operations
+    // STEP 1: Validate subscription exists and is cancellable (outside transaction)
+    const subscription = await prisma.user_subscriptions.findFirst({
+      where: {
+        razorpay_subscription_id: razorpaySubscriptionId,
+        user_id: user.id, // Ensure user owns this subscription
+      },
+    });
+
+    if (!subscription) {
+      return NextResponse.json(
+        { error: 'Subscription not found or you do not have permission to cancel it' },
+        { status: 404 }
+      );
+    }
+
+    // Check if subscription is in a cancellable state
+    if (subscription.status && ['CANCELLED', 'EXPIRED', 'COMPLETED'].includes(subscription.status)) {
+      return NextResponse.json(
+        { error: 'Subscription is already in a final state and cannot be cancelled' },
+        { status: 400 }
+      );
+    }
+
+    // Check if cancellation is already requested
+    if (subscription.cancel_requested_at) {
+      return NextResponse.json(
+        { error: 'Cancellation already requested for this subscription' },
+        { status: 400 }
+      );
+    }
+
+    // STEP 2: Call Razorpay API to cancel subscription at cycle end (outside transaction)
+    console.log('Razorpay subscription ID:', razorpaySubscriptionId);
+    const razorpayResponse = await razorpay.subscriptions.cancel(razorpaySubscriptionId, true); // Change to true for cycle end
+    
+    console.log('Razorpay cancel response:', razorpayResponse);
+
+    // STEP 3: Update database (fast transaction with 120s timeout)
     const result = await prisma.$transaction(async (tx) => {
-      // Step 1: Find the subscription in our database
-      const subscription = await tx.user_subscriptions.findFirst({
-        where: {
-          razorpay_subscription_id: razorpaySubscriptionId,
-          user_id: user.id, // Ensure user owns this subscription
-        },
-      });
-
-      if (!subscription) {
-        throw new Error('Subscription not found or you do not have permission to cancel it');
-      }
-
-      // Step 2: Check if subscription is in a cancellable state
-      // Allow cancellation of any non-final subscription status
-      if (subscription.status && ['CANCELLED', 'EXPIRED', 'COMPLETED'].includes(subscription.status)) {
-        throw new Error('Subscription is already in a final state and cannot be cancelled');
-      }
-
-      // Step 3: Check if cancellation is already requested
-      if (subscription.cancel_requested_at) {
-        throw new Error('Cancellation already requested for this subscription');
-      }
-
-      // Step 4: Call Razorpay API to cancel subscription at cycle end
-      console.log('Razorpay subscription ID:', razorpaySubscriptionId);
-      const razorpayResponse = await razorpay.subscriptions.cancel(razorpaySubscriptionId, false);
-
-      console.log('Razorpay cancel response:', razorpayResponse);
-
-      // Step 5: Update our database with cancellation request
-      // According to Razorpay docs, subscription status becomes 'cancelled' immediately
-      // but remains active until current_end date
+      // Update subscription with cancellation request
       await tx.user_subscriptions.update({
         where: {
           id: subscription.id,
         },
         data: {
           cancel_requested_at: new Date(),
-          cancel_at_cycle_end: false,
-          // Set end_date to Today - subscription will remain active until then
-          end_date: new Date(),
-          //end_date: subscription.current_end,
-          // Keep status as ACTIVE until webhook confirms actual cancellation
-          status: 'CANCELLED',
-          // Webhook will update status to CANCELLED when it actually ends
+          cancel_at_cycle_end: true,
+          end_date: subscription.current_end,
+          status: 'ACTIVE', // Keep as ACTIVE until webhook confirms actual cancellation
         },
       });
 
-      // Step 6: Log the cancellation request event
+      // Log the cancellation request event
       await tx.subscription_events.create({
         data: {
           id: crypto.randomUUID(),
@@ -108,6 +110,7 @@ export async function POST(request: NextRequest) {
             razorpay_subscription_id: razorpaySubscriptionId,
             cancel_at_cycle_end: true,
             requested_at: new Date().toISOString(),
+            //razorpay_response: razorpayResponse, // Store response for debugging
           },
         },
       });
@@ -116,6 +119,8 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Subscription cancellation scheduled successfully',
       };
+    }, {
+      timeout: 120000, // 120 seconds timeout
     });
 
     return NextResponse.json(result);
