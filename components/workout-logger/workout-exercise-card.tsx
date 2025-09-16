@@ -43,6 +43,7 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
     weightKg: number;
     reps: number;
     rpe?: number;
+    modalType?: 'typo' | 'extreme' | 'high' | 'moderate';
   } | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showYoutube, setShowYoutube] = useState(false);
@@ -122,13 +123,29 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
     const targetSet = exercise.sets.find(s => s.setNumber === setNumber);
     if (!targetSet) return;
 
-    // Check if values are significantly higher than prescribed
-    const weightExceeds = weightKg > (targetSet.targetWeight + 5);
-    const repsExceeds = reps > (targetSet.targetReps * 1.5);
+    // Calculate ratios for smart detection
+    const weightRatio = weightKg / targetSet.targetWeight;
+    const repsRatio = reps / targetSet.targetReps;
 
-    if (weightExceeds || repsExceeds) {
-      // Show confirmation dialog
-      setPendingSave({ setNumber, weightKg, reps, rpe });
+    // ORM Protection Logic - catch values that could affect personal records
+    if (weightRatio >= 10 || repsRatio >= 10) {
+      // Obvious typos
+      setPendingSave({ setNumber, weightKg, reps, rpe, modalType: 'typo' });
+      setShowConfirmDialog(true);
+      return;
+    } else if ((repsRatio >= 3 && weightRatio <= 0.5) || (weightRatio >= 3 && repsRatio <= 0.5)) {
+      // Extreme values that could skew personal records
+      setPendingSave({ setNumber, weightKg, reps, rpe, modalType: 'extreme' });
+      setShowConfirmDialog(true);
+      return;
+    } else if (weightRatio >= 2 && repsRatio >= 2) {
+      // Both significantly higher
+      setPendingSave({ setNumber, weightKg, reps, rpe, modalType: 'high' });
+      setShowConfirmDialog(true);
+      return;
+    } else if (weightRatio >= 1.3 || repsRatio >= 1.3) {
+      // Moderate increase
+      setPendingSave({ setNumber, weightKg, reps, rpe, modalType: 'moderate' });
       setShowConfirmDialog(true);
       return;
     }
@@ -419,30 +436,43 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>High Values Detected</AlertDialogTitle>
+            <AlertDialogTitle>
+              {pendingSave?.modalType === 'typo' && '🚨 Possible Typo Detected!'}
+              {pendingSave?.modalType === 'extreme' && '⚠️ Unusual Values Detected'}
+              {pendingSave?.modalType === 'high' && '⚠️ High Values Detected'}
+              {pendingSave?.modalType === 'moderate' && '✅ Good Progress!'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingSave && (
-                <div className="space-y-2">
-                  <p>The values you entered are significantly higher than prescribed:</p>
-                  <div className="bg-yellow-50 p-3 rounded-lg space-y-1">
-                    {pendingSave.weightKg > (exercise.sets.find(s => s.setNumber === pendingSave.setNumber)?.targetWeight || 0) * 1.5 && (
-                      <span>• Weight: {pendingSave.weightKg}kg (prescribed: {exercise.sets.find(s => s.setNumber === pendingSave.setNumber)?.targetWeight}kg)</span>
-                    )}
-                    {pendingSave.reps > (exercise.sets.find(s => s.setNumber === pendingSave.setNumber)?.targetReps || 0) * 1.5 && (
-                      <span>• Reps: {pendingSave.reps} (prescribed: {exercise.sets.find(s => s.setNumber === pendingSave.setNumber)?.targetReps})</span>
-                    )}
-                  </div>
-                  <p>Are you sure you want to log these values?</p>
-                </div>
-              )}
+              {pendingSave?.modalType === 'typo' && 'This looks like a typo. Did you mean to enter these values?'}
+              {pendingSave?.modalType === 'extreme' && 'These values are quite different from prescribed. Please double-check before logging.'}
+              {pendingSave?.modalType === 'high' && 'These values are significantly higher than prescribed. Are you sure?'}
+              {pendingSave?.modalType === 'moderate' && 'Nice increase! Confirm to log these values.'}
             </AlertDialogDescription>
+            {pendingSave && (
+              <div className={`p-3 rounded-lg space-y-1 mt-3 ${
+                pendingSave.modalType === 'typo' ? 'bg-red-50 border border-red-200' :
+                pendingSave.modalType === 'extreme' ? 'bg-orange-50 border border-orange-200' :
+                pendingSave.modalType === 'high' ? 'bg-yellow-50 border border-yellow-200' :
+                'bg-green-50 border border-green-200'
+              }`}>
+                <div className="font-medium text-sm mb-2">
+                  You entered: {pendingSave.weightKg}kg × {pendingSave.reps} reps
+                </div>
+                <div className="text-sm text-gray-600">
+                  Prescribed: {exercise.sets.find(s => s.setNumber === pendingSave.setNumber)?.targetWeight}kg × {exercise.sets.find(s => s.setNumber === pendingSave.setNumber)?.targetReps} reps
+                </div>
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancelSave}>
               Cancel & Edit
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmSave}>
-              Yes, Log These Values
+              {pendingSave?.modalType === 'typo' && 'Yes, These Are Correct'}
+              {pendingSave?.modalType === 'extreme' && 'Yes, Log These Values'}
+              {pendingSave?.modalType === 'high' && 'Yes, Log These Values'}
+              {pendingSave?.modalType === 'moderate' && 'Confirm & Log'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

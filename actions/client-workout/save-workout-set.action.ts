@@ -101,19 +101,131 @@ async function saveSetHandler({
     const scheduledDate = new Date(workoutDay.day_date);
     const performedDate = new Date(); // Current date when user logs
 
-    if (existingLog) {
-      // Update existing log - keep scheduled_date, update performed_date
-      savedLog = await prisma.exercise_logs.update({
-        where: { id: existingLog.id },
-        data: {
-          weight_used: weightKg,
-          reps_done: reps,
-          rpe: rpe,
-          performed_date: performedDate, // Update when it was actually performed
-          // scheduled_date stays the same
-        },
-      });
-    } else {
+      if (existingLog) {
+        // Update existing log - keep scheduled_date, update performed_date
+        savedLog = await prisma.exercise_logs.update({
+          where: { id: existingLog.id },
+          data: {
+            weight_used: weightKg,
+            reps_done: reps,
+            rpe: rpe,
+            performed_date: performedDate, // Update when it was actually performed
+            // scheduled_date stays the same
+          },
+        });
+        
+        // PR RECALCULATION FOR UPDATES -------------------------------------------
+        const exerciseId = setInstruction.workout_day_exercises.list_exercise_id;
+        
+        // Get exercise info to check if it's reps-based
+        const exerciseInfo = await prisma.workout_exercise_lists.findUnique({
+          where: { id: exerciseId },
+          select: { is_reps_based: true },
+        });
+
+        // Check if this set was previously linked to a PR
+        const existingPrLinkedToSet = await prisma.client_max_lifts.findFirst({
+          where: {
+            client_id: userId,
+            list_exercise_id: exerciseId,
+            set_id: savedLog.id,
+            is_invalid: false,
+          },
+        });
+
+        // Get current best PR (excluding invalid ones and this set's PR)
+        const currentPr = await prisma.client_max_lifts.findFirst({
+          where: {
+            client_id: userId,
+            list_exercise_id: exerciseId,
+            is_invalid: false,
+            NOT: existingPrLinkedToSet ? { id: existingPrLinkedToSet.id } : undefined,
+          },
+          orderBy: exerciseInfo?.is_reps_based ? { max_reps: "desc" } : { max_weight: "desc" },
+        });
+
+        if (exerciseInfo?.is_reps_based) {
+          // For reps-based exercises
+          const isNewPr = !currentPr || reps > (currentPr.max_reps || 0);
+          
+          if (existingPrLinkedToSet) {
+            if (isNewPr) {
+              // Update existing PR
+              await prisma.client_max_lifts.update({
+                where: { id: existingPrLinkedToSet.id },
+                data: {
+                  max_reps: reps,
+                  last_updated: new Date(),
+                  date_achieved: scheduledDate,
+                },
+              });
+            } else {
+              // This set is no longer a PR, invalidate the linked PR
+              await prisma.client_max_lifts.update({
+                where: { id: existingPrLinkedToSet.id },
+                data: { is_invalid: true },
+              });
+            }
+          } else if (isNewPr) {
+            // Create new PR linked to this set
+            const { randomUUID } = await import('crypto');
+            await prisma.client_max_lifts.create({
+              data: {
+                id: randomUUID(),
+                client_id: userId,
+                list_exercise_id: exerciseId,
+                max_reps: reps,
+                exercise_type: "REPS_BASED",
+                last_updated: new Date(),
+                date_achieved: scheduledDate,
+                set_id: savedLog.id,
+                is_invalid: false,
+              },
+            });
+          }
+        } else {
+          // For weight-based exercises
+          const cappedReps = Math.min(reps, 12);
+          const estimatedOneRm = Math.round(weightKg * (1 + cappedReps / 30));
+          const isNewPr = !currentPr || estimatedOneRm > (currentPr.max_weight || 0);
+          
+          if (existingPrLinkedToSet) {
+            if (isNewPr) {
+              // Update existing PR
+              await prisma.client_max_lifts.update({
+                where: { id: existingPrLinkedToSet.id },
+                data: {
+                  max_weight: estimatedOneRm,
+                  last_updated: new Date(),
+                  date_achieved: scheduledDate,
+                },
+              });
+            } else {
+              // This set is no longer a PR, invalidate the linked PR
+              await prisma.client_max_lifts.update({
+                where: { id: existingPrLinkedToSet.id },
+                data: { is_invalid: true },
+              });
+            }
+          } else if (isNewPr) {
+            // Create new PR linked to this set
+            const { randomUUID } = await import('crypto');
+            await prisma.client_max_lifts.create({
+              data: {
+                id: randomUUID(),
+                client_id: userId,
+                list_exercise_id: exerciseId,
+                max_weight: estimatedOneRm,
+                exercise_type: "WEIGHT_BASED",
+                last_updated: new Date(),
+                date_achieved: scheduledDate,
+                set_id: savedLog.id,
+                is_invalid: false,
+              },
+            });
+          }
+        }
+      } else {
       // Create new log - generate UUID for id
       const { randomUUID } = await import('crypto');
       savedLog = await prisma.exercise_logs.create({
@@ -138,17 +250,42 @@ async function saveSetHandler({
         select: { is_reps_based: true },
       });
 
+      // Check if this set was previously linked to a PR (for updates)
+      const existingPrLinkedToSet = await prisma.client_max_lifts.findFirst({
+        where: {
+          client_id: userId,
+          list_exercise_id: exerciseId,
+          set_id: savedLog.id,
+          is_invalid: false,
+        },
+      });
+
+      // Get current best PR (excluding invalid ones)
       const currentPr = await prisma.client_max_lifts.findFirst({
         where: {
           client_id: userId,
           list_exercise_id: exerciseId,
+          is_invalid: false,
         },
         orderBy: exerciseInfo?.is_reps_based ? { max_reps: "desc" } : { max_weight: "desc" },
       });
 
       if (exerciseInfo?.is_reps_based) {
         // For reps-based exercises, track max reps achieved
-        if (!currentPr || reps > (currentPr.max_reps || 0)) {
+        const isNewPr = !currentPr || reps > (currentPr.max_reps || 0);
+        
+        if (existingPrLinkedToSet) {
+          // Update existing PR linked to this set
+          await prisma.client_max_lifts.update({
+            where: { id: existingPrLinkedToSet.id },
+            data: {
+              max_reps: reps,
+              last_updated: new Date(),
+              date_achieved: scheduledDate,
+            },
+          });
+        } else if (isNewPr) {
+          // Create new PR linked to this set
           await prisma.client_max_lifts.create({
             data: {
               id: randomUUID(),
@@ -157,7 +294,9 @@ async function saveSetHandler({
               max_reps: reps,
               exercise_type: "REPS_BASED",
               last_updated: new Date(),
-              date_achieved: scheduledDate, // use scheduled date for PR timeline
+              date_achieved: scheduledDate,
+              set_id: savedLog.id, // NEW: Link to specific set
+              is_invalid: false,
             },
           });
         }
@@ -165,8 +304,20 @@ async function saveSetHandler({
         // For weight-based exercises, calculate estimated 1-RM using Epley formula capped at 12 reps
         const cappedReps = Math.min(reps, 12);
         const estimatedOneRm = Math.round(weightKg * (1 + cappedReps / 30));
+        const isNewPr = !currentPr || estimatedOneRm > (currentPr.max_weight || 0);
         
-        if (!currentPr || estimatedOneRm > (currentPr.max_weight || 0)) {
+        if (existingPrLinkedToSet) {
+          // Update existing PR linked to this set
+          await prisma.client_max_lifts.update({
+            where: { id: existingPrLinkedToSet.id },
+            data: {
+              max_weight: estimatedOneRm,
+              last_updated: new Date(),
+              date_achieved: scheduledDate,
+            },
+          });
+        } else if (isNewPr) {
+          // Create new PR linked to this set
           await prisma.client_max_lifts.create({
             data: {
               id: randomUUID(),
@@ -175,7 +326,9 @@ async function saveSetHandler({
               max_weight: estimatedOneRm,
               exercise_type: "WEIGHT_BASED",
               last_updated: new Date(),
-              date_achieved: scheduledDate, // use scheduled date for PR timeline
+              date_achieved: scheduledDate,
+              set_id: savedLog.id, // NEW: Link to specific set
+              is_invalid: false,
             },
           });
         }
@@ -372,6 +525,118 @@ async function bulkSaveExerciseHandler({
             // scheduled_date stays the same
           },
         });
+        
+        // PR RECALCULATION FOR UPDATES (BULK) -----------------------------------
+        const exerciseId = dayExercise.list_exercise_id;
+        
+        // Get exercise info to check if it's reps-based
+        const exerciseInfo = await prisma.workout_exercise_lists.findUnique({
+          where: { id: exerciseId },
+          select: { is_reps_based: true },
+        });
+
+        // Check if this set was previously linked to a PR
+        const existingPrLinkedToSet = await prisma.client_max_lifts.findFirst({
+          where: {
+            client_id: userId,
+            list_exercise_id: exerciseId,
+            set_id: savedLog.id,
+            is_invalid: false,
+          },
+        });
+
+        // Get current best PR (excluding invalid ones and this set's PR)
+        const currentPr = await prisma.client_max_lifts.findFirst({
+          where: {
+            client_id: userId,
+            list_exercise_id: exerciseId,
+            is_invalid: false,
+            NOT: existingPrLinkedToSet ? { id: existingPrLinkedToSet.id } : undefined,
+          },
+          orderBy: exerciseInfo?.is_reps_based ? { max_reps: "desc" } : { max_weight: "desc" },
+        });
+
+        if (exerciseInfo?.is_reps_based) {
+          // For reps-based exercises
+          const isNewPr = !currentPr || set.reps > (currentPr.max_reps || 0);
+          
+          if (existingPrLinkedToSet) {
+            if (isNewPr) {
+              // Update existing PR
+              await prisma.client_max_lifts.update({
+                where: { id: existingPrLinkedToSet.id },
+                data: {
+                  max_reps: set.reps,
+                  last_updated: new Date(),
+                  date_achieved: scheduledDate,
+                },
+              });
+            } else {
+              // This set is no longer a PR, invalidate the linked PR
+              await prisma.client_max_lifts.update({
+                where: { id: existingPrLinkedToSet.id },
+                data: { is_invalid: true },
+              });
+            }
+          } else if (isNewPr) {
+            // Create new PR linked to this set
+            const { randomUUID } = await import('crypto');
+            await prisma.client_max_lifts.create({
+              data: {
+                id: randomUUID(),
+                client_id: userId,
+                list_exercise_id: exerciseId,
+                max_reps: set.reps,
+                exercise_type: "REPS_BASED",
+                last_updated: new Date(),
+                date_achieved: scheduledDate,
+                set_id: savedLog.id,
+                is_invalid: false,
+              },
+            });
+          }
+        } else {
+          // For weight-based exercises
+          const cappedReps = Math.min(set.reps, 12);
+          const estimatedOneRm = Math.round(set.weightKg * (1 + cappedReps / 30));
+          const isNewPr = !currentPr || estimatedOneRm > (currentPr.max_weight || 0);
+          
+          if (existingPrLinkedToSet) {
+            if (isNewPr) {
+              // Update existing PR
+              await prisma.client_max_lifts.update({
+                where: { id: existingPrLinkedToSet.id },
+                data: {
+                  max_weight: estimatedOneRm,
+                  last_updated: new Date(),
+                  date_achieved: scheduledDate,
+                },
+              });
+            } else {
+              // This set is no longer a PR, invalidate the linked PR
+              await prisma.client_max_lifts.update({
+                where: { id: existingPrLinkedToSet.id },
+                data: { is_invalid: true },
+              });
+            }
+          } else if (isNewPr) {
+            // Create new PR linked to this set
+            const { randomUUID } = await import('crypto');
+            await prisma.client_max_lifts.create({
+              data: {
+                id: randomUUID(),
+                client_id: userId,
+                list_exercise_id: exerciseId,
+                max_weight: estimatedOneRm,
+                exercise_type: "WEIGHT_BASED",
+                last_updated: new Date(),
+                date_achieved: scheduledDate,
+                set_id: savedLog.id,
+                is_invalid: false,
+              },
+            });
+          }
+        }
       } else {
         const { randomUUID } = await import('crypto');
         savedLog = await prisma.exercise_logs.create({
@@ -396,17 +661,42 @@ async function bulkSaveExerciseHandler({
           select: { is_reps_based: true },
         });
 
+        // Check if this set was previously linked to a PR (for updates)
+        const existingPrLinkedToSet = await prisma.client_max_lifts.findFirst({
+          where: {
+            client_id: userId,
+            list_exercise_id: exerciseId,
+            set_id: savedLog.id,
+            is_invalid: false,
+          },
+        });
+
+        // Get current best PR (excluding invalid ones)
         const currentPr = await prisma.client_max_lifts.findFirst({
           where: {
             client_id: userId,
             list_exercise_id: exerciseId,
+            is_invalid: false,
           },
           orderBy: exerciseInfo?.is_reps_based ? { max_reps: "desc" } : { max_weight: "desc" },
         });
 
         if (exerciseInfo?.is_reps_based) {
           // For reps-based exercises, track max reps achieved
-          if (!currentPr || set.reps > (currentPr.max_reps || 0)) {
+          const isNewPr = !currentPr || set.reps > (currentPr.max_reps || 0);
+          
+          if (existingPrLinkedToSet) {
+            // Update existing PR linked to this set
+            await prisma.client_max_lifts.update({
+              where: { id: existingPrLinkedToSet.id },
+              data: {
+                max_reps: set.reps,
+                last_updated: new Date(),
+                date_achieved: scheduledDate,
+              },
+            });
+          } else if (isNewPr) {
+            // Create new PR linked to this set
             await prisma.client_max_lifts.create({
               data: {
                 id: randomUUID(),
@@ -415,7 +705,9 @@ async function bulkSaveExerciseHandler({
                 max_reps: set.reps,
                 exercise_type: "REPS_BASED",
                 last_updated: new Date(),
-                date_achieved: scheduledDate, // use scheduled date for PR timeline
+                date_achieved: scheduledDate,
+                set_id: savedLog.id, // NEW: Link to specific set
+                is_invalid: false,
               },
             });
           }
@@ -423,8 +715,20 @@ async function bulkSaveExerciseHandler({
           // For weight-based exercises, calculate estimated 1-RM using Epley formula capped at 12 reps
           const cappedReps = Math.min(set.reps, 12);
           const estimatedOneRm = Math.round(set.weightKg * (1 + cappedReps / 30));
+          const isNewPr = !currentPr || estimatedOneRm > (currentPr.max_weight || 0);
           
-          if (!currentPr || estimatedOneRm > (currentPr.max_weight || 0)) {
+          if (existingPrLinkedToSet) {
+            // Update existing PR linked to this set
+            await prisma.client_max_lifts.update({
+              where: { id: existingPrLinkedToSet.id },
+              data: {
+                max_weight: estimatedOneRm,
+                last_updated: new Date(),
+                date_achieved: scheduledDate,
+              },
+            });
+          } else if (isNewPr) {
+            // Create new PR linked to this set
             await prisma.client_max_lifts.create({
               data: {
                 id: randomUUID(),
@@ -433,7 +737,9 @@ async function bulkSaveExerciseHandler({
                 max_weight: estimatedOneRm,
                 exercise_type: "WEIGHT_BASED",
                 last_updated: new Date(),
-                date_achieved: scheduledDate, // use scheduled date for PR timeline
+                date_achieved: scheduledDate,
+                set_id: savedLog.id, // NEW: Link to specific set
+                is_invalid: false,
               },
             });
           }

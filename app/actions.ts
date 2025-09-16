@@ -41,8 +41,6 @@ export const signUpAction = async (formData: FormData) => {
     email: validEmail,
     password: validPassword,
     options: {
-      //emailRedirectTo: `${origin}/auth/callback`,
-      emailRedirectTo: `${origin}/confirm-email`,
       data: {
         full_name: validFullName,
       },

@@ -240,7 +240,10 @@ async function prsHandler(_: z.infer<typeof prsInput>) {
   }
 
   const prs = await prisma.client_max_lifts.findMany({
-    where: { client_id: userId },
+    where: { 
+      client_id: userId,
+      is_invalid: false, // NEW: Filter out invalid PRs
+    },
     orderBy: { date_achieved: "desc" },
     take: 5,
     include: {

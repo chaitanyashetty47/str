@@ -386,6 +386,7 @@ async function fetchClientPRs(trainerId: string): Promise<ClientPR[]> {
   const recentPRs = await prisma.client_max_lifts.findMany({
     where: {
       client_id: { in: clientIds },
+      is_invalid: false, // NEW: Filter out invalid PRs
     },
     include: {
       users_profile: {

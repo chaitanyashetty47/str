@@ -34,10 +34,15 @@ model client_max_lifts {
   exercise_type ExerciseType  @default(WEIGHT_BASED) // NEW: Track exercise type
   last_updated  DateTime
   date_achieved DateTime      @default(now())
+  set_id        String?       @db.Uuid // NEW: Link to specific exercise_logs entry
+  is_invalid    Boolean       @default(false) // NEW: Allow users to invalidate suspicious PRs
   workout_exercise_lists workout_exercise_lists @relation(fields: [list_exercise_id], references: [id], onDelete: NoAction, map: "ClientMaxLift_listExerciseId_fkey")
   users_profile users_profile @relation(fields: [client_id], references: [id], onDelete: NoAction, map: "ClientMaxLift_clientId_fkey")
+  exercise_logs exercise_logs? @relation(fields: [set_id], references: [id], onDelete: SetNull, map: "ClientMaxLift_setId_fkey")
 
   @@index([client_id, list_exercise_id], map: "ClientMaxLift_clientId_listExerciseId_idx")
+  @@index([set_id], map: "ClientMaxLift_setId_idx")
+  @@index([client_id, list_exercise_id, is_invalid], map: "ClientMaxLift_clientId_listExerciseId_invalid_idx")
   @@schema("public")
 }
 
@@ -53,6 +58,7 @@ model exercise_logs {
   notes                    String?
   users_profile            users_profile            @relation(fields: [client_id], references: [id], onDelete: NoAction, map: "ExerciseLog_clientId_fkey")
   workout_set_instructions workout_set_instructions @relation(fields: [set_id], references: [id], onDelete: NoAction, map: "ExerciseLog_setId_fkey")
+  client_max_lifts         client_max_lifts[]       // NEW: One-to-many relation to PRs linked to this set
 
   @@schema("public")
 }

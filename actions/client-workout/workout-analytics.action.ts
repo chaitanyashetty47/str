@@ -166,6 +166,7 @@ async function weekAnalyticsHandler({
       where: {
         client_id: userId,
         date_achieved: { lt: weekStartDate },
+        is_invalid: false, // NEW: Filter out invalid PRs
       },
       select: {
         list_exercise_id: true,
@@ -433,6 +434,7 @@ async function overallAnalyticsHandler({
           gte: planStartDate,
           lte: planEndDate,
         },
+        is_invalid: false, // NEW: Filter out invalid PRs
       },
       include: {
         workout_exercise_lists: true,

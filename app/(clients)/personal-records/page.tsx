@@ -1,5 +1,5 @@
 import { getMaxLiftsData } from "@/actions/client-workout/get-max-lifts.action";
-import { PersonalRecordsClient } from "./PersonalRecordsClient";
+import { PersonalRecordsClient } from "@/components/personal-records/PersonalRecordsClient";
 import { validateServerRole } from "@/lib/server-role-validation";
 import { Metadata } from "next";
 
