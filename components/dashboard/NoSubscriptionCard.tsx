@@ -20,7 +20,7 @@ export function NoSubscriptionCard() {
 
       <div className="mt-6 flex justify-center">
         <Button asChild className="bg-primary hover:bg-primary/90">
-          <Link href="/settings" className="flex items-center gap-2">
+          <Link href="/settings/subscription" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Subscribe Now
             <ArrowRight className="h-4 w-4" />
