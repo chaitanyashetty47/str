@@ -11,7 +11,7 @@ datasource db {
 }
 
 model calculator_sessions {
-  id            String         @id(map: "CalculatorSession_pkey") @db.Uuid
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id       String         @db.Uuid
   category    CalculatorType
   inputs        Json
@@ -26,7 +26,7 @@ model calculator_sessions {
 }
 
 model client_max_lifts {
-  id            String        @id(map: "ClientMaxLift_pkey") @db.Uuid
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   client_id     String        @db.Uuid
   list_exercise_id String     @db.Uuid
   max_weight    Float?        // For weight-based exercises (can be null for reps-based)
@@ -47,7 +47,7 @@ model client_max_lifts {
 }
 
 model exercise_logs {
-  id                       String                   @id(map: "ExerciseLog_pkey") @db.Uuid
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   client_id                String                   @db.Uuid
   set_id                   String                   @db.Uuid
   performed_date           DateTime                 @default(now()) @db.Date
@@ -64,7 +64,7 @@ model exercise_logs {
 }
 
 model subscription_events {
-  id                   String        @id(map: "SubscriptionEvent_pkey") @db.Uuid
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id              String        @db.Uuid
   event_type           String
   payment_id           String?
@@ -83,7 +83,7 @@ model subscription_events {
 }
 
 model subscription_plans {
-  id                 String               @id(map: "SubscriptionPlan_pkey") @db.Uuid
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name               String
   category           SubscriptionCategory
   plan_type          PlanType             @default(ONLINE)
@@ -99,7 +99,7 @@ model subscription_plans {
 }
 
 model trainer_clients {
-  id                                                      String        @id(map: "TrainerClient_pkey") @db.Uuid
+  id                                                      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   trainer_id                                              String        @db.Uuid
   client_id                                               String        @db.Uuid
   category                                                SubscriptionCategory? // New field for category-specific assignments
@@ -112,7 +112,7 @@ model trainer_clients {
 }
 
 model transformation_photos {
-  id              String        @id(map: "TransformationPhoto_pkey") @db.Uuid
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id         String        @db.Uuid
   image_url       String
   uploaded_at     DateTime?     @default(now())
@@ -126,7 +126,7 @@ model transformation_photos {
 }
 
 model user_subscriptions {
-  id                       String              @id(map: "UserSubscription_pkey") @db.Uuid
+  id                       String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                  String              @db.Uuid
   plan_id                  String              @db.Uuid
   status                   SubscriptionStatus? @default(ACTIVE)
@@ -153,7 +153,7 @@ model user_subscriptions {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model users_profile {
-  id                                                        String                   @id(map: "User_pkey") @db.Uuid
+  id                                                        String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                                                     String                   @unique(map: "User_email_key")
   name                                                      String
   role                                                      Role                     @default(CLIENT)
@@ -174,7 +174,6 @@ model users_profile {
   country                                                   country?                  
   phone                                                     String?
   onboarding_completed                                      DateTime?
-  onboarding_started                                        DateTime?
   calculator_sessions                                       calculator_sessions[]
   client_max_lifts                                          client_max_lifts[]
   exercise_logs                                             exercise_logs[]
@@ -193,7 +192,7 @@ model users_profile {
 }
 
 model webhook_events {
-  id           String   @id(map: "WebhookEvent_pkey") @db.Uuid
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   webhook_id   String   @unique(map: "WebhookEvent_webhookId_key")
   event_type   String
   processed_at DateTime @default(now())
@@ -209,7 +208,7 @@ model webhook_events {
 }
 
 model weight_logs {
-  id            String        @id(map: "WeightLog_pkey") @db.Uuid
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id       String        @db.Uuid
   weight        Float
   weight_unit   WeightUnit    @default(KG)
@@ -225,7 +224,7 @@ model weight_logs {
 }
 
 model workout_day_exercises {
-  id                       String                     @id(map: "WorkoutDayExercise_pkey") @db.Uuid
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workout_day_id           String                     @db.Uuid
   list_exercise_id         String                     @db.Uuid
   instructions             String?
@@ -245,7 +244,7 @@ model workout_day_exercises {
 }
 
 model workout_days {
-  id                    String                  @id(map: "WorkoutDay_pkey") @db.Uuid
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   plan_id               String                  @db.Uuid
   week_number           Int
   day_number            Int
@@ -269,7 +268,7 @@ model workout_days {
 }
 
 model workout_exercise_lists {
-  id                    String                  @id(map: "WorkoutExerciseList_pkey") @db.Uuid
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                  String                  @unique(map: "WorkoutExerciseList_name_key")
   youtube_link          String?
   gif_url               String?
@@ -286,7 +285,7 @@ model workout_exercise_lists {
 }
 
 model workout_plans {
-  id                                                    String          @id(map: "WorkoutPlan_pkey") @db.Uuid
+  id                                                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title                                                 String
   trainer_id                                            String          @db.Uuid
   client_id                                             String          @db.Uuid
@@ -305,7 +304,7 @@ model workout_plans {
 }
 
 model workout_set_instructions {
-  id                    String                @id(map: "WorkoutSetInstruction_pkey") @db.Uuid
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   exercise_id           String                @db.Uuid
   set_number            Int
   reps                  Int?
@@ -323,7 +322,7 @@ model workout_set_instructions {
 }
 
 model workout_day_videos {
-  id            String      @id(map: "WorkoutDayVideo_pkey") @db.Uuid
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workout_day_id String     @db.Uuid
   client_id     String      @db.Uuid
   video_url     String      // The cloud link (Google Drive, Dropbox, etc.)
@@ -407,6 +406,7 @@ enum SubscriptionStatus {
 enum WorkoutCategory {
   HYPERTROPHY
   STRENGTH
+  RELOAD
   DELOAD
   ENDURANCE
 

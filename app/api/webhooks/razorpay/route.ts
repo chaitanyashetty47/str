@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       // Create webhook event record
       await tx.webhook_events.create({
             data: {
-          id: crypto.randomUUID(),
+          //id: crypto.randomUUID(),
           webhook_id: webhookId,
           event_type: payload.event,
           payload: payload as unknown as Prisma.InputJsonValue,
@@ -252,7 +252,7 @@ async function handleSubscriptionCharged(subscriptionData: any, paymentData: any
   // Log the payment event
   await tx.subscription_events.create({
     data: {
-      id: crypto.randomUUID(),
+      // id: crypto.randomUUID(),
       event_type: 'subscription.charged',
       user_id: subscription.user_id,
       subscription_plan_id: subscription.plan_id,
@@ -499,7 +499,7 @@ async function handleSubscriptionCancelled(subscriptionData: any, tx: any) {
   // Log the cancellation completion event
   await tx.subscription_events.create({
     data: {
-      id: crypto.randomUUID(),
+      // id: crypto.randomUUID(),
       event_type: 'subscription.cancelled',
       user_id: subscription.user_id,
       subscription_plan_id: subscription.plan_id,
@@ -608,7 +608,7 @@ async function handleSubscriptionUpdated(subscriptionData: any, tx: any) {
   // Log the update event
   await tx.subscription_events.create({
     data: {
-      id: crypto.randomUUID(),
+      // id: crypto.randomUUID(),
       event_type: 'subscription.updated',
       user_id: subscription.user_id,
       subscription_plan_id: subscription.plan_id,

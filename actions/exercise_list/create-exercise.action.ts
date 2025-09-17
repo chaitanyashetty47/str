@@ -5,7 +5,7 @@ import { ActionState, createSafeAction } from "@/lib/create-safe-action";
 import prisma from "@/utils/prisma/prismaClient";
 import { requireTrainerAccess } from "@/utils/user";
 import { BodyPart } from "@prisma/client";
-import { v4 as uuidv4 } from 'uuid';
+// import { v4 as uuidv4 } from 'uuid';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Input validation schema
@@ -52,7 +52,7 @@ async function createExerciseHandler({
     // Create the exercise
     const exercise = await prisma.workout_exercise_lists.create({
       data: {
-        id: uuidv4(),   
+        // id: uuidv4(),   
         name,
         type,
         is_reps_based,

@@ -3,7 +3,7 @@ import { createSafeAction } from "@/lib/create-safe-action";
 import prisma from "@/utils/prisma/prismaClient";
 import { getAuthenticatedUserId } from "@/utils/user";
 import { z } from "zod";
-import { randomUUID } from "crypto";
+// import { randomUUID } from "crypto";
 
 const UpdateTodaysWeightSchema = z.object({
   weight: z.number().min(20).max(500),
@@ -34,7 +34,7 @@ export const updateTodaysWeight = createSafeAction(
         weight_unit: weightUnit, // Update with new unit
       },
       create: {
-        id: randomUUID(), 
+        //id: randomUUID(), 
         user_id: userId, 
         weight: weight, // Store weight in user's preferred unit
         weight_unit: weightUnit, // Store user's preferred unit

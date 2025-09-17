@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     // Log the payment failure event
     await prisma.subscription_events.create({
       data: {
-        id: crypto.randomUUID(),
+       // id: crypto.randomUUID(),
         event_type: 'payment_failed',
         user_id: user.id,
         subscription_id: subscriptionId,

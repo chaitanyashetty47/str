@@ -84,7 +84,7 @@ async function uploadWorkoutVideoHandler({
       // Create new video
       const newVideo = await prisma.workout_day_videos.create({
         data: {
-          id: crypto.randomUUID(),
+          // id: crypto.randomUUID(),
           workout_day_id: workoutDayId,
           client_id: userId,
           video_url: videoUrl,

@@ -11,7 +11,7 @@ import { useAction } from "@/hooks/useAction";
 import { updateTodaysWeight } from "@/actions/body-measurement-metrics/update-todays-weight.action";
 import useSWR from "swr";
 import { mutate } from "swr";
-import { getWeightUnit } from "@/actions/profile/get-weight-unit.action";
+import { getWeightUnit } from "@/actions/profile/client/get-weight-unit.action";
 import { WeightUnit } from "@prisma/client";
 import { convertFromKg } from "@/utils/weight";
 import { useAuth } from "@/contexts/AuthContext";

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       // Log the cancellation event
       await tx.subscription_events.create({
         data: {
-          id: crypto.randomUUID(),
+          //id: crypto.randomUUID(),
           event_type: 'subscription.cancelled',
           user_id: subscription.user_id,
           subscription_plan_id: subscription.plan_id,

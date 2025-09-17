@@ -60,7 +60,7 @@ export const addBMR = createSafeAction(
     // 1. Insert into calculator_sessions
     const session = await prisma.calculator_sessions.create({
       data: {
-        id: crypto.randomUUID(),
+       // id: crypto.randomUUID(),
         user_id: userId,
         category: "BMR",
         date: today, // This will store exactly as client intended (11 Aug = 11 Aug)
@@ -97,7 +97,7 @@ export const addBMR = createSafeAction(
         // Create new entry
         await prisma.weight_logs.create({
           data: { 
-            id: crypto.randomUUID(), 
+           // id: crypto.randomUUID(), 
             user_id: userId, 
             weight: weightInKg, // Store converted weight in KG
             weight_unit: WeightUnit.KG, // Always store in KG

@@ -5,7 +5,7 @@ import { createSafeAction } from "@/lib/create-safe-action";
 import prisma from "@/utils/prisma/prismaClient";
 import { checkAdminAccess, getAdminUser } from "@/utils/user";
 import { Prisma, SubscriptionStatus } from "@prisma/client";
-import { randomUUID } from "crypto";
+// import { randomUUID } from "crypto";
 
 const GetAdminClientsSchema = z.object({
   page: z.number().optional().transform((v) => v ?? 0),
@@ -239,7 +239,7 @@ export const assignTrainerToClient = createSafeAction(
       // Create new assignment
       result = await prisma.trainer_clients.create({
         data: {
-          id: randomUUID(),
+          //: randomUUID(),
           client_id: clientId,
           trainer_id: trainerId,
           category: category,
@@ -299,7 +299,7 @@ export const updateTrainerAssignments = createSafeAction(
         if (!existingAssignment) {
           await prisma.trainer_clients.create({
             data: {
-              id: randomUUID(),
+              // id: randomUUID(),
               client_id: clientId,
               trainer_id: newTrainerId,
               category: category,

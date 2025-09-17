@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       // Log the successful payment event
       await prisma.subscription_events.create({
         data: {
-          id: crypto.randomUUID(),
+          //id: crypto.randomUUID(),
           event_type: 'payment.verified',
           user_id: subscription.user_id,
           subscription_plan_id: subscription.plan_id,

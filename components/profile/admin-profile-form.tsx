@@ -5,8 +5,8 @@ import { User } from "@supabase/supabase-js";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { updateAdminProfile } from "@/actions/profile/update-admin-profile.action";
-import { getAdminProfileDetails } from "@/actions/profile/get-admin-profile-details.action";
+import { updateAdminProfile } from "@/actions/profile/admin/update-admin-profile.action";
+import { getAdminProfileDetails } from "@/actions/profile/admin/get-admin-profile-details.action";
 import { useAction } from "@/hooks/useAction";
 import { toast } from "sonner";
 

@@ -1,7 +1,6 @@
 "use server"
 import { createSafeAction } from "@/lib/create-safe-action";
 import { getAuthenticatedUserId } from "@/utils/user";
-import prisma from "@/utils/prisma/prismaClient";
 import { z } from "zod";
 import { Gender, ActivityLevel, WeightUnit } from "@prisma/client";
 import { convertToKG } from "@/utils/weight-conversions";

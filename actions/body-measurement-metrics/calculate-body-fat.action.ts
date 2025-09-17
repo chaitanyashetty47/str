@@ -2,8 +2,7 @@
 import { z } from "zod";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { getAuthenticatedUserId } from "@/utils/user";
-import { Gender, WeightUnit } from "@prisma/client";
-import { convertToKg } from "@/utils/weight";
+import { Gender } from "@prisma/client";
 
 const CalculateBodyFatSchema = z.object({
   height: z.number().min(100).max(250), // Height in cm (100cm = 3'3", 250cm = 8'2")

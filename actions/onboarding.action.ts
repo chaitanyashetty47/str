@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import prisma from '@/utils/prisma/prismaClient'
 import { onboardingSchema } from '@/types/onboarding'
 import { alpha3ToCountryEnum } from '@/utils/country-mapping'
-import { v4 as uuidv4 } from 'uuid'
+// import { v4 as uuidv4 } from 'uuid'
 
 
 export async function completeOnboardingAction(data: unknown) {
@@ -75,7 +75,7 @@ export async function completeOnboardingAction(data: unknown) {
     // Create initial weight log entry
     await prisma.weight_logs.create({
       data: {
-        id: uuidv4(),
+        // id: uuidv4(),
         user_id: user.id,
         weight: result.data.weight,
         weight_unit: "KG", // Always KG for new users

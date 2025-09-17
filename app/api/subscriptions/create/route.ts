@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import Razorpay from 'razorpay';
-import crypto from 'crypto';
+// import crypto from 'crypto';
 import prisma from '@/utils/prisma/prismaClient';
 import { getAuthenticatedUserId } from '@/utils/user';
 
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 
       await prisma.user_subscriptions.create({
         data: {
-          id: crypto.randomUUID(),
+          //id: crypto.randomUUID(),
           user_id: userId,
           plan_id: plan.id,
           razorpay_subscription_id: subscription.id,

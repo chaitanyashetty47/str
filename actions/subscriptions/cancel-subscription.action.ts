@@ -4,7 +4,7 @@ import { createSafeAction, ActionState } from '@/lib/create-safe-action';
 import prisma from '@/utils/prisma/prismaClient';
 import Razorpay from 'razorpay';
 import { z } from 'zod';
-import crypto from 'crypto';
+// import crypto from 'crypto';
 
 const CancelSubscriptionSchema = z.object({
   userId: z.string().uuid(),
@@ -74,7 +74,7 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       // Log the cancellation request event
       await tx.subscription_events.create({
         data: {
-          id: crypto.randomUUID(),
+          // id: crypto.randomUUID(),
           event_type: 'cancel_requested',
           user_id: subscription.user_id,
           subscription_plan_id: subscription.plan_id,

@@ -3,8 +3,8 @@ import { z } from "zod";
 import { createSafeAction } from "@/lib/create-safe-action";
 import prisma from "@/utils/prisma/prismaClient";
 import { getAuthenticatedUserId } from "@/utils/user";
-import { WeightUnit, Gender } from "@prisma/client";
-import { convertToKg } from "@/utils/weight";
+import { Gender } from "@prisma/client";
+
 
 const AddBodyFatSchema = z.object({
   height: z.number().min(100).max(250), // Height in cm (100cm = 3'3", 250cm = 8'2")
@@ -116,7 +116,7 @@ export const addBodyFat = createSafeAction(
     // Insert into calculator_sessions
     const session = await prisma.calculator_sessions.create({
       data: {
-        id: crypto.randomUUID(),
+        //id: crypto.randomUUID(),
         user_id: userId,
         category: "BODY_FAT",
         date: today,

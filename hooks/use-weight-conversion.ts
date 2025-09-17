@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { WeightUnit } from "@prisma/client";
 import { convertFromKg } from "@/utils/weight";
-import { getWeightUnit } from "@/actions/profile/get-weight-unit.action";
+import { getWeightUnit } from "@/actions/profile/client/get-weight-unit.action";
 
 interface WeightConversionHook {
   userWeightUnit: WeightUnit;

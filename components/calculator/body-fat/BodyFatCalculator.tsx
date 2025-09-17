@@ -10,10 +10,9 @@ import { addBodyFat } from "@/actions/body-measurement-metrics/add-body-fat.acti
 import { updateTodaysWeight } from "@/actions/body-measurement-metrics/update-todays-weight.action";
 import { BodyFatAreaChart } from "./BodyFatAreaChart";
 import useSWR from "swr";
-import { getWeightUnit } from "@/actions/profile/get-weight-unit.action";
+//import { getWeightUnit } from "@/actions/profile/client/get-weight-unit.action";
 import { WeightUnit, Gender } from "@prisma/client";
-import { convertFromKg } from "@/utils/weight";
-import { convertToKG } from "@/utils/weight-conversions";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -165,19 +164,19 @@ export default function BodyFatCalculator({
   const [gender, setGender] = useState<Gender>(initialGender);
   const isSubmittingRef = useRef(false);
 
-  // SWR for user's weight unit preference
-  const { data: weightUnit } = useSWR(
-    "userWeightUnit", 
-    async () => {
-      const unit = await getWeightUnit();
-      return unit;
-    },
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 60000,
-    }
-  );
+  // // SWR for user's weight unit preference
+  // const { data: weightUnit } = useSWR(
+  //   "userWeightUnit", 
+  //   async () => {
+  //     const unit = await getWeightUnit();
+  //     return unit;
+  //   },
+  //   {
+  //     revalidateOnFocus: false,
+  //     revalidateOnReconnect: false,
+  //     dedupingInterval: 60000,
+  //   }
+  // );
 
   // Fetch today's weight data
   const { data: todaysWeightData, mutate: mutateTodaysWeight } = useSWR(

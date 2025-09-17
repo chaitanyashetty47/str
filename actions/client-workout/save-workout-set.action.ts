@@ -4,7 +4,6 @@ import { z } from "zod";
 import { createSafeAction, ActionState } from "@/lib/create-safe-action";
 import prisma from "@/utils/prisma/prismaClient";
 import { createClient } from "@/utils/supabase/server";
-import { revalidateTag } from "next/cache";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -168,10 +167,10 @@ async function saveSetHandler({
             }
           } else if (isNewPr) {
             // Create new PR linked to this set
-            const { randomUUID } = await import('crypto');
+            // const { randomUUID } = await import('crypto');
             await prisma.client_max_lifts.create({
               data: {
-                id: randomUUID(),
+                // id: randomUUID(),
                 client_id: userId,
                 list_exercise_id: exerciseId,
                 max_reps: reps,
@@ -209,10 +208,10 @@ async function saveSetHandler({
             }
           } else if (isNewPr) {
             // Create new PR linked to this set
-            const { randomUUID } = await import('crypto');
+            // const { randomUUID } = await import('crypto');
             await prisma.client_max_lifts.create({
               data: {
-                id: randomUUID(),
+                // id: randomUUID(),
                 client_id: userId,
                 list_exercise_id: exerciseId,
                 max_weight: estimatedOneRm,
@@ -227,10 +226,10 @@ async function saveSetHandler({
         }
       } else {
       // Create new log - generate UUID for id
-      const { randomUUID } = await import('crypto');
+      // const { randomUUID } = await import('crypto');
       savedLog = await prisma.exercise_logs.create({
         data: {
-          id: randomUUID(),
+          // id: randomUUID(),
           client_id: userId,
           set_id: setInstruction.id,
           weight_used: weightKg,
@@ -288,7 +287,7 @@ async function saveSetHandler({
           // Create new PR linked to this set
           await prisma.client_max_lifts.create({
             data: {
-              id: randomUUID(),
+              // id: randomUUID(),
               client_id: userId,
               list_exercise_id: exerciseId,
               max_reps: reps,
@@ -320,7 +319,7 @@ async function saveSetHandler({
           // Create new PR linked to this set
           await prisma.client_max_lifts.create({
             data: {
-              id: randomUUID(),
+              // id: randomUUID(),
               client_id: userId,
               list_exercise_id: exerciseId,
               max_weight: estimatedOneRm,
@@ -580,10 +579,10 @@ async function bulkSaveExerciseHandler({
             }
           } else if (isNewPr) {
             // Create new PR linked to this set
-            const { randomUUID } = await import('crypto');
+            // const { randomUUID } = await import('crypto');
             await prisma.client_max_lifts.create({
               data: {
-                id: randomUUID(),
+                // id: randomUUID(),
                 client_id: userId,
                 list_exercise_id: exerciseId,
                 max_reps: set.reps,
@@ -621,10 +620,10 @@ async function bulkSaveExerciseHandler({
             }
           } else if (isNewPr) {
             // Create new PR linked to this set
-            const { randomUUID } = await import('crypto');
+            // const { randomUUID } = await import('crypto');
             await prisma.client_max_lifts.create({
               data: {
-                id: randomUUID(),
+                // id: randomUUID(),
                 client_id: userId,
                 list_exercise_id: exerciseId,
                 max_weight: estimatedOneRm,
@@ -638,10 +637,10 @@ async function bulkSaveExerciseHandler({
           }
         }
       } else {
-        const { randomUUID } = await import('crypto');
+        // const { randomUUID } = await import('crypto');
         savedLog = await prisma.exercise_logs.create({
           data: {
-            id: randomUUID(),
+            // id: randomUUID(),
             client_id: userId,
             set_id: setInstruction.id,
             weight_used: set.weightKg,
@@ -699,7 +698,7 @@ async function bulkSaveExerciseHandler({
             // Create new PR linked to this set
             await prisma.client_max_lifts.create({
               data: {
-                id: randomUUID(),
+                // id: randomUUID(),
                 client_id: userId,
                 list_exercise_id: exerciseId,
                 max_reps: set.reps,
@@ -731,7 +730,7 @@ async function bulkSaveExerciseHandler({
             // Create new PR linked to this set
             await prisma.client_max_lifts.create({
               data: {
-                id: randomUUID(),
+                // id: randomUUID(),
                 client_id: userId,
                 list_exercise_id: exerciseId,
                 max_weight: estimatedOneRm,

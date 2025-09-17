@@ -5,7 +5,7 @@ import prisma from "@/utils/prisma/prismaClient";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { z } from "zod";
-import { randomUUID } from "crypto";
+// import { randomUUID } from "crypto";
 
 // Types for the admin dashboard data
 const AdminStatsSchema = z.object({
@@ -174,7 +174,7 @@ export async function assignTrainerToClient(
     // Create new assignment
     await prisma.trainer_clients.create({
       data: {
-        id: randomUUID(),
+        // id: randomUUID(),
         client_id: clientId,
         trainer_id: trainerId,
         category: category || null,
@@ -211,7 +211,7 @@ export async function assignAllInOneTrainers(
       if (assignments.fitnessTrainerId) {
         const fitnessAssignment = await tx.trainer_clients.create({
           data: {
-            id: randomUUID(),
+            // id: randomUUID(),
             client_id: clientId,
             trainer_id: assignments.fitnessTrainerId,
             category: 'FITNESS',
@@ -225,7 +225,7 @@ export async function assignAllInOneTrainers(
       if (assignments.psychologyTrainerId) {
         const psychologyAssignment = await tx.trainer_clients.create({
           data: {
-            id: randomUUID(),
+            // id: randomUUID(),
             client_id: clientId,
             trainer_id: assignments.psychologyTrainerId,
             category: 'PSYCHOLOGY',
@@ -239,7 +239,7 @@ export async function assignAllInOneTrainers(
       if (assignments.manifestationTrainerId) {
         const manifestationAssignment = await tx.trainer_clients.create({
           data: {
-            id: randomUUID(),
+            // id: randomUUID(),
             client_id: clientId,
             trainer_id: assignments.manifestationTrainerId,
             category: 'MANIFESTATION',
