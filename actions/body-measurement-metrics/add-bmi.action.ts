@@ -11,8 +11,6 @@ const AddBmiSchema = z.object({
   height: z.number().min(80).max(250),
   userWeightUnit: z.nativeEnum(WeightUnit),
   clientDate: z.string(), // Client sends current date in YYYY-MM-DD format
-  saveNewWeight: z.boolean().optional(),
-  updateHeight: z.boolean().optional(),
 });
 
 function calculateBMI(weight: number, height: number) {
@@ -28,7 +26,7 @@ function getBmiCategory(bmi: number) {
 
 export const addBMI = createSafeAction(
   AddBmiSchema,
-  async ({ weight, height, userWeightUnit, clientDate, saveNewWeight = false, updateHeight = false }) => {
+  async ({ weight, height, userWeightUnit, clientDate }) => {
     const userId = await getAuthenticatedUserId();
     if (!userId) return { error: "Unauthorized" };
 
@@ -60,9 +58,19 @@ export const addBMI = createSafeAction(
       },
     });
 
-    // 2. Create new weight log entry (always in KG)
-    await prisma.weight_logs.create({
-      data: { 
+    // 2. Upsert weight log entry (always in KG)
+    await prisma.weight_logs.upsert({
+      where: {
+        user_id_date_logged: { 
+          user_id: userId, 
+          date_logged: today 
+        }
+      },
+      update: {
+        weight: weightInKg, // Update with new weight
+        weight_unit: WeightUnit.KG, // Always store in KG
+      },
+      create: {
         id: crypto.randomUUID(), 
         user_id: userId, 
         weight: weightInKg, // Store converted weight in KG
@@ -71,21 +79,6 @@ export const addBMI = createSafeAction(
       },
     });
 
-    // 3. Optionally update users_profile weight (always in KG)
-    if (saveNewWeight) {
-      await prisma.users_profile.update({
-        where: { id: userId },
-        data: { weight: weightInKg }, // Store converted weight in KG
-      });
-    }
-
-    // 4. Optionally update user_profiles.height
-    if (updateHeight) {
-      await prisma.users_profile.update({
-        where: { id: userId },
-        data: { height },
-      });
-    }
 
     return {
       data: {

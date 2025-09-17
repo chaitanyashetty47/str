@@ -17,7 +17,7 @@ export default async function BMRCalculatorPage() {
   const profileDetails = await getProfileDetails();
 
   if (!profileDetails) {
-    redirect("/sign-in");
+    redirect("/settings");
   }
 
   const { height, gender, weight, age, activity_level } = profileDetails;

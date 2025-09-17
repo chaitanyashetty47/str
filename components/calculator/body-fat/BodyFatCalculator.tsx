@@ -109,7 +109,14 @@ async function fetchIsTodayLogged() {
 
 async function fetchTodaysWeight() {
   const mod = await import("@/actions/body-measurement-metrics/get-todays-weight.action");
-  const result = await mod.getTodaysWeight({});
+  // const result = await mod.getTodaysWeight({});
+    // Build client date in YYYY-MM-DD
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const clientDate = `${year}-${month}-${day}`;
+    const result = await mod.getTodaysWeight({ clientDate });
   return result.data;
 }
 

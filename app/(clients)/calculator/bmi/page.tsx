@@ -17,6 +17,8 @@ export default async function BMICalculatorPage() {
   // Validate user authentication and CLIENT role
   const { user } = await validateServerRole(['CLIENT']);
 
+  
+
   const weightHeight = await getWeightHeight();
   if(weightHeight.error) {
     return <div>Error: {weightHeight.error}</div>

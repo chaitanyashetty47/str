@@ -17,7 +17,9 @@ export const isTodayWeightLogged = createSafeAction(
     if (!userId) return { error: "Unauthorized" };
 
     // Use stripTimezone to ensure consistent date handling regardless of server location
-    const today = stripTimezone(new Date(clientDate));
+    const today = new Date(clientDate);
+
+    console.log("Today's Date is: ", today);
 
     const entry = await prisma.weight_logs.findFirst({
       where: {

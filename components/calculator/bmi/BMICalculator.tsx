@@ -7,13 +7,11 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useAction } from "@/hooks/useAction";
 import { addBMI } from "@/actions/body-measurement-metrics/add-bmi.action";
-import { updateTodaysWeight } from "@/actions/body-measurement-metrics/update-todays-weight.action";
 import { BMIAreaChart } from "./BMIAreaChart";
 import useSWR from "swr";
 import { getWeightUnit } from "@/actions/profile/get-weight-unit.action";
 import { WeightUnit } from "@prisma/client";
 import { convertFromKg } from "@/utils/weight";
-import { convertToKG } from "@/utils/weight-conversions";
 import { useAuth } from "@/contexts/AuthContext";
 
 function getTodayISODate() {
@@ -64,7 +62,13 @@ async function fetchIsTodayLogged() {
 
 async function fetchTodaysWeight() {
   const mod = await import("@/actions/body-measurement-metrics/get-todays-weight.action");
-  const result = await mod.getTodaysWeight({});
+  // Build client date in YYYY-MM-DD
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const clientDate = `${year}-${month}-${day}`;
+  const result = await mod.getTodaysWeight({ clientDate });
   return result.data;
 }
 
@@ -101,7 +105,6 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
     isLocked: boolean;
     weightUnit: 'KG' | 'LB';
   } | null>(null);
-  const [saveNewWeight, setSaveNewWeight] = useState(false);
   const isSubmittingRef = useRef(false);
 
   // SWR for user's weight unit preference
@@ -137,11 +140,9 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
       if (todaysWeightData.source === 'weight_logs') {
         // Weight already logged today, use that value
         setWeight(todaysWeightData.weightUnit === 'KG' ? todaysWeightData.weight : convertFromKg(todaysWeightData.weight, WeightUnit.LB));
-        setSaveNewWeight(false); // Cannot save new weight if already logged
       } else {
         // Weight from profile, allow editing and saving
         setWeight(todaysWeightData.weightUnit === 'KG' ? todaysWeightData.weight : convertFromKg(todaysWeightData.weight, WeightUnit.LB));
-        setSaveNewWeight(true); // Can save new weight
       }
     }
   }, [todaysWeightData]);
@@ -212,14 +213,6 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
       // Mark that we're done submitting
       isSubmittingRef.current = false;
       
-      // If user chose to save new weight, update weight_logs
-      if (saveNewWeight && user) {
-        const weightInKG = convertToKG(weight, userWeightUnit);
-        await updateTodaysWeight({ weight: weightInKG, weightUnit: 'KG' });
-        // Refresh today's weight data
-        mutateTodaysWeight();
-      }
-      
       // Close form
       setShowAddForm(false);
       
@@ -257,7 +250,7 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
       height, 
       userWeightUnit, // Server will use this to convert to KG
       clientDate, // Send client's current date to avoid timezone issues
-      saveNewWeight: false // We handle weight saving separately now
+      // saveNewWeight: false // We handle weight saving separately now
     });
   }
 
@@ -292,9 +285,8 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
               <CardHeader>
                 <CardTitle>Add New BMI</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  {weightData?.source === 'weight_logs' 
-                    ? "Weight already logged for today - using that value"
-                    : "Weight from profile - can be updated"}
+                  Weight will be automatically logged for today's BMI calculation. 
+                  To permanently update your profile weight and height, go to <a href="/settings" className="text-blue-600 hover:underline">Settings</a>.
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -332,20 +324,6 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
                     </span>
                   </div>
                 </div>
-                {!weightData?.isLocked && !isTodayWeightLogged && (
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="saveNewWeight"
-                      checked={saveNewWeight}
-                      onChange={(e) => setSaveNewWeight(e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="saveNewWeight" className="text-sm">
-                      Save as today's weight
-                    </Label>
-                  </div>
-                )}
                 {addError && <div className="text-red-500 text-sm">{addError}</div>}
                 <div className="flex gap-2">
                   <Button 

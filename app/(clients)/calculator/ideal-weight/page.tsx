@@ -1,16 +1,14 @@
 import { getProfileDetails } from "@/actions/profile/get-profile-details.action";
 import { redirect } from "next/navigation";
 import { IdealWeightCalculator } from "@/components/calculator/ideal-weight/IdealWeightCalculator";
-import { createClient } from "@/utils/supabase/server";
+import { validateServerRole } from "@/lib/server-role-validation";
+ 
 
 export default async function IdealWeightPage() {
 
-  //Check if user is logged in
-  const supabase = await createClient();
-  const { data: user } = await supabase.auth.getUser();
-  if(!user) {
-    return redirect("/sign-in");
-  }
+    // Validate user authentication and CLIENT role
+    const { user } = await validateServerRole(['CLIENT']);
+
 
   const profileDetails = await getProfileDetails();
 

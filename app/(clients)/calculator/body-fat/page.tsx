@@ -3,19 +3,21 @@ import BodyFatCalculator from "@/components/calculator/body-fat/BodyFatCalculato
 import { getWeightHeight } from "@/actions/body-measurement-metrics/get-weight-height.action";
 import { getProfileDetails } from "@/actions/profile/get-profile-details.action";
 import { Gender } from "@prisma/client";
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+import { validateServerRole } from "@/lib/server-role-validation";
 
 // Force dynamic rendering since this page uses cookies for authentication
 export const dynamic = 'force-dynamic';
 
 export default async function BodyFatCalculatorPage() {
   //Check if user is logged in
-  const supabase = await createClient();
-  const { data: user } = await supabase.auth.getUser();
-  if(!user) {
-    return redirect("/settings");
-  }
+  // const supabase = await createClient();
+  // const { data: user } = await supabase.auth.getUser();
+  // if(!user) {
+  //   return redirect("/settings");
+  // }
+
+  // Validate user authentication and CLIENT role
+  const { user } = await validateServerRole(['CLIENT']);
 
   let weight = 0;
   let height = 0;

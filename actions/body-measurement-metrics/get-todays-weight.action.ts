@@ -2,10 +2,11 @@
 import { createSafeAction } from "@/lib/create-safe-action";
 import prisma from "@/utils/prisma/prismaClient";
 import { getAuthenticatedUserId } from "@/utils/user";
-import { stripTimezone } from "@/utils/date-utils";
 import { z } from "zod";
 
-const GetTodaysWeightSchema = z.object({});
+const GetTodaysWeightSchema = z.object({
+  clientDate: z.string(), // YYYY-MM-DD from client
+});
 
 export interface WeightData {
   weight: number;
@@ -16,12 +17,12 @@ export interface WeightData {
 
 export const getTodaysWeight = createSafeAction(
   GetTodaysWeightSchema,
-  async () => {
+  async ({ clientDate }) => {
     const userId = await getAuthenticatedUserId();
     if (!userId) return { error: "Unauthorized" };
 
-    // Use stripTimezone to ensure consistent date handling regardless of server location
-    const today = stripTimezone(new Date());
+    // Use the client date exactly as provided to avoid timezone drift
+    const today = new Date(clientDate);
     
     // First priority: Check if weight already logged today
     const todaysWeightLog = await prisma.weight_logs.findUnique({
@@ -52,7 +53,7 @@ export const getTodaysWeight = createSafeAction(
         weight: userProfile?.weight || 0,
         source: 'profile',
         isLocked: false, // Can be saved to weight_logs
-        weightUnit: userProfile?.weight_unit || 'KG'
+        weightUnit: (userProfile?.weight_unit as 'KG' | 'LB') || 'KG'
       } as WeightData
     };
   }

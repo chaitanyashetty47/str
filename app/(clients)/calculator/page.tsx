@@ -37,13 +37,7 @@ export default async function Calculator() {
       href: "/calculator/body-fat",
       color: "text-purple-600"
     },
-    {
-      title: "Calorie Needs",
-      description: "Calculate daily calorie requirements based on activity level",
-      icon: Zap,
-      href: "/calculator/calorie-needs",
-      color: "text-orange-600"
-    },
+
     {
       title: "Ideal Weight",
       description: "Determine your ideal weight range based on height and build",
@@ -57,13 +51,6 @@ export default async function Calculator() {
       icon: Heart,
       href: "/calculator/lean-body-mass",
       color: "text-pink-600"
-    },
-    {
-      title: "One Rep Max",
-      description: "Calculate your one repetition maximum for strength training",
-      icon: Dumbbell,
-      href: "/calculator/one-rep-max",
-      color: "text-indigo-600"
     },
     {
       title: "Macro Split",
@@ -89,8 +76,8 @@ export default async function Calculator() {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
-                    <IconComponent className={`w-6 h-6 ${calculator.color}`} />
-                    <CardTitle className="text-lg">{calculator.title}</CardTitle>
+                    {/* <IconComponent className={`w-6 h-6 ${calculator.color}`} /> */}
+                    <CardTitle className="text-lg text-strentor-blue">{calculator.title}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>

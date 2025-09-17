@@ -115,6 +115,14 @@ export function PasswordResetClient({ searchParams }: PasswordResetClientProps) 
   // Show password reset form
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#F31818]/5 via-[#00D115]/5 to-[#0D97FF]/5">
+      <div className="absolute top-4 left-4">
+        <button
+          onClick={() => router.push('/')}
+          className="text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 transition-colors"
+        >
+          ← Back To Home
+        </button>
+      </div>
       <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 max-w-md w-full">
         <div className="text-center mb-6">
           <div className="text-blue-500 mb-4">
