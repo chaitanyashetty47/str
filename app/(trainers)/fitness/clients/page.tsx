@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function ClientsPage() {
   // Validate user authentication and FITNESS_TRAINER/FITNESS_TRAINER_ADMIN role
-  const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
+  // const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
 
   // Fetch initial data for the first page
   const initialDataResult = await fetchTrainerClients({

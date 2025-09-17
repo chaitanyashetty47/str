@@ -422,40 +422,44 @@ async function fetchNewlyAssignedClients(trainerId: string): Promise<NewlyAssign
   const currentDate = new Date();
   
   // Get clients who need new plans (no active or future plans)
-  const newlyAssignedClients = await prisma.trainer_clients.findMany({
+  // Using a different approach: get all trainer clients first, then filter out those with active/future plans
+  const allTrainerClients = await prisma.trainer_clients.findMany({
     where: {
       trainer_id: trainerId,
-      // Only include clients who don't have active or future plans
-      client: {
-        workout_plans_as_client: {
-          none: {
-            OR: [
-              // Active plan: current date falls within plan dates
-              {
-                start_date: { lte: currentDate },
-                end_date: { gte: currentDate }
-              },
-              // Future plan: plan starts in the future
-              {
-                start_date: { gt: currentDate }
-              }
-            ]
-          }
-        }
-      }
     },
     include: {
       client: {
         select: {
           id: true,
           name: true,
-          email: true
+          email: true,
+          workout_plans_as_client: {
+            select: {
+              start_date: true,
+              end_date: true,
+              status: true
+            }
+          }
         }
       }
     },
     orderBy: {
       assigned_at: 'desc'
     }
+  });
+
+  // Filter out clients who have active or future plans
+  const newlyAssignedClients = allTrainerClients.filter(trainerClient => {
+    const hasActiveOrFuturePlan = trainerClient.client.workout_plans_as_client.some(plan => {
+      // Check if plan is active (current date falls within plan dates)
+      const isActive = plan.start_date <= currentDate && plan.end_date >= currentDate;
+      // Check if plan is future (plan starts in the future)
+      const isFuture = plan.start_date > currentDate;
+      
+      return isActive || isFuture;
+    });
+    
+    return !hasActiveOrFuturePlan;
   });
 
   // Process and format the data

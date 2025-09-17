@@ -137,8 +137,9 @@ export const updateSession = async (request: NextRequest) => {
     // Enhanced role-based access control using JWT claims
     if (user && session?.access_token && !userError) {
       const claims = decodeJWT(session.access_token);
-      
+      console.log("check claims")
       if (claims) {
+        console.log("claaims work well:", claims)
         
         // Redirect authenticated users away from auth pages
         const authPages = ['/sign-in', '/sign-up', '/forgot-password'];
