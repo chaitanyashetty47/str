@@ -100,7 +100,7 @@ export async function getUserOnboardingStatus(userId: string) {
       where: { id: userId },
       select: {
         profile_completed: true,
-        onboarding_started: true,
+        // onboarding_started: true,
         onboarding_completed: true,
         name: true,
         weight: true,

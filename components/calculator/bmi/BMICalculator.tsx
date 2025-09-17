@@ -9,7 +9,7 @@ import { useAction } from "@/hooks/useAction";
 import { addBMI } from "@/actions/body-measurement-metrics/add-bmi.action";
 import { BMIAreaChart } from "./BMIAreaChart";
 import useSWR from "swr";
-import { getWeightUnit } from "@/actions/profile/client/get-weight-unit.action";
+import { getWeightUnit } from "@/actions/profile/get-weight-unit.action";
 import { WeightUnit } from "@prisma/client";
 import { convertFromKg } from "@/utils/weight";
 import { useAuth } from "@/contexts/AuthContext";
