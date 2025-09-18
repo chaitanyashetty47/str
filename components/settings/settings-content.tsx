@@ -6,7 +6,7 @@ import { User } from "@supabase/supabase-js";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { SettingsSubscriptionsWrapper } from "@/components/subscription/settings-subscriptions-wrapper";
 import { getProfileDetails } from "@/actions/profile/get-profile-details.action";
-import { getActiveSubscriptions } from "@/actions/subscriptions/get-active-subscriptions.action";
+import { getUserSubscriptions } from "@/actions/subscriptions/get-user-subscriptions";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -40,7 +40,7 @@ export function SettingsContent({ user }: SettingsContentProps) {
         // Fetch both profile and subscription data in parallel
         const [profileResult, subscriptionResult] = await Promise.all([
           getProfileDetails(),
-          getActiveSubscriptions({})
+          getUserSubscriptions({ userId: user.id })
         ]);
 
         // Handle profile data
@@ -87,7 +87,7 @@ export function SettingsContent({ user }: SettingsContentProps) {
   // Refresh subscription data after updates  
   const refreshSubscriptionData = async () => {
     try {
-      const result = await getActiveSubscriptions({});
+      const result = await getUserSubscriptions({ userId: user.id });
       if (result.error) {
         console.error("Error refreshing subscriptions:", result.error);
       } else if (result.data) {

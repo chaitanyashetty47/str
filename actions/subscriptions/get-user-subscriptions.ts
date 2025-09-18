@@ -52,7 +52,29 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         OR: [
           // Regular active subscriptions
           {
-            status: { in: ['ACTIVE', 'CREATED', 'AUTHENTICATED', 'PENDING'] },
+            status: 'ACTIVE',
+            payment_status: 'COMPLETED',
+            cancel_requested_at: null,
+          },
+          // Active subscriptions with pending payment (edge case)
+          {
+            status: 'ACTIVE',
+            payment_status: 'PENDING',
+            cancel_requested_at: null,
+          },
+          // Pending verification subscriptions
+          {
+            status: 'CREATED',
+            payment_status: 'PENDING',
+          },
+          // Failed payment subscriptions
+          {
+            status: 'CREATED',
+            payment_status: 'FAILED',
+          },
+          // Other active states (for backward compatibility)
+          {
+            status: { in: ['AUTHENTICATED', 'PENDING'] },
             cancel_requested_at: null,
           },
           // Cancelled subscriptions that are still within their cycle

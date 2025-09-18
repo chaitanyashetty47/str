@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreVertical, Calendar, CreditCard, AlertCircle, Edit } from 'lucide-react';
+import { MoreVertical, Calendar, CreditCard, AlertCircle, Edit, Clock, RefreshCw, X } from 'lucide-react';
 import { SubscriptionWithPlan } from '@/actions/subscriptions/get-user-subscriptions';
 import { updateSubscription } from '@/actions/subscriptions/update-subscription.action';
 import { getAvailablePlanChanges } from '@/actions/subscriptions/get-available-plan-changes.action';
@@ -43,9 +43,73 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
   const [availablePlanChanges, setAvailablePlanChanges] = useState<any>(null);
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
+  const handleRetryPayment = async (subscription: SubscriptionWithPlan) => {
+    try {
+      // Reset payment status to PENDING for retry
+      const resetResponse = await fetch('/api/subscriptions/reset-payment-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscriptionId: subscription.id,
+        }),
+      });
+
+      if (resetResponse.ok) {
+        toast.success('Payment retry initiated', {
+          description: 'Please complete your payment to activate the subscription.',
+        });
+        onRefresh();
+      } else {
+        toast.error('Failed to initiate payment retry');
+      }
+    } catch (error) {
+      console.error('Error handling retry payment:', error);
+      toast.error('Failed to initiate payment retry');
+    }
+  };
+
   const handleCancelClick = (subscription: SubscriptionWithPlan) => {
     setSelectedSubscription(subscription);
     setCancelDialogOpen(true);
+  };
+
+  const handleCancelPendingSubscription = async (subscription: SubscriptionWithPlan) => {
+    if (!subscription.razorpaySubscriptionId) return;
+
+    setIsCancelling(true);
+    try {
+      const response = await fetch('/api/subscriptions/mark-cancelled', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscriptionId: subscription.razorpaySubscriptionId,
+          reason: 'USER_CANCELLED'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to cancel subscription');
+      }
+
+      toast.success('Subscription cancelled successfully', {
+        description: 'The pending subscription has been cancelled.',
+      });
+      onRefresh();
+    } catch (error) {
+      console.error('Failed to cancel subscription:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to cancel subscription';
+      toast.error('Cancellation Failed', {
+        description: errorMessage,
+      });
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const handleConfirmCancel = async () => {
@@ -149,6 +213,21 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
       return <Badge variant="destructive">Active Until {endDate}</Badge>;
     }
     
+    // Handle active subscriptions with pending payment
+    if (subscription.status === 'ACTIVE' && subscription.paymentStatus === 'PENDING') {
+      return <Badge variant="secondary" className="bg-yellow-500 text-white">Active - Payment Pending</Badge>;
+    }
+    
+    // Handle pending verification
+    if (subscription.status === 'CREATED' && subscription.paymentStatus === 'PENDING') {
+      return <Badge variant="secondary" className="bg-yellow-500 text-white">Verifying</Badge>;
+    }
+    
+    // Handle failed payments
+    if (subscription.status === 'CREATED' && subscription.paymentStatus === 'FAILED') {
+      return <Badge variant="destructive">Payment Failed</Badge>;
+    }
+    
     switch (subscription.status) {
       case 'ACTIVE':
         return <Badge variant="default">Active</Badge>;
@@ -187,6 +266,152 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
     }
   };
 
+  const renderPendingSubscriptionCard = (subscription: SubscriptionWithPlan) => {
+    return (
+      <Card key={subscription.id} className="border-yellow-200 bg-yellow-50">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                <Clock className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(subscription)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-4">
+            <div className="bg-yellow-100 p-4 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Payment Verification in Progress with Razorpay</strong>
+              </p>
+              <p className="text-sm text-yellow-700 mt-2">
+                Wait for 15-30 minutes. If you see this message still, then cancel this subscription 
+                and start all over again or retry the payment using same subscription.
+              </p>
+              <p className="text-sm text-yellow-700 mt-1">
+                <strong>Note:</strong> Ideally it would be better to cancel and start all over again.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleRetryPayment(subscription)}
+                className="flex-1"
+                disabled={isCancelling}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry Payment
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleCancelPendingSubscription(subscription)}
+                className="flex-1"
+                disabled={isCancelling}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel Subscription
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderActivePendingCard = (subscription: SubscriptionWithPlan) => {
+    return (
+      <Card key={subscription.id} className="border-yellow-200 bg-yellow-50">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getCategoryIcon(subscription.plan.category)}</span>
+              <div>
+                <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(subscription)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Current Cycle</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(subscription.currentStart)} - {formatDate(subscription.currentEnd)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Next Charge</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(subscription.nextChargeAt)}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium">₹{subscription.plan.price}</p>
+                <p className="text-muted-foreground">per {subscription.plan.billingPeriod}</p>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-100 p-4 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Payment Status: Pending</strong>
+              </p>
+              <p className="text-sm text-yellow-700 mt-2">
+                Your subscription is active, but payment verification is still in progress. 
+                This usually resolves within 15-30 minutes.
+              </p>
+              <p className="text-sm text-yellow-700 mt-1">
+                If this persists, you can retry the payment or contact support.
+              </p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleRetryPayment(subscription)}
+                className="flex-1"
+                disabled={isCancelling}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry Payment
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleCancelPendingSubscription(subscription)}
+                className="flex-1"
+                disabled={isCancelling}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel Subscription
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (subscriptions.length === 0) {
     return (
       <div className="text-center py-8">
@@ -215,8 +440,20 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
 
   return (
     <div className="space-y-4">
-      {subscriptions.map((subscription) => (
-        <Card key={subscription.id} className="relative">
+      {subscriptions.map((subscription) => {
+        // Render pending subscription card for CREATED + PENDING status
+        if (subscription.status === 'CREATED' && subscription.paymentStatus === 'PENDING') {
+          return renderPendingSubscriptionCard(subscription);
+        }
+        
+        // Render active pending card for ACTIVE + PENDING status
+        if (subscription.status === 'ACTIVE' && subscription.paymentStatus === 'PENDING') {
+          return renderActivePendingCard(subscription);
+        }
+        
+        // Render regular subscription card for other statuses
+        return (
+          <Card key={subscription.id} className="relative">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -230,7 +467,7 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
               </div>
               <div className="flex items-center gap-2">
                 {getStatusBadge(subscription)}
-                {subscription.status === 'ACTIVE' && !subscription.cancelRequestedAt && (
+                {subscription.status === 'ACTIVE' && !subscription.cancelRequestedAt && subscription.paymentStatus === 'COMPLETED' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
@@ -296,7 +533,8 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
             )}
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
 
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>

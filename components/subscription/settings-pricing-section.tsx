@@ -330,6 +330,9 @@ export function SettingsPricingSection({
     if (plan.buttonState === 'current') {
       return "w-full bg-green-500 hover:bg-green-600 text-white";
     }
+    if (plan.buttonState === 'payment_verification') {
+      return "w-full bg-yellow-500 hover:bg-yellow-600 text-white";
+    }
     if (plan.buttonState === 'retry_payment') {
       return "w-full bg-strentor-orange hover:bg-strentor-orange/90 text-white";
     }
@@ -438,15 +441,15 @@ export function SettingsPricingSection({
               
               {/* Button Section - Always at Bottom */}
               <div className="mt-auto">
-                {plan.action.type === 'subscribe' || plan.action.type === 'retry_payment' ? (
+                {plan.action.type === 'subscribe' || plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification' ? (
                   <SubscribeButton
                     razorpayPlanId={plan.razorpay_plan_id}
                     selectedCycle={plan.billing_cycle}
                     buttonText={plan.buttonText}
                     className={getButtonClassName(plan)}
                     onSuccess={handleSubscriptionSuccess}
-                    retryMode={plan.action.type === 'retry_payment'}
-                    existingSubscriptionId={plan.action.type === 'retry_payment' ? plan.action.subscriptionId : undefined}
+                    retryMode={plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification'}
+                    existingSubscriptionId={(plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification') ? plan.action.subscriptionId : undefined}
                   />
                 ) : (
                   <Button

@@ -17,6 +17,7 @@ export type PlanButtonState =
   | 'downgrade' 
   | 'subscribe' 
   | 'retry_payment'
+  | 'payment_verification'
   | 'conflict_all_in_one'
   | 'keep_one_active';
 
@@ -31,7 +32,7 @@ export type PlanMatrixItem = {
   buttonState: PlanButtonState;
   buttonText: string;
   action: {
-    type: 'current' | 'subscribe' | 'upgrade' | 'downgrade' | 'retry_payment' | 'cancel_first' | 'disabled';
+    type: 'current' | 'subscribe' | 'upgrade' | 'downgrade' | 'retry_payment' | 'payment_verification' | 'cancel_first' | 'disabled';
     subscriptionId?: string;
     planId?: string;
     endDate?: string;
@@ -71,19 +72,19 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       }
     });
 
-    // Get failed payments for retry detection
-    const failedPayments = await prisma.user_subscriptions.findMany({
-      where: {
-        user_id: userId,
-        status: 'CREATED',
-        payment_status: 'FAILED'
-      },
-      include: {
-        subscription_plans: true
-      }
-    });
+    // Separate subscription types for better handling
+    const trulyActiveSubscriptions = userSubscriptions.filter(sub => 
+      sub.status === 'ACTIVE' && sub.payment_status === 'COMPLETED' && !sub.cancel_at_cycle_end
+    );
+    
+    const pendingSubscriptions = userSubscriptions.filter(sub => 
+      sub.status === 'CREATED' && sub.payment_status === 'PENDING'
+    );
+    
+    const failedPayments = userSubscriptions.filter(sub => 
+      sub.status === 'CREATED' && sub.payment_status === 'FAILED'
+    );
 
- 
     // Separate active vs scheduled for cancellation
     const activeSubscriptions = userSubscriptions.filter(sub => !sub.cancel_at_cycle_end);
     const scheduledCancellations = userSubscriptions.filter(sub => sub.cancel_at_cycle_end);
@@ -93,7 +94,17 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
 
     // Build matrix with computed states
     const planMatrix: PlanMatrixItem[] = allPlans.map(plan => {
-      // Check if user has active subscription in this category
+      // Check if user has truly active subscription in this category
+      const trulyActiveInCategory = trulyActiveSubscriptions.find(sub => 
+        sub.subscription_plans.category === plan.category
+      );
+
+      // Check if user has pending subscription in this category
+      const pendingInCategory = pendingSubscriptions.find(sub => 
+        sub.subscription_plans.category === plan.category
+      );
+
+      // Check if user has active subscription in this category (for backward compatibility)
       const activeInCategory = activeSubscriptions.find(sub => 
         sub.subscription_plans.category === plan.category
       );
@@ -110,7 +121,8 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       );
 
       // Check if this exact plan is current
-      const isCurrentPlan = activeInCategory?.plan_id === plan.id;
+      const isCurrentPlan = trulyActiveInCategory?.plan_id === plan.id;
+      const isPendingPlan = pendingInCategory?.plan_id === plan.id;
       const isScheduledPlan = scheduledInCategory?.plan_id === plan.id;
       const isFailedPayment = failedPaymentInCategory?.plan_id === plan.id;
 
@@ -126,6 +138,17 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         buttonText = 'Current Plan';
         action = { type: 'current' };
         disabled = true;
+        variant = 'secondary';
+      } else if (isPendingPlan) {
+        // Payment verification in progress
+        buttonState = 'payment_verification';
+        buttonText = 'Payment Verification in Progress';
+        action = { 
+          type: 'payment_verification', 
+          subscriptionId: pendingInCategory!.id, 
+          planId: plan.id 
+        };
+        disabled = false;
         variant = 'secondary';
       } else if (isFailedPayment) {
         // Retry payment scenario
@@ -154,9 +177,13 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         // Same category, different plan - check if upgrade/downgrade is allowed
         const currentPlan = activeInCategory.subscription_plans;
         
-        // For same-category plans, always allow upgrade/downgrade regardless of other active plans
-        // Only block cross-category conflicts, not same-category changes
-        if (plan.billing_cycle > currentPlan.billing_cycle) {
+        // If there's a pending subscription in this category, show subscribe instead of upgrade/downgrade
+        if (pendingInCategory) {
+          buttonState = 'subscribe';
+          buttonText = 'Subscribe';
+          action = { type: 'subscribe', planId: plan.id };
+          variant = 'default';
+        } else if (plan.billing_cycle > currentPlan.billing_cycle) {
           // Allow upgrade within same category
           buttonState = 'upgrade';
           buttonText = `Upgrade to ${plan.billing_cycle === 3 ? 'Quarterly' : plan.billing_cycle === 6 ? 'Semi-Annual' : 'Annual'}`;
