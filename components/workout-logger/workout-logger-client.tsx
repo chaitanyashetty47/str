@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useAction } from "@/hooks/useAction";
 import { getWeeklyWorkoutDays, type WeeklyWorkoutData } from "@/actions/client-workout/client-weekly-workout.action";
-import { saveWorkoutSet } from "@/actions/client-workout/save-workout-set.action";
+import { saveWorkoutSet, type SavedSetData } from "@/actions/client-workout/save-workout-set.action";
 import { WorkoutDayCard } from "./workout-day-card";
 import { format, addWeeks, subWeeks } from "date-fns";
 import { toast } from "sonner";
@@ -104,13 +104,68 @@ export function WorkoutLoggerClient({
     },
   });
 
+  // Function to update specific set in state without refetch
+  const updateSpecificSetInState = (savedSetData: SavedSetData) => {
+    setWorkoutData(prev => {
+      if (!prev) return prev;
+      
+      return {
+        ...prev,
+        days: prev.days.map(day => ({
+          ...day,
+          exercises: day.exercises.map(exercise => {
+            if (exercise.dayExerciseId !== savedSetData.dayExerciseId) return exercise;
+            
+            const updatedSets = exercise.sets.map(set => {
+              if (set.setNumber !== savedSetData.setNumber) return set;
+              
+              return {
+                ...set,
+                loggedWeight: savedSetData.weightKg,
+                loggedReps: savedSetData.reps,
+                loggedRpe: savedSetData.rpe,
+                isCompleted: true,
+              };
+            });
+
+            const completedSets = updatedSets.filter(set => set.isCompleted).length;
+            
+            return {
+              ...exercise,
+              sets: updatedSets,
+              completedSets,
+              isCompleted: completedSets === exercise.totalSets,
+            };
+          }),
+        })).map(day => {
+          // Recalculate day progress
+          const totalSets = day.exercises.reduce((sum, ex) => sum + ex.totalSets, 0);
+          const completedSets = day.exercises.reduce((sum, ex) => sum + ex.completedSets, 0);
+          
+          return {
+            ...day,
+            completedSets,
+            totalSets,
+            progressPercentage: totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0,
+            isCompleted: totalSets > 0 && completedSets === totalSets,
+          };
+        }),
+        // Recalculate week totals
+        totalCompletedSets: prev.days.reduce((sum, day) => sum + day.completedSets, 0),
+        totalSets: prev.days.reduce((sum, day) => sum + day.totalSets, 0),
+        weekProgressPercentage: (() => {
+          const totalSets = prev.days.reduce((sum, day) => sum + day.totalSets, 0);
+          const totalCompletedSets = prev.days.reduce((sum, day) => sum + day.completedSets, 0);
+          return totalSets > 0 ? Math.round((totalCompletedSets / totalSets) * 100) : 0;
+        })(),
+      };
+    });
+  };
+
   const { execute: saveSet, isLoading: isSaving } = useAction(saveWorkoutSet, {
     onSuccess: (data) => {
-      // Refetch data to ensure consistency
-      fetchWorkoutData({
-        workoutId,
-        weekNumber,
-      });
+      // Update specific set in state - no refetch needed!
+      updateSpecificSetInState(data);
     },
     onError: (error) => {
       console.error("Failed to save set:", error);

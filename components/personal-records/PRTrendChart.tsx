@@ -19,6 +19,7 @@ interface PRChartData {
   reps: number;
   exerciseName: string;
   isPR: boolean;
+  exerciseTypeEnum?: "WEIGHT_BASED" | "REPS_BASED"; // Add exercise type
 }
 
 interface PRTrendChartProps {
@@ -38,13 +39,34 @@ export function PRTrendChart({
   totalPages = 1,
   showPagination = true
 }: PRTrendChartProps) {
-  // Group PRs by date and take the best (highest weight) for each date
+  // Determine if this is a reps-based exercise
+  const isRepsBased = data.length > 0 && data[0].exerciseTypeEnum === "REPS_BASED";
+  
+  // Group PRs by date and take the best (highest weight/reps) for each date
   const groupedData = [...data]
-    .filter((entry) => typeof entry.weight === "number" && !isNaN(entry.weight))
+    .filter((entry) => {
+      if (isRepsBased) {
+        return typeof entry.reps === "number" && !isNaN(entry.reps);
+      } else {
+        return typeof entry.weight === "number" && !isNaN(entry.weight);
+      }
+    })
     .reduce((acc, entry) => {
       const dateKey = entry.date;
-      if (!acc[dateKey] || entry.weight > acc[dateKey].weight) {
+      const currentBest = acc[dateKey];
+      
+      if (!currentBest) {
         acc[dateKey] = entry;
+      } else if (isRepsBased) {
+        // For reps-based exercises, take the highest reps
+        if (entry.reps > currentBest.reps) {
+          acc[dateKey] = entry;
+        }
+      } else {
+        // For weight-based exercises, take the highest weight
+        if (entry.weight > currentBest.weight) {
+          acc[dateKey] = entry;
+        }
       }
       return acc;
     }, {} as Record<string, PRChartData>);
@@ -57,6 +79,7 @@ export function PRTrendChart({
       date: entry.date,
       weight: entry.weight,
       reps: entry.reps,
+      value: isRepsBased ? entry.reps : entry.weight, // Use reps for reps-based, weight for weight-based
     }));
 
   const hasEnoughData = data && data.length >= 2;
@@ -65,9 +88,10 @@ export function PRTrendChart({
   let isUp = true;
 
   if (hasEnoughData) {
-    const last = data[data.length - 1].weight;
-    const first = data[0].weight;
-    trendValue = first !== 0 ? ((last - first) / first) * 100 : 0;
+    // Use the chart data (which is sorted by date) for trend calculation
+    const firstValue = chartData[0].value;
+    const lastValue = chartData[chartData.length - 1].value;
+    trendValue = firstValue !== 0 ? ((lastValue - firstValue) / firstValue) * 100 : 0;
     isUp = trendValue >= 0;
     trendText = `${isUp ? "Trending up" : "Trending down"} by ${Math.abs(trendValue).toFixed(1)}%`;
   }
@@ -116,7 +140,9 @@ export function PRTrendChart({
             <div className="text-sm">Log another PR to see your progress trend</div>
             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{chartData[0].weight} kg</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {chartData[0].value}{isRepsBased ? '' : ' kg'}
+                </div>
                 <div className="text-sm text-blue-600">
                   {new Date(chartData[0].date).toLocaleDateString('en-US', { 
                     month: 'short', 
@@ -143,7 +169,7 @@ export function PRTrendChart({
                   }}
                 />
                 <YAxis
-                  dataKey="weight"
+                  dataKey="value"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
@@ -156,7 +182,7 @@ export function PRTrendChart({
                   labelStyle={{ color: "#ff9800" }}
                   itemStyle={{ color: "#ff9800" }}
                   formatter={(value: any, name: string) => [
-                    `${name === 'weight' ? 'Weight' : 'Reps'}: ${value}${name === 'weight' ? ' kg' : ''}`, 
+                    `${isRepsBased ? 'Reps' : 'ORM'}: ${value}${isRepsBased ? '' : ' kg'}`, 
                     ""
                   ]}
                   labelFormatter={(label) => {
@@ -165,7 +191,7 @@ export function PRTrendChart({
                   }}
                 />
                 <Line
-                  dataKey="weight"
+                  dataKey="value"
                   type="monotone"
                   stroke="#ff9800"
                   strokeWidth={3}

@@ -11,6 +11,7 @@ import { createClient } from "@/utils/supabase/server";
 export interface SavedSetData {
   logId: string;
   setId: string;
+  dayExerciseId: string; // NEW: Add dayExerciseId for proper matching
   setNumber: number;
   weightKg: number;
   reps: number;
@@ -337,6 +338,7 @@ async function saveSetHandler({
     const result: SavedSetData = {
       logId: savedLog.id,
       setId: setInstruction.id,
+      dayExerciseId: setInstruction.exercise_id, // NEW: Include dayExerciseId
       setNumber,
       weightKg,
       reps,
@@ -748,6 +750,7 @@ async function bulkSaveExerciseHandler({
       results.push({
         logId: savedLog.id,
         setId: setInstruction.id,
+        dayExerciseId: setInstruction.exercise_id, // NEW: Include dayExerciseId
         setNumber: set.setNumber,
         weightKg: set.weightKg,
         reps: set.reps,

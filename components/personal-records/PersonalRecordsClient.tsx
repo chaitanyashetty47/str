@@ -108,6 +108,7 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
       reps: lift.maxReps ?? 0,        // NEW: Include reps
       exerciseName: lift.exerciseName,
       isPR: true,                    // NEW: All records are PRs
+      exerciseTypeEnum: lift.exerciseTypeEnum, // NEW: Include exercise type for chart
     }));
 
     setChartData(chartDataFormatted);
@@ -319,7 +320,7 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
                     <th className="text-left py-3 px-2 font-medium text-gray-700">Date</th>
                     <th className="text-left py-3 px-2 font-medium text-gray-700">Exercise</th>
                     <th className="text-left py-3 px-2 font-medium text-gray-700">Type</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-700">Weight</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700">ORM</th>
                     <th className="text-left py-3 px-2 font-medium text-gray-700">Reps</th>
                     <th className="text-left py-3 px-2 font-medium text-gray-700">Actions</th>
                   </tr>
@@ -337,7 +338,7 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
                       <td className="py-3 px-2 font-medium">{record.exerciseName}</td>
                       <td className="py-3 px-2">
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {record.exerciseTypeEnum === "WEIGHT_BASED" ? "Weight" : "Reps"}
+                          {record.exerciseTypeEnum === "WEIGHT_BASED" ? "ORM" : "Reps"}
                         </span>
                       </td>
                       <td className="py-3 px-2">
