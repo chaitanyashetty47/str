@@ -18,6 +18,7 @@ export type PlanButtonState =
   | 'subscribe' 
   | 'retry_payment'
   | 'payment_verification'
+  | 'resume_subscription'
   | 'conflict_all_in_one'
   | 'keep_one_active';
 
@@ -32,7 +33,7 @@ export type PlanMatrixItem = {
   buttonState: PlanButtonState;
   buttonText: string;
   action: {
-    type: 'current' | 'subscribe' | 'upgrade' | 'downgrade' | 'retry_payment' | 'payment_verification' | 'cancel_first' | 'disabled';
+    type: 'current' | 'subscribe' | 'upgrade' | 'downgrade' | 'retry_payment' | 'payment_verification' | 'resume_subscription' | 'cancel_first' | 'disabled';
     subscriptionId?: string;
     planId?: string;
     endDate?: string;
@@ -61,11 +62,11 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       ]
     });
 
-    // Get user's current subscriptions
+    // Get user's current subscriptions (including all webhook states)
     const userSubscriptions = await prisma.user_subscriptions.findMany({
       where: {
         user_id: userId,
-        status: { in: ['ACTIVE', 'CREATED', 'AUTHENTICATED', 'PENDING'] }
+        status: { in: ['ACTIVE', 'CREATED', 'AUTHENTICATED', 'PENDING', 'HALTED', 'PAUSED', 'CANCELLED', 'COMPLETED'] }
       },
       include: {
         subscription_plans: true
@@ -83,6 +84,27 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
     
     const failedPayments = userSubscriptions.filter(sub => 
       sub.status === 'CREATED' && sub.payment_status === 'FAILED'
+    );
+
+    // Webhook-driven subscription states
+    const pendingFailedSubscriptions = userSubscriptions.filter(sub => 
+      sub.status === 'PENDING' && sub.payment_status === 'FAILED'
+    );
+    
+    const haltedSubscriptions = userSubscriptions.filter(sub => 
+      sub.status === 'HALTED' && sub.payment_status === 'FAILED'
+    );
+    
+    const pausedSubscriptions = userSubscriptions.filter(sub => 
+      sub.status === 'PAUSED'
+    );
+    
+    const cancelledSubscriptions = userSubscriptions.filter(sub => 
+      sub.status === 'CANCELLED'
+    );
+    
+    const completedSubscriptions = userSubscriptions.filter(sub => 
+      sub.status === 'COMPLETED'
     );
 
     // Separate active vs scheduled for cancellation
@@ -120,11 +142,30 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         sub.plan_id === plan.id
       );
 
+      // Check webhook-driven states
+      const pendingFailedInCategory = pendingFailedSubscriptions.find(sub => 
+        sub.subscription_plans.category === plan.category && 
+        sub.plan_id === plan.id
+      );
+      
+      const haltedInCategory = haltedSubscriptions.find(sub => 
+        sub.subscription_plans.category === plan.category && 
+        sub.plan_id === plan.id
+      );
+      
+      const pausedInCategory = pausedSubscriptions.find(sub => 
+        sub.subscription_plans.category === plan.category && 
+        sub.plan_id === plan.id
+      );
+
       // Check if this exact plan is current
       const isCurrentPlan = trulyActiveInCategory?.plan_id === plan.id;
       const isPendingPlan = pendingInCategory?.plan_id === plan.id;
       const isScheduledPlan = scheduledInCategory?.plan_id === plan.id;
       const isFailedPayment = failedPaymentInCategory?.plan_id === plan.id;
+      const isPendingFailed = pendingFailedInCategory?.plan_id === plan.id;
+      const isHalted = haltedInCategory?.plan_id === plan.id;
+      const isPaused = pausedInCategory?.plan_id === plan.id;
 
       // Calculate button state and action
       let buttonState: PlanButtonState;
@@ -158,6 +199,36 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
           type: 'retry_payment', 
           subscriptionId: failedPaymentInCategory!.id, 
           planId: plan.id 
+        };
+        disabled = false;
+        variant = 'default';
+      } else if (isPendingFailed) {
+        buttonState = 'retry_payment';
+        buttonText = 'Retry Payment';
+        action = {
+          type: 'retry_payment',
+          subscriptionId: pendingFailedInCategory!.id,
+          planId: plan.id
+        };
+        disabled = false;
+        variant = 'default';
+      } else if (isHalted) {
+        buttonState = 'retry_payment';
+        buttonText = 'Retry Payment';
+        action = {
+          type: 'retry_payment',
+          subscriptionId: haltedInCategory!.id,
+          planId: plan.id
+        };
+        disabled = false;
+        variant = 'default';
+      } else if (isPaused) {
+        buttonState = 'resume_subscription';
+        buttonText = 'Resume Subscription';
+        action = {
+          type: 'resume_subscription',
+          subscriptionId: pausedInCategory!.id,
+          planId: plan.id
         };
         disabled = false;
         variant = 'default';

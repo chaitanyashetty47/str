@@ -336,6 +336,9 @@ export function SettingsPricingSection({
     if (plan.buttonState === 'retry_payment') {
       return "w-full bg-strentor-orange hover:bg-strentor-orange/90 text-white";
     }
+    if (plan.buttonState === 'resume_subscription') {
+      return "w-full bg-blue-500 hover:bg-blue-600 text-white";
+    }
     return "w-full bg-strentor-red hover:bg-strentor-red/90 text-white";
   };
 
@@ -441,17 +444,17 @@ export function SettingsPricingSection({
               
               {/* Button Section - Always at Bottom */}
               <div className="mt-auto">
-                {plan.action.type === 'subscribe' || plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification' ? (
-                  <SubscribeButton
-                    razorpayPlanId={plan.razorpay_plan_id}
-                    selectedCycle={plan.billing_cycle}
-                    buttonText={plan.buttonText}
-                    className={getButtonClassName(plan)}
-                    onSuccess={handleSubscriptionSuccess}
-                    retryMode={plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification'}
-                    existingSubscriptionId={(plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification') ? plan.action.subscriptionId : undefined}
-                  />
-                ) : (
+        {plan.action.type === 'subscribe' || plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification' || plan.action.type === 'resume_subscription' ? (
+          <SubscribeButton
+            razorpayPlanId={plan.razorpay_plan_id}
+            selectedCycle={plan.billing_cycle}
+            buttonText={plan.buttonText}
+            className={getButtonClassName(plan)}
+            onSuccess={handleSubscriptionSuccess}
+            retryMode={plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification' || plan.action.type === 'resume_subscription'}
+            existingSubscriptionId={(plan.action.type === 'retry_payment' || plan.action.type === 'payment_verification' || plan.action.type === 'resume_subscription') ? plan.action.subscriptionId : undefined}
+          />
+        ) : (
                   <Button
                     onClick={() => handlePlanAction(plan)}
                     disabled={plan.disabled || isUpdating || isCancelling}

@@ -24,6 +24,7 @@ import { MoreVertical, Calendar, CreditCard, AlertCircle, Edit, Clock, RefreshCw
 import { SubscriptionWithPlan } from '@/actions/subscriptions/get-user-subscriptions';
 import { updateSubscription } from '@/actions/subscriptions/update-subscription.action';
 import { getAvailablePlanChanges } from '@/actions/subscriptions/get-available-plan-changes.action';
+import { SubscribeButton } from '@/components/subscription/subscribe-button';
 import { toast } from 'sonner';
 
 interface UserSubscriptionsProps {
@@ -43,32 +44,6 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
   const [availablePlanChanges, setAvailablePlanChanges] = useState<any>(null);
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
-  const handleRetryPayment = async (subscription: SubscriptionWithPlan) => {
-    try {
-      // Reset payment status to PENDING for retry
-      const resetResponse = await fetch('/api/subscriptions/reset-payment-status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          subscriptionId: subscription.id,
-        }),
-      });
-
-      if (resetResponse.ok) {
-        toast.success('Payment retry initiated', {
-          description: 'Please complete your payment to activate the subscription.',
-        });
-        onRefresh();
-      } else {
-        toast.error('Failed to initiate payment retry');
-      }
-    } catch (error) {
-      console.error('Error handling retry payment:', error);
-      toast.error('Failed to initiate payment retry');
-    }
-  };
 
   const handleCancelClick = (subscription: SubscriptionWithPlan) => {
     setSelectedSubscription(subscription);
@@ -213,21 +188,52 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
       return <Badge variant="destructive">Active Until {endDate}</Badge>;
     }
     
-    // Handle active subscriptions with pending payment
+    // Active subscriptions with pending payment
     if (subscription.status === 'ACTIVE' && subscription.paymentStatus === 'PENDING') {
       return <Badge variant="secondary" className="bg-yellow-500 text-white">Active - Payment Pending</Badge>;
     }
     
-    // Handle pending verification
+    // Authenticated subscriptions with pending payment
+    if (subscription.status === 'AUTHENTICATED' && subscription.paymentStatus === 'PENDING') {
+      return <Badge variant="secondary" className="bg-yellow-500 text-white">Authenticated - Payment Pending</Badge>;
+    }
+    
+    // Pending subscriptions with failed payments (webhook: subscription.pending)
+    if (subscription.status === 'PENDING' && subscription.paymentStatus === 'FAILED') {
+      return <Badge variant="destructive">Payment Failed</Badge>;
+    }
+    
+    // Halted subscriptions with failed payments (webhook: subscription.halted)
+    if (subscription.status === 'HALTED' && subscription.paymentStatus === 'FAILED') {
+      return <Badge variant="destructive">Subscription Halted</Badge>;
+    }
+    
+    // Paused subscriptions (webhook: subscription.paused)
+    if (subscription.status === 'PAUSED') {
+      return <Badge variant="secondary" className="bg-orange-500 text-white">Paused</Badge>;
+    }
+    
+    // Cancelled subscriptions (webhook: subscription.cancelled)
+    if (subscription.status === 'CANCELLED') {
+      return <Badge variant="destructive">Cancelled</Badge>;
+    }
+    
+    // Completed subscriptions (webhook: subscription.completed)
+    if (subscription.status === 'COMPLETED') {
+      return <Badge variant="default" className="bg-green-600 text-white">Completed</Badge>;
+    }
+    
+    // Handle pending verification (CREATED + PENDING)
     if (subscription.status === 'CREATED' && subscription.paymentStatus === 'PENDING') {
       return <Badge variant="secondary" className="bg-yellow-500 text-white">Verifying</Badge>;
     }
     
-    // Handle failed payments
+    // Handle failed payments (CREATED + FAILED)
     if (subscription.status === 'CREATED' && subscription.paymentStatus === 'FAILED') {
       return <Badge variant="destructive">Payment Failed</Badge>;
     }
     
+    // Standard status badges
     switch (subscription.status) {
       case 'ACTIVE':
         return <Badge variant="default">Active</Badge>;
@@ -302,15 +308,16 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => handleRetryPayment(subscription)}
+              <SubscribeButton
+                razorpayPlanId=""
+                selectedCycle={1}
+                buttonText="Retry Payment"
                 className="flex-1"
-                disabled={isCancelling}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry Payment
-              </Button>
+                variant="outline"
+                onSuccess={onRefresh}
+                retryMode={true}
+                existingSubscriptionId={subscription.razorpaySubscriptionId ?? undefined}
+              />
               <Button
                 variant="destructive"
                 onClick={() => handleCancelPendingSubscription(subscription)}
@@ -387,15 +394,16 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
             </div>
             
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => handleRetryPayment(subscription)}
+              <SubscribeButton
+                razorpayPlanId=""
+                selectedCycle={1}
+                buttonText="Retry Payment"
                 className="flex-1"
-                disabled={isCancelling}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry Payment
-              </Button>
+                variant="outline"
+                onSuccess={onRefresh}
+                retryMode={true}
+                existingSubscriptionId={subscription.razorpaySubscriptionId ?? undefined}
+              />
               <Button
                 variant="destructive"
                 onClick={() => handleCancelPendingSubscription(subscription)}
@@ -405,6 +413,297 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
                 <X className="h-4 w-4 mr-2" />
                 Cancel Subscription
               </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderPendingCard = (subscription: SubscriptionWithPlan) => {
+    return (
+      <Card key={subscription.id} className="border-yellow-200 bg-yellow-50">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getCategoryIcon(subscription.plan.category)}</span>
+              <div>
+                <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(subscription)}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={() => handleCancelClick(subscription)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Cancel Subscription
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Current Cycle</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(subscription.currentStart)} - {formatDate(subscription.currentEnd)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Next Charge</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(subscription.nextChargeAt)}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium">₹{subscription.plan.price}</p>
+                <p className="text-muted-foreground">per {subscription.plan.billingPeriod}</p>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-100 p-4 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Payment Failed - Razorpay is Auto-Retrying</strong>
+              </p>
+              <p className="text-sm text-yellow-700 mt-2">
+                Your payment failed and Razorpay will automatically retry. 
+                Please check your payment method.
+              </p>
+              <p className="text-sm text-yellow-700 mt-1">
+                Retry attempt: {subscription.retryAttempts || 0}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderHaltedCard = (subscription: SubscriptionWithPlan) => {
+    return (
+      <Card key={subscription.id} className="border-red-200 bg-red-50">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getCategoryIcon(subscription.plan.category)}</span>
+              <div>
+                <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(subscription)}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={() => handleCancelClick(subscription)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Cancel Subscription
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Current Cycle</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(subscription.currentStart)} - {formatDate(subscription.currentEnd)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Next Charge</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(subscription.nextChargeAt)}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium">₹{subscription.plan.price}</p>
+                <p className="text-muted-foreground">per {subscription.plan.billingPeriod}</p>
+              </div>
+            </div>
+            
+            <div className="bg-red-100 p-4 rounded-lg">
+              <p className="text-sm text-red-800">
+                <strong>All Retry Attempts Exhausted</strong>
+              </p>
+              <p className="text-sm text-red-700 mt-2">
+                Razorpay has exhausted all retry attempts for your payment. 
+                Please update your payment method to continue service.
+              </p>
+              <p className="text-sm text-red-700 mt-1">
+                Retry attempts: {subscription.retryAttempts || 0}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderPausedCard = (subscription: SubscriptionWithPlan) => {
+    return (
+      <Card key={subscription.id} className="border-orange-200 bg-orange-50">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getCategoryIcon(subscription.plan.category)}</span>
+              <div>
+                <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(subscription)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Current Cycle</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(subscription.currentStart)} - {formatDate(subscription.currentEnd)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Next Charge</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(subscription.nextChargeAt)}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium">₹{subscription.plan.price}</p>
+                <p className="text-muted-foreground">per {subscription.plan.billingPeriod}</p>
+              </div>
+            </div>
+            
+            <div className="bg-orange-100 p-4 rounded-lg">
+              <p className="text-sm text-orange-800">
+                <strong>Subscription Paused by Administrator</strong>
+              </p>
+              <p className="text-sm text-orange-700 mt-2">
+                Your subscription has been temporarily paused by our team. 
+                Contact our support to resume.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderCancelledCard = (subscription: SubscriptionWithPlan) => {
+    return (
+      <Card key={subscription.id} className="border-gray-200 bg-gray-50">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getCategoryIcon(subscription.plan.category)}</span>
+              <div>
+                <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(subscription)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-4">
+            <div className="bg-gray-100 p-4 rounded-lg">
+              <p className="text-sm text-gray-800">
+                <strong>Subscription Cancelled</strong>
+              </p>
+              <p className="text-sm text-gray-700 mt-2">
+                Your subscription ended on {formatDate(subscription.endDate)}. 
+                You no longer have access to premium features.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderCompletedCard = (subscription: SubscriptionWithPlan) => {
+    return (
+      <Card key={subscription.id} className="border-green-200 bg-green-50">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getCategoryIcon(subscription.plan.category)}</span>
+              <div>
+                <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
+                <p className="text-sm text-muted-foreground capitalize">
+                  {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(subscription)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-4">
+            <div className="bg-green-100 p-4 rounded-lg">
+              <p className="text-sm text-green-800">
+                <strong>Subscription Completed Successfully</strong>
+              </p>
+              <p className="text-sm text-green-700 mt-2">
+                Your subscription completed successfully on {formatDate(subscription.endDate)}. 
+                Thank you for using our service!
+              </p>
             </div>
           </div>
         </CardContent>
@@ -441,17 +740,39 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
   return (
     <div className="space-y-4">
       {subscriptions.map((subscription) => {
-        // Render pending subscription card for CREATED + PENDING status
+        // Special cards for problematic states
+        if (subscription.status === 'PENDING' && subscription.paymentStatus === 'FAILED') {
+          return renderPendingCard(subscription);
+        }
+        
+        if (subscription.status === 'HALTED' && subscription.paymentStatus === 'FAILED') {
+          return renderHaltedCard(subscription);
+        }
+        
+        if (subscription.status === 'PAUSED') {
+          return renderPausedCard(subscription);
+        }
+        
+        if (subscription.status === 'CANCELLED') {
+          return renderCancelledCard(subscription);
+        }
+        
+        if (subscription.status === 'COMPLETED') {
+          return renderCompletedCard(subscription);
+        }
+        
+        // Active states with payment issues
+        if ((subscription.status === 'ACTIVE' || subscription.status === 'AUTHENTICATED') && 
+            subscription.paymentStatus === 'PENDING') {
+          return renderActivePendingCard(subscription);
+        }
+        
+        // Pending verification (CREATED + PENDING)
         if (subscription.status === 'CREATED' && subscription.paymentStatus === 'PENDING') {
           return renderPendingSubscriptionCard(subscription);
         }
         
-        // Render active pending card for ACTIVE + PENDING status
-        if (subscription.status === 'ACTIVE' && subscription.paymentStatus === 'PENDING') {
-          return renderActivePendingCard(subscription);
-        }
-        
-        // Render regular subscription card for other statuses
+        // Normal active subscription
         return (
           <Card key={subscription.id} className="relative">
           <CardHeader className="pb-3">

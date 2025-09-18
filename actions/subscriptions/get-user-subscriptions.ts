@@ -62,6 +62,12 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
             payment_status: 'PENDING',
             cancel_requested_at: null,
           },
+          // Authenticated subscriptions with pending payment
+          {
+            status: 'AUTHENTICATED',
+            payment_status: 'PENDING',
+            cancel_requested_at: null,
+          },
           // Pending verification subscriptions
           {
             status: 'CREATED',
@@ -72,10 +78,27 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
             status: 'CREATED',
             payment_status: 'FAILED',
           },
-          // Other active states (for backward compatibility)
+          // Pending subscriptions with failed payments (webhook: subscription.pending)
           {
-            status: { in: ['AUTHENTICATED', 'PENDING'] },
-            cancel_requested_at: null,
+            status: 'PENDING',
+            payment_status: 'FAILED',
+          },
+          // Halted subscriptions with failed payments (webhook: subscription.halted)
+          {
+            status: 'HALTED',
+            payment_status: 'FAILED',
+          },
+          // Paused subscriptions (webhook: subscription.paused)
+          {
+            status: 'PAUSED',
+          },
+          // Cancelled subscriptions (webhook: subscription.cancelled)
+          {
+            status: 'CANCELLED',
+          },
+          // Completed subscriptions (webhook: subscription.completed)
+          {
+            status: 'COMPLETED',
           },
           // Cancelled subscriptions that are still within their cycle
           {
