@@ -14,7 +14,7 @@ const defaultUrl = process.env.VERCEL_URL
     title: "Strentor",
     description: "Your Personal Transformation Journey",
     icons: {
-      icon: '/icon.ico',
+      icon: '/favicon.ico',
     },
   }
   

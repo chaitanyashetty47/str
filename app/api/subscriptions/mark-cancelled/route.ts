@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import prisma from '@/utils/prisma/prismaClient';
+import Razorpay from 'razorpay';
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,7 +56,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update subscription status to cancelled (database only, no Razorpay API call)
+    // STEP 1: Cancel Razorpay subscription (if it exists)
+    if (subscription.razorpay_subscription_id) {
+      try {
+        // Initialize Razorpay
+        if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+          const razorpay = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET,
+          });
+          
+          // Cancel the Razorpay subscription immediately
+          await razorpay.subscriptions.cancel(subscription.razorpay_subscription_id, false);
+          console.log('Razorpay subscription cancelled successfully:', subscription.razorpay_subscription_id);
+        } else {
+          console.warn('Razorpay credentials not configured, skipping Razorpay cancellation');
+        }
+      } catch (razorpayError) {
+        console.error('Failed to cancel Razorpay subscription:', razorpayError);
+        // Continue with database operation even if Razorpay fails
+        // This ensures we don't leave orphaned subscriptions in our database
+      }
+    }
+
+    // STEP 2: Update subscription status to cancelled in database
     const result = await prisma.$transaction(async (tx) => {
       // Update subscription status
       const updatedSubscription = await tx.user_subscriptions.update({
