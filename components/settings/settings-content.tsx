@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { SettingsSubscriptionsWrapper } from "@/components/subscription/settings-subscriptions-wrapper";
+import { PreviousSubscriptionsPage } from "@/components/subscription/previous-subscriptions-page";
 import { getProfileDetails } from "@/actions/profile/get-profile-details.action";
 import { getUserSubscriptions } from "@/actions/subscriptions/get-user-subscriptions";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,8 @@ export function SettingsContent({ user }: SettingsContentProps) {
   
   
 
-  const activeTab = pathname.includes('/subscription') ? 'subscription' : 'profile';
+  const activeTab = pathname.includes('/previous-subscription') ? 'previous-subscription' : 
+                    pathname.includes('/subscription') ? 'subscription' : 'profile';
 
   // Fetch all data once on component mount
   useEffect(() => {
@@ -98,12 +100,14 @@ export function SettingsContent({ user }: SettingsContentProps) {
     }
   };
 
-  const handleTabChange = (tab: 'profile' | 'subscription') => {
+  const handleTabChange = (tab: 'profile' | 'subscription' | 'previous-subscription') => {
     //setActiveTab(tab);
     
     // Update URL without page refresh
     if (tab === 'subscription') {
       router.push('/settings/subscription');
+    } else if (tab === 'previous-subscription') {
+      router.push('/settings/previous-subscription');
     } else {
       router.push('/settings');
     }
@@ -166,6 +170,12 @@ export function SettingsContent({ user }: SettingsContentProps) {
         >
           Your Subscriptions
         </button>
+        <button
+          onClick={() => handleTabChange('previous-subscription')}
+          className={tabButtonClass('previous-subscription')}
+        >
+          Previous Subscriptions
+        </button>
       </div>
 
       {/* Content Container - Both components are always rendered for caching */}
@@ -195,7 +205,22 @@ export function SettingsContent({ user }: SettingsContentProps) {
             userId={user.id} 
             initialData={subscriptionData}
             onDataUpdate={refreshSubscriptionData}
+            userData={{
+              name: profileData?.name,
+              email: profileData?.email,
+              phone: profileData?.phone
+            }}
           />
+        </div>
+
+        {/* Previous Subscriptions Content */}
+        <div 
+          className={cn(
+            "transition-all duration-200",
+            activeTab === 'previous-subscription' ? 'block' : 'hidden'
+          )}
+        >
+          <PreviousSubscriptionsPage userId={user.id} />
         </div>
       </div>
     </div>

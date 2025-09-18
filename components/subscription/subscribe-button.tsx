@@ -15,6 +15,11 @@ interface SubscribeButtonProps {
   onSuccess?: () => void;
   retryMode?: boolean;
   existingSubscriptionId?: string;
+  userData?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
 }
 
 export function SubscribeButton({
@@ -25,7 +30,8 @@ export function SubscribeButton({
   variant = 'default',
   onSuccess,
   retryMode = false,
-  existingSubscriptionId
+  existingSubscriptionId,
+  userData
 }: SubscribeButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentSubscriptionId, setCurrentSubscriptionId] = useState<string | null>(null);
@@ -70,8 +76,7 @@ export function SubscribeButton({
       // Make an API call to /api/subscriptions/create or use existing subscription for retry
       let response;
       if (retryMode && existingSubscriptionId) {
-        // For retry mode, we don't need to create a new subscription
-        // We'll use the existing subscription ID directly
+        // For retry mode, use existing subscription ID with user prefill
         response = {
           ok: true,
           json: async () => ({
@@ -81,7 +86,11 @@ export function SubscribeButton({
             currency: 'INR',
             name: 'Retry Payment',
             description: 'Retrying payment for existing subscription',
-            prefill: {},
+            prefill: {
+              name: userData?.name || '',
+              email: userData?.email || '',
+              ...(userData?.phone && { contact: userData.phone })
+            },
             notes: {}
           })
         };

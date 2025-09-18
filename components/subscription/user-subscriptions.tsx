@@ -31,9 +31,14 @@ interface UserSubscriptionsProps {
   subscriptions: SubscriptionWithPlan[];
   onRefresh: () => void;
   userId: string;
+  userData?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
 }
 
-export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubscriptionsProps) {
+export function UserSubscriptions({ subscriptions, onRefresh, userId, userData }: UserSubscriptionsProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<SubscriptionWithPlan | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -317,6 +322,7 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
                 onSuccess={onRefresh}
                 retryMode={true}
                 existingSubscriptionId={subscription.razorpaySubscriptionId ?? undefined}
+                userData={userData}
               />
               <Button
                 variant="destructive"
@@ -403,6 +409,7 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
                 onSuccess={onRefresh}
                 retryMode={true}
                 existingSubscriptionId={subscription.razorpaySubscriptionId ?? undefined}
+                userData={userData}
               />
               <Button
                 variant="destructive"
@@ -711,7 +718,20 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
     );
   };
 
-  if (subscriptions.length === 0) {
+  // Filter subscriptions to show only active states
+  const activeSubscriptions = subscriptions.filter(subscription => {
+    // Show only active, actionable states
+    return (
+      subscription.status === 'ACTIVE' ||
+      subscription.status === 'AUTHENTICATED' ||
+      subscription.status === 'CREATED' ||
+      subscription.status === 'PENDING' ||
+      subscription.status === 'HALTED' ||
+      subscription.status === 'PAUSED'
+    );
+  });
+
+  if (activeSubscriptions.length === 0) {
     return (
       <div className="text-center py-8">
         <div className="text-muted-foreground mb-4">
@@ -739,123 +759,118 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId }: UserSubs
 
   return (
     <div className="space-y-4">
-      {subscriptions.map((subscription) => {
-        // Special cards for problematic states
-        if (subscription.status === 'PENDING' && subscription.paymentStatus === 'FAILED') {
-          return renderPendingCard(subscription);
-        }
-        
-        if (subscription.status === 'HALTED' && subscription.paymentStatus === 'FAILED') {
-          return renderHaltedCard(subscription);
-        }
-        
-        if (subscription.status === 'PAUSED') {
-          return renderPausedCard(subscription);
-        }
-        
-        if (subscription.status === 'CANCELLED') {
-          return renderCancelledCard(subscription);
-        }
-        
-        if (subscription.status === 'COMPLETED') {
-          return renderCompletedCard(subscription);
-        }
-        
-        // Active states with payment issues
-        if ((subscription.status === 'ACTIVE' || subscription.status === 'AUTHENTICATED') && 
-            subscription.paymentStatus === 'PENDING') {
-          return renderActivePendingCard(subscription);
-        }
-        
-        // Pending verification (CREATED + PENDING)
-        if (subscription.status === 'CREATED' && subscription.paymentStatus === 'PENDING') {
-          return renderPendingSubscriptionCard(subscription);
-        }
-        
-        // Normal active subscription
-        return (
-          <Card key={subscription.id} className="relative">
-          <CardHeader className="pb-3">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{getCategoryIcon(subscription.plan.category)}</span>
+      {/* Scrollable container for active subscriptions */}
+      <div className="max-h-[400px] overflow-y-auto space-y-4 pr-2">
+        {activeSubscriptions.map((subscription) => {
+          // Special cards for problematic states
+          if (subscription.status === 'PENDING' && subscription.paymentStatus === 'FAILED') {
+            return renderPendingCard(subscription);
+          }
+          
+          if (subscription.status === 'HALTED' && subscription.paymentStatus === 'FAILED') {
+            return renderHaltedCard(subscription);
+          }
+          
+          if (subscription.status === 'PAUSED') {
+            return renderPausedCard(subscription);
+          }
+          
+          // Active states with payment issues
+          if ((subscription.status === 'ACTIVE' || subscription.status === 'AUTHENTICATED') && 
+              subscription.paymentStatus === 'PENDING') {
+            return renderActivePendingCard(subscription);
+          }
+          
+          // Pending verification (CREATED + PENDING)
+          if (subscription.status === 'CREATED' && subscription.paymentStatus === 'PENDING') {
+            return renderPendingSubscriptionCard(subscription);
+          }
+          
+          // Normal active subscription
+          return (
+            <Card key={subscription.id} className="relative">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{getCategoryIcon(subscription.plan.category)}</span>
+                  <div>
+                    <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(subscription)}
+                  {subscription.status === 'ACTIVE' && !subscription.cancelRequestedAt && subscription.paymentStatus === 'COMPLETED' && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {/* <DropdownMenuItem 
+                          onClick={() => handleChangePlan(subscription)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Change Plan
+                        </DropdownMenuItem> */}
+                        <DropdownMenuItem 
+                          onClick={() => handleCancelClick(subscription)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          Cancel Subscription
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Current Cycle</p>
+                    <p className="text-muted-foreground">
+                      {formatDate(subscription.currentStart)} - {formatDate(subscription.currentEnd)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Next Charge</p>
+                    <p className="text-muted-foreground">
+                      {formatDate(subscription.nextChargeAt)}
+                    </p>
+                  </div>
+                </div>
                 <div>
-                  <CardTitle className="text-lg">{subscription.plan.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {subscription.plan.category.toLowerCase().replace('_', ' ')} Plan
+                  <p className="font-medium">₹{subscription.plan.price}</p>
+                  <p className="text-muted-foreground">per {subscription.plan.billingPeriod}</p>
+                </div>
+              </div>
+              
+              {subscription.cancelRequestedAt && (
+                <div className="mt-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <p className="text-sm font-medium">Cancellation Scheduled</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your subscription will remain active until {formatDate(subscription.currentEnd)}. 
+                    You'll lose access to premium features after this date.
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {getStatusBadge(subscription)}
-                {subscription.status === 'ACTIVE' && !subscription.cancelRequestedAt && subscription.paymentStatus === 'COMPLETED' && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {/* <DropdownMenuItem 
-                        onClick={() => handleChangePlan(subscription)}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Change Plan
-                      </DropdownMenuItem> */}
-                      <DropdownMenuItem 
-                        onClick={() => handleCancelClick(subscription)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        Cancel Subscription
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Current Cycle</p>
-                  <p className="text-muted-foreground">
-                    {formatDate(subscription.currentStart)} - {formatDate(subscription.currentEnd)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Next Charge</p>
-                  <p className="text-muted-foreground">
-                    {formatDate(subscription.nextChargeAt)}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <p className="font-medium">₹{subscription.plan.price}</p>
-                <p className="text-muted-foreground">per {subscription.plan.billingPeriod}</p>
-              </div>
-            </div>
-            
-            {subscription.cancelRequestedAt && (
-              <div className="mt-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <p className="text-sm font-medium">Cancellation Scheduled</p>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Your subscription will remain active until {formatDate(subscription.currentEnd)}. 
-                  You'll lose access to premium features after this date.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        );
-      })}
+              )}
+            </CardContent>
+          </Card>
+          );
+        })}
+      </div>
 
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
