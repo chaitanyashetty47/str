@@ -15,6 +15,7 @@ import { countryEnumToAlpha3 } from '@/utils/country-mapping';
 import { getProfileDetails, updateProfile } from "@/actions/profile/get-profile-details.action";
 import { useAction } from "@/hooks/useAction";
 import { toast } from "sonner";
+import { isValidPhoneNumber } from "libphonenumber-js";
 
 // Helper function to convert inches to cm
 function inchesToCm(inches: number): number {
@@ -88,6 +89,45 @@ function getMeasurementValidation(value: number, fieldName: string) {
   };
 }
 
+// Helper function to validate phone number
+function validatePhoneNumber(phone: string): { isValid: boolean; message: string; type: 'error' | 'success' | 'warning' | null } {
+  if (!phone || phone.trim() === '') {
+    return { isValid: true, message: '', type: null }; // Optional field
+  }
+  
+  // Check if phone starts with +
+  if (!phone.startsWith('+')) {
+    return { 
+      isValid: false, 
+      message: 'Phone number must start with +', 
+      type: 'error' 
+    };
+  }
+  
+  try {
+    const isValid = isValidPhoneNumber(phone);
+    if (isValid) {
+      return { 
+        isValid: true, 
+        message: 'Phone number looks good!', 
+        type: 'success' 
+      };
+    } else {
+      return { 
+        isValid: false, 
+        message: 'Invalid phone number format', 
+        type: 'error' 
+      };
+    }
+  } catch {
+    return { 
+      isValid: false, 
+      message: 'Invalid phone number format', 
+      type: 'error' 
+    };
+  }
+}
+
 interface ProfileFormProps {
   user: User;
   initialData?: any; // Optional pre-loaded profile data
@@ -118,9 +158,66 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
     [key: string]: { type: 'error' | 'warning' | 'success'; message: string; suggestion: string | null } | null;
   }>({});
 
+  // Phone validation state
+  const [phoneValidation, setPhoneValidation] = useState<{
+    isValid: boolean;
+    message: string;
+    type: 'error' | 'warning' | 'success' | null;
+    isLoading?: boolean;
+  }>({ isValid: true, message: '', type: null, isLoading: false });
+
+  // Debounce timer for phone validation
+  const [phoneDebounceTimer, setPhoneDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // Form validation state
+  const [isFormValid, setIsFormValid] = useState(true);
+  const [formValidationErrors, setFormValidationErrors] = useState<string[]>([]);
+
   // Country and phone synchronization state
   const [selectedCountry, setSelectedCountry] = useState<any>(null);
   const [countryDropdownData, setCountryDropdownData] = useState<any>(null);
+
+  // Debounced phone validation function
+  const debouncedPhoneValidation = (phone: string) => {
+    // Clear existing timer
+    if (phoneDebounceTimer) {
+      clearTimeout(phoneDebounceTimer);
+    }
+    
+    // Set loading state immediately
+    setPhoneValidation(prev => ({ ...prev, isLoading: true }));
+    
+    // Set new timer for validation
+    const timer = setTimeout(() => {
+      const validation = validatePhoneNumber(phone);
+      setPhoneValidation({ ...validation, isLoading: false });
+    }, 300); // 300ms delay
+    
+    setPhoneDebounceTimer(timer);
+  };
+
+  // Form validation function
+  const validateForm = () => {
+    const errors: string[] = [];
+    
+    // Validate phone number if provided
+    if (formData.phone && formData.phone.trim() !== '') {
+      const phoneValidation = validatePhoneNumber(formData.phone);
+      if (!phoneValidation.isValid) {
+        errors.push(phoneValidation.message);
+      }
+    }
+    
+    // Validate required fields
+    if (!formData.name || formData.name.trim() === '') {
+      errors.push('Name is required');
+    }
+    
+    setFormValidationErrors(errors);
+    setIsFormValid(errors.length === 0);
+    
+    return errors.length === 0;
+  };
 
   // Use the useAction hook for updating profile
   const { execute: executeUpdate, isLoading, fieldErrors, error } = useAction(updateProfile, {
@@ -133,6 +230,8 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
       }
       // Notify parent to refresh data
       onDataUpdate?.();
+      // Clear phone validation when successfully saving
+      setPhoneValidation({ isValid: true, message: '', type: null, isLoading: false });
     },
     onError: (error) => {
       toast.error(error);
@@ -140,11 +239,12 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
   });
 
   // Function to set form data from profile data
-  const setFormDataFromProfile = (profileData: any) => {
+  const setFormDataFromProfile = (profileData: any, preservePhoneValidation = false) => {
+    
     setFormData({
       name: profileData.name || "",
       email: profileData.email || "",
-      country: profileData.country || "",
+      country: countryEnumToAlpha3(profileData.country) || profileData.country || "", // Convert enum to alpha3
       phone: profileData.phone || "",
       date_of_birth: profileData.date_of_birth ? 
         new Date(profileData.date_of_birth).toISOString().split('T')[0] : "",
@@ -156,6 +256,12 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
       waist: profileData.waist?.toString() || "",
       hips: profileData.hips?.toString() || ""
     });
+    
+    // Only initialize phone validation if not preserving current state
+    if (!preservePhoneValidation && profileData.phone) {
+      const validation = validatePhoneNumber(profileData.phone);
+      setPhoneValidation(validation);
+    }
   };
 
   useEffect(() => {
@@ -188,9 +294,22 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
   useEffect(() => {
     if (initialData && !isEditing) {
       setProfile(initialData);
-      setFormDataFromProfile(initialData);
+      setFormDataFromProfile(initialData, false); // Don't preserve validation in read-only mode
+    } else if (initialData && isEditing) {
+      // When in editing mode, preserve current phone validation state
+      setProfile(initialData);
+      setFormDataFromProfile(initialData, true); // Preserve validation in edit mode
     }
   }, [initialData, isEditing]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (phoneDebounceTimer) {
+        clearTimeout(phoneDebounceTimer);
+      }
+    };
+  }, [phoneDebounceTimer]);
 
   // Initialize selectedCountry state when profile data is available
   useEffect(() => {
@@ -213,6 +332,11 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
+    // Debounced validation for phone number
+    if (field === 'phone') {
+      debouncedPhoneValidation(value);
+    }
+    
     // Validate measurements in real-time
     if (['neck', 'waist', 'hips'].includes(field)) {
       const numValue = parseFloat(value);
@@ -232,6 +356,12 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
   };
 
   const handleSave = async () => {
+    // Validate form before submission
+    if (!validateForm()) {
+      toast.error('Please fix the validation errors before saving');
+      return;
+    }
+    
     await executeUpdate({
       name: formData.name,
       email: formData.email,
@@ -250,9 +380,11 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
 
   const handleCancel = () => {
     if (profile) {
-      setFormDataFromProfile(profile);
+      setFormDataFromProfile(profile, false); // Don't preserve validation when canceling
     }
     setIsEditing(false);
+    // Clear phone validation when canceling edit
+    setPhoneValidation({ isValid: true, message: '', type: null, isLoading: false });
   };
 
   if (isLoadingProfile) {
@@ -285,13 +417,28 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
             <Button 
               size="sm" 
               onClick={handleSave}
-              disabled={isLoading}
+              disabled={isLoading || !isFormValid}
+              className={!isFormValid ? "opacity-50" : ""}
             >
-              {isLoading ? "Saving..." : "Save Changes"}
+              {isLoading ? "Saving..." : 
+               !isFormValid ? "Fix errors to save" : 
+               "Save Changes"}
             </Button>
           </div>
         )}
       </div>
+
+      {/* Display form validation errors */}
+      {formValidationErrors.length > 0 && (
+        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+          <p className="font-medium mb-2">Please fix the following errors:</p>
+          <ul className="list-disc list-inside space-y-1">
+            {formValidationErrors.map((error, index) => (
+              <li key={`form-error-${index}`}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Display general error */}
       {error && (
@@ -319,28 +466,27 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <div className="p-2 border rounded-md bg-muted/50">
-              {formData.email}
-            </div>
+            <Input
+              id="email"
+              value={formData.email}
+              disabled
+              className="bg-muted/50 text-gray-600"
+            />
             <p className="text-xs text-muted-foreground">
               Your email cannot be changed
             </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="name">Name *</Label>
-            {isEditing ? (
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                placeholder="Your full name"
-                required
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.name || "Not set"}
-              </div>
-            )}
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => handleInputChange("name", e.target.value)}
+              placeholder="Your full name"
+              required
+              disabled={!isEditing}
+              className={!isEditing ? "bg-muted/50 text-gray-600" : ""}
+            />
           </div>
         </div>
 
@@ -348,13 +494,13 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
-            {isEditing ? (
-              <CountryDropdown
-                defaultValue={(() => {
-                  // Convert enum to alpha3 if needed
-                  return countryEnumToAlpha3(formData.country) || formData.country;
-                })()}
-                onChange={(country) => {
+            <CountryDropdown
+              defaultValue={(() => {
+                // Convert enum to alpha3 if needed
+                return countryEnumToAlpha3(formData.country) || formData.country;
+              })()}
+              onChange={(country) => {
+                if (isEditing) {
                   handleInputChange("country", country.alpha3);
                   setCountryDropdownData(country); // Store full country object
                   const countryData = {
@@ -367,77 +513,44 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
                   if (country.countryCallingCodes?.[0]) {
                     handleInputChange("phone", country.countryCallingCodes[0]);
                   }
-                }}
-                placeholder="Select your country"
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.country ? (
-                  (() => {
-                    // Convert enum to alpha3 if needed
-                    const alpha3Code = countryEnumToAlpha3(formData.country) || formData.country;
-                    const countryInfo = getCountryInfo(alpha3Code);
-                    
-                    if (countryInfo) {
-                      return (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full overflow-hidden flex-shrink-0">
-                            <CircleFlag
-                              countryCode={countryInfo.alpha2.toLowerCase()}
-                              height={16}
-                              width={16}
-                            />
-                          </div>
-                          <span>{countryInfo.name}</span>
-                        </div>
-                      );
-                    }
-                    return formData.country;
-                  })()
-                ) : "Not set"}
-              </div>
-            )}
+                }
+              }}
+              placeholder="Select your country"
+              disabled={!isEditing}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
-            {isEditing ? (
-              <PhoneInput
-                value={formData.phone || ''}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
-                defaultCountry={selectedCountry?.alpha2?.toLowerCase()}
-                onCountryChange={(countryData) => {
-                  if (countryData && countryData.alpha3 !== selectedCountry?.alpha3) {
-                    setSelectedCountry(countryData);
-                    handleInputChange("country", countryData.alpha3);
-                  }
-                }}
-                placeholder="Enter your phone number"
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.phone ? (
-                  (() => {
-                    // Convert enum to alpha3 if needed
-                    const alpha3Code = countryEnumToAlpha3(formData.country) || formData.country;
-                    const phoneData = formatPhoneNumber(formData.phone, alpha3Code);
-                    
-                    if (phoneData.countryInfo && phoneData.alpha2) {
-                      return (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full overflow-hidden flex-shrink-0">
-                            <CircleFlag
-                              countryCode={phoneData.alpha2}
-                              height={16}
-                              width={16}
-                            />
-                          </div>
-                          <span>{phoneData.phone}</span>
-                        </div>
-                      );
-                    }
-                    return formData.phone;
-                  })()
-                ) : "Not set"}
+            <PhoneInput
+              value={formData.phone || ''}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
+              defaultCountry={selectedCountry?.alpha2?.toLowerCase()}
+              onCountryChange={(countryData) => {
+                if (isEditing && countryData && countryData.alpha3 !== selectedCountry?.alpha3) {
+                  setSelectedCountry(countryData);
+                  handleInputChange("country", countryData.alpha3);
+                }
+              }}
+              placeholder="Enter your phone number"
+              disabled={!isEditing}
+              className={`${!isEditing ? "bg-muted/50 text-gray-600" : ""} ${
+                phoneValidation.type === 'error' ? 'border-red-500' : 
+                phoneValidation.type === 'success' ? 'border-green-500' : ''
+              }`}
+            />
+            {(phoneValidation.type || phoneValidation.isLoading) && isEditing && (
+              <div className={`text-sm p-2 rounded-md ${
+                phoneValidation.isLoading ? 'text-blue-700 bg-blue-50 border border-blue-200' :
+                phoneValidation.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
+                phoneValidation.type === 'success' ? 'text-green-700 bg-green-50 border border-green-200' :
+                'text-yellow-700 bg-yellow-50 border border-yellow-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {phoneValidation.isLoading && (
+                    <div className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full" />
+                  )}
+                  {phoneValidation.isLoading ? 'Validating phone number...' : phoneValidation.message}
+                </div>
               </div>
             )}
             <p className="text-xs text-muted-foreground">
@@ -450,62 +563,49 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="date_of_birth">Date of Birth</Label>
-            {isEditing ? (
-              <Input
-                id="date_of_birth"
-                type="date"
-                value={formData.date_of_birth}
-                onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.date_of_birth ? 
-                  new Date(formData.date_of_birth).toLocaleDateString() : "Not set"}
-              </div>
-            )}
+            <Input
+              id="date_of_birth"
+              type="date"
+              value={formData.date_of_birth}
+              onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
+              disabled={!isEditing}
+              className={`${!isEditing ? "bg-muted/50 text-gray-600" : ""} [&::-webkit-calendar-picker-indicator]:order-first [&::-webkit-calendar-picker-indicator]:mr-2`}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="gender">Gender</Label>
-            {isEditing ? (
-              <Select value={formData.gender} onValueChange={(value) => handleInputChange("gender", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MALE">Male</SelectItem>
-                  <SelectItem value="FEMALE">Female</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.gender ? 
-                  formData.gender.charAt(0) + formData.gender.slice(1).toLowerCase() : "Not set"}
-              </div>
-            )}
+            <Select 
+              value={formData.gender} 
+              onValueChange={(value) => handleInputChange("gender", value)}
+              disabled={!isEditing}
+            >
+              <SelectTrigger className={!isEditing ? "bg-muted/50 text-gray-600" : ""}>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MALE">Male</SelectItem>
+                <SelectItem value="FEMALE">Female</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="activity_level">Activity Level</Label>
-            {isEditing ? (
-              <Select value={formData.activity_level} onValueChange={(value) => handleInputChange("activity_level", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select activity level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SEDENTARY">Sedentary</SelectItem>
-                  <SelectItem value="LIGHTLY_ACTIVE">Lightly Active</SelectItem>
-                  <SelectItem value="MODERATELY_ACTIVE">Moderately Active</SelectItem>
-                  <SelectItem value="VERY_ACTIVE">Very Active</SelectItem>
-                  <SelectItem value="EXTRA_ACTIVE">Extra Active</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.activity_level ? 
-                  formData.activity_level.split('_').map(word => 
-                    word.charAt(0) + word.slice(1).toLowerCase()
-                  ).join(' ') : "Not set"}
-              </div>
-            )}
+            <Select 
+              value={formData.activity_level} 
+              onValueChange={(value) => handleInputChange("activity_level", value)}
+              disabled={!isEditing}
+            >
+              <SelectTrigger className={!isEditing ? "bg-muted/50 text-gray-600" : ""}>
+                <SelectValue placeholder="Select activity level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SEDENTARY">Sedentary</SelectItem>
+                <SelectItem value="LIGHTLY_ACTIVE">Lightly Active</SelectItem>
+                <SelectItem value="MODERATELY_ACTIVE">Moderately Active</SelectItem>
+                <SelectItem value="VERY_ACTIVE">Very Active</SelectItem>
+                <SelectItem value="EXTRA_ACTIVE">Extra Active</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -513,42 +613,32 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="weight">Weight (kg)</Label>
-              {isEditing ? (
-                  <Input
-                id="weight"
-                    type="number"
-                    step="0.1"
-                    value={formData.weight}
-                    onChange={(e) => handleInputChange("weight", e.target.value)}
-                placeholder="Enter weight in kilograms"
-                className="w-full"
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.weight ? `${formData.weight} kg` : "Not set"}
-                </div>
-              )}
+            <Input
+              id="weight"
+              type="number"
+              step="0.1"
+              value={formData.weight}
+              onChange={(e) => handleInputChange("weight", e.target.value)}
+              placeholder="Enter weight in kilograms"
+              disabled={!isEditing}
+              className={!isEditing ? "bg-muted/50 text-gray-600" : ""}
+            />
             <p className="text-xs text-gray-500">
               Enter your weight in kilograms
             </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="height">Height (cm)</Label>
-              {isEditing ? (
-                  <Input
-                id="height"
-                    type="number"
-                    step="0.1"
-                    value={formData.height}
-                    onChange={(e) => handleInputChange("height", e.target.value)}
-                placeholder="Enter height in centimeters"
-                className="w-full"
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.height ? `${formData.height} cm` : "Not set"}
-                </div>
-              )}
+            <Input
+              id="height"
+              type="number"
+              step="0.1"
+              value={formData.height}
+              onChange={(e) => handleInputChange("height", e.target.value)}
+              placeholder="Enter height in centimeters"
+              disabled={!isEditing}
+              className={!isEditing ? "bg-muted/50 text-gray-600" : ""}
+            />
             <p className="text-xs text-gray-500">
               Enter your height in centimeters
             </p>
@@ -559,22 +649,21 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="neck">Neck (cm)</Label>
-            {isEditing ? (
-              <Input
-                id="neck"
-                type="number"
-                step="0.1"
-                value={formData.neck}
-                onChange={(e) => handleInputChange("neck", e.target.value)}
-                placeholder="Enter neck measurement"
-                className={validationMessages.neck?.type === 'error' ? 'border-red-500' : validationMessages.neck?.type === 'warning' ? 'border-yellow-500' : validationMessages.neck?.type === 'success' ? 'border-green-500' : ''}
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.neck ? `${formData.neck} cm` : "Not set"}
-              </div>
-            )}
-            {validationMessages.neck && (
+            <Input
+              id="neck"
+              type="number"
+              step="0.1"
+              value={formData.neck}
+              onChange={(e) => handleInputChange("neck", e.target.value)}
+              placeholder="Enter neck measurement"
+              disabled={!isEditing}
+              className={`${!isEditing ? "bg-muted/50 text-gray-600" : ""} ${
+                validationMessages.neck?.type === 'error' ? 'border-red-500' : 
+                validationMessages.neck?.type === 'warning' ? 'border-yellow-500' : 
+                validationMessages.neck?.type === 'success' ? 'border-green-500' : ''
+              }`}
+            />
+            {validationMessages.neck && isEditing && (
               <div className={`text-sm p-2 rounded-md ${
                 validationMessages.neck?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
                 validationMessages.neck?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
@@ -589,22 +678,21 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
           </div>
           <div className="space-y-2">
             <Label htmlFor="waist">Waist (cm)</Label>
-            {isEditing ? (
-              <Input
-                id="waist"
-                type="number"
-                step="0.1"
-                value={formData.waist}
-                onChange={(e) => handleInputChange("waist", e.target.value)}
-                placeholder="Enter waist measurement"
-                className={validationMessages.waist?.type === 'error' ? 'border-red-500' : validationMessages.waist?.type === 'warning' ? 'border-yellow-500' : validationMessages.waist?.type === 'success' ? 'border-green-500' : ''}
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.waist ? `${formData.waist} cm` : "Not set"}
-              </div>
-            )}
-            {validationMessages.waist && (
+            <Input
+              id="waist"
+              type="number"
+              step="0.1"
+              value={formData.waist}
+              onChange={(e) => handleInputChange("waist", e.target.value)}
+              placeholder="Enter waist measurement"
+              disabled={!isEditing}
+              className={`${!isEditing ? "bg-muted/50 text-gray-600" : ""} ${
+                validationMessages.waist?.type === 'error' ? 'border-red-500' : 
+                validationMessages.waist?.type === 'warning' ? 'border-yellow-500' : 
+                validationMessages.waist?.type === 'success' ? 'border-green-500' : ''
+              }`}
+            />
+            {validationMessages.waist && isEditing && (
               <div className={`text-sm p-2 rounded-md ${
                 validationMessages.waist?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
                 validationMessages.waist?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
@@ -619,22 +707,21 @@ export function ProfileForm({ user, initialData, onDataUpdate }: ProfileFormProp
           </div>
           <div className="space-y-2">
             <Label htmlFor="hips">Hips (cm)</Label>
-            {isEditing ? (
-              <Input
-                id="hips"
-                type="number"
-                step="0.1"
-                value={formData.hips}
-                onChange={(e) => handleInputChange("hips", e.target.value)}
-                placeholder="Enter hip measurement"
-                className={validationMessages.hips?.type === 'error' ? 'border-red-500' : validationMessages.hips?.type === 'warning' ? 'border-yellow-500' : validationMessages.hips?.type === 'success' ? 'border-green-500' : ''}
-              />
-            ) : (
-              <div className="p-2 border rounded-md bg-muted/50">
-                {formData.hips ? `${formData.hips} cm` : "Not set"}
-              </div>
-            )}
-            {validationMessages.hips && (
+            <Input
+              id="hips"
+              type="number"
+              step="0.1"
+              value={formData.hips}
+              onChange={(e) => handleInputChange("hips", e.target.value)}
+              placeholder="Enter hip measurement"
+              disabled={!isEditing}
+              className={`${!isEditing ? "bg-muted/50 text-gray-600" : ""} ${
+                validationMessages.hips?.type === 'error' ? 'border-red-500' : 
+                validationMessages.hips?.type === 'warning' ? 'border-yellow-500' : 
+                validationMessages.hips?.type === 'success' ? 'border-green-500' : ''
+              }`}
+            />
+            {validationMessages.hips && isEditing && (
               <div className={`text-sm p-2 rounded-md ${
                 validationMessages.hips?.type === 'error' ? 'text-red-700 bg-red-50 border border-red-200' :
                 validationMessages.hips?.type === 'warning' ? 'text-yellow-700 bg-yellow-50 border border-yellow-200' :
