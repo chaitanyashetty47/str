@@ -107,8 +107,12 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       sub.status === 'COMPLETED'
     );
 
-    // Separate active vs scheduled for cancellation
-    const activeSubscriptions = userSubscriptions.filter(sub => !sub.cancel_at_cycle_end);
+    // CRITICAL FIX: Only consider ACTIVE subscriptions for upgrade/downgrade logic
+    // This prevents CANCELLED subscriptions from being selected
+    const activeSubscriptions = userSubscriptions.filter(sub => 
+      sub.status === 'ACTIVE' && sub.payment_status === 'COMPLETED' && !sub.cancel_at_cycle_end
+    );
+    
     const scheduledCancellations = userSubscriptions.filter(sub => sub.cancel_at_cycle_end);
 
     // Check if user has multiple active plans - this affects upgrade/downgrade logic
@@ -126,9 +130,12 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         sub.subscription_plans.category === plan.category
       );
 
-      // Check if user has active subscription in this category (for backward compatibility)
+      // Check if user has active subscription in this category
+      // CRITICAL FIX: Only consider ACTIVE subscriptions for upgrade/downgrade
       const activeInCategory = activeSubscriptions.find(sub => 
-        sub.subscription_plans.category === plan.category
+        sub.subscription_plans.category === plan.category &&
+        sub.status === 'ACTIVE' &&
+        sub.payment_status === 'COMPLETED'
       );
 
       // Check if user has scheduled cancellation in this category
