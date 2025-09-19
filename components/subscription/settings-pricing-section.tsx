@@ -582,7 +582,7 @@ Are you sure you want to proceed with this downgrade?`;
             <AlertDialogDescription>
               {(() => {
                 // Find current plan to determine if this is All-In-One downgrade
-                const currentPlan = plans.find(p => p.action.type === 'current');
+                const currentPlan = plans.find(p => p.action.type === 'current') || null;
                 return getConfirmationMessage(currentPlan, selectedPlan!);
               })()}
             </AlertDialogDescription>
