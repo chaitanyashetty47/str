@@ -6,6 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { AlertCircle, Loader2, Crown, BadgeCheck } from 'lucide-react';
 import Image from 'next/image';
 import { SubscribeButton } from './subscribe-button';
@@ -97,6 +107,11 @@ export function SettingsPricingSection({
   const [selectedCycle, setSelectedCycle] = useState<number>(3);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Confirmation dialog states
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanMatrixItem | null>(null);
+  const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
   const { execute: executeUpdate, isLoading: isUpdating } = useAction(updateSubscription, {
     onSuccess: () => {
@@ -166,11 +181,8 @@ export function SettingsPricingSection({
       case 'upgrade':
       case 'downgrade':
         if (action.subscriptionId && action.planId) {
-          executeUpdate({
-            userId,
-            subscriptionId: action.subscriptionId,
-            newPlanId: action.planId
-          });
+          setSelectedPlan(plan);
+          setConfirmDialogOpen(true);
         }
         break;
         
@@ -255,6 +267,52 @@ export function SettingsPricingSection({
   const handleSubscriptionSuccess = () => {
     loadPlans(); // Refresh the plans
     onSubscriptionSuccess?.();
+  };
+
+  const handleConfirmPlanUpdate = async () => {
+    if (!selectedPlan || !selectedPlan.action.subscriptionId || !selectedPlan.action.planId) {
+      return;
+    }
+
+    setIsUpdatingPlan(true);
+    try {
+      const response = await fetch('/api/subscriptions/update-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscriptionId: selectedPlan.action.subscriptionId,
+          newPlanId: selectedPlan.action.planId,
+          userId: userId
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update subscription');
+      }
+
+      toast.success('Subscription updated successfully!', {
+        description: `Your subscription has been updated to ${selectedPlan.name}`,
+      });
+      
+      setConfirmDialogOpen(false);
+      setSelectedPlan(null);
+      
+      // Refresh the page to show updated subscription
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Failed to update subscription:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update subscription';
+      toast.error('Subscription Update Failed', {
+        description: errorMessage,
+      });
+    } finally {
+      setIsUpdatingPlan(false);
+    }
   };
 
   if (isLoading) {
@@ -457,7 +515,7 @@ export function SettingsPricingSection({
         ) : (
                   <Button
                     onClick={() => handlePlanAction(plan)}
-                    disabled={plan.disabled || isUpdating || isCancelling}
+                    disabled={plan.disabled || isUpdating || isCancelling || isUpdatingPlan}
                     className={getButtonClassName(plan)}
                     title={plan.disabled && plan.action.type === 'disabled' ? 'All-In-One plan already covers this category.' : undefined}
                   >
@@ -480,6 +538,55 @@ export function SettingsPricingSection({
             </Card>
           ))}
       </div>
+
+      {/* Confirmation Dialog for Plan Updates */}
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedPlan?.action.type === 'upgrade' ? 'Upgrade Subscription' : 'Downgrade Subscription'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedPlan?.action.type === 'upgrade' ? (
+                <>
+                  You are about to upgrade your subscription to <strong>{selectedPlan?.name}</strong>.
+                  <br /><br />
+                  Your subscription will be upgraded immediately and the charges will be prorated accordingly.
+                  <br /><br />
+                  Are you sure you want to proceed with this upgrade?
+                </>
+              ) : (
+                <>
+                  You are about to downgrade your subscription to <strong>{selectedPlan?.name}</strong>.
+                  <br /><br />
+                  Your subscription will be downgraded immediately and the charges will be prorated accordingly.
+                  <br /><br />
+                  Are you sure you want to proceed with this downgrade?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdatingPlan}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmPlanUpdate}
+              disabled={isUpdatingPlan}
+              className="bg-strentor-red hover:bg-strentor-red/90 text-white"
+            >
+              {isUpdatingPlan ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {selectedPlan?.action.type === 'upgrade' ? 'Upgrading...' : 'Downgrading...'}
+                </>
+              ) : (
+                selectedPlan?.action.type === 'upgrade' ? 'Upgrade Now' : 'Downgrade Now'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 
