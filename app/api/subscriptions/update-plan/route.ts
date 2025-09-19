@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    console.log('currentSubscription is: ', currentSubscription);
+
     if (!currentSubscription) {
       return NextResponse.json(
         { error: 'Subscription not found' },
