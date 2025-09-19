@@ -128,7 +128,9 @@ export async function POST(request: NextRequest) {
       newPlanId: razorpayData.plan_id,
       status: razorpayData.status,
       currentStart: razorpayData.current_start,
-      currentEnd: razorpayData.current_end
+      currentEnd: razorpayData.current_end,
+      currentStartDate: razorpayData.current_start ? new Date(razorpayData.current_start * 1000).toISOString() : null,
+      currentEndDate: razorpayData.current_end ? new Date(razorpayData.current_end * 1000).toISOString() : null
     });
 
     // Update database only after successful Razorpay update
@@ -137,9 +139,10 @@ export async function POST(request: NextRequest) {
       data: {
         plan_id: newPlanId,
         // Update other fields if needed based on Razorpay response
-        current_start: razorpayData.current_start ? new Date(razorpayData.current_start) : currentSubscription.current_start,
-        current_end: razorpayData.current_end ? new Date(razorpayData.current_end) : currentSubscription.current_end,
-        next_charge_at: razorpayData.next_charge_at ? new Date(razorpayData.next_charge_at) : currentSubscription.next_charge_at,
+        // Razorpay timestamps are in seconds, so multiply by 1000 for JavaScript Date
+        current_start: razorpayData.current_start ? new Date(razorpayData.current_start * 1000) : currentSubscription.current_start,
+        current_end: razorpayData.current_end ? new Date(razorpayData.current_end * 1000) : currentSubscription.current_end,
+        next_charge_at: razorpayData.next_charge_at ? new Date(razorpayData.next_charge_at * 1000) : currentSubscription.next_charge_at,
         total_count: razorpayData.total_count || newTotalCount,  // Use Razorpay response or our calculated value
         remaining_count: razorpayData.remaining_count || newTotalCount  // Reset to full duration
       },
