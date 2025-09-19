@@ -123,14 +123,26 @@ export async function POST(request: NextRequest) {
 
     const razorpayData = await razorpayResponse.json();
 
+    // 🔍 COMPREHENSIVE LOGGING FOR TIMESTAMP CONVERSION
+    const convertedStartDate = razorpayData.current_start ? new Date(razorpayData.current_start * 1000) : null;
+    const convertedEndDate = razorpayData.current_end ? new Date(razorpayData.current_end * 1000) : null;
+    
     console.log('✅ Razorpay update successful:', {
       subscriptionId: razorpayData.id,
       newPlanId: razorpayData.plan_id,
       status: razorpayData.status,
-      currentStart: razorpayData.current_start,
-      currentEnd: razorpayData.current_end,
-      currentStartDate: razorpayData.current_start ? new Date(razorpayData.current_start * 1000).toISOString() : null,
-      currentEndDate: razorpayData.current_end ? new Date(razorpayData.current_end * 1000).toISOString() : null
+      rawCurrentStart: razorpayData.current_start,
+      rawCurrentEnd: razorpayData.current_end,
+      convertedStartDate: convertedStartDate?.toISOString(),
+      convertedEndDate: convertedEndDate?.toISOString(),
+      timestampConversion: {
+        rawStart: razorpayData.current_start,
+        rawEnd: razorpayData.current_end,
+        startMultiplied: razorpayData.current_start * 1000,
+        endMultiplied: razorpayData.current_end * 1000,
+        startDate: convertedStartDate,
+        endDate: convertedEndDate
+      }
     });
 
     // Update database only after successful Razorpay update
@@ -155,7 +167,12 @@ export async function POST(request: NextRequest) {
       subscriptionId: updatedSubscription.id,
       oldPlanId: currentSubscription.plan_id,
       newPlanId: updatedSubscription.plan_id,
-      newPlanName: updatedSubscription.subscription_plans.name
+      newPlanName: updatedSubscription.subscription_plans.name,
+      savedCurrentStart: updatedSubscription.current_start?.toISOString(),
+      savedCurrentEnd: updatedSubscription.current_end?.toISOString(),
+      savedNextChargeAt: updatedSubscription.next_charge_at?.toISOString(),
+      savedTotalCount: updatedSubscription.total_count,
+      savedRemainingCount: updatedSubscription.remaining_count
     });
 
     return NextResponse.json({
