@@ -80,6 +80,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Calculate new total count for 30-year duration based on new billing cycle
+    const newTotalCount = newPlan.billing_cycle === 3 ? 120 : 
+                         newPlan.billing_cycle === 6 ? 60 : 30;
+
     // Log the update details
     console.log('🔄 Updating Razorpay subscription:', {
       razorpaySubscriptionId: currentSubscription.razorpay_subscription_id,
@@ -88,7 +92,8 @@ export async function POST(request: NextRequest) {
       newPlan: newPlan.name,
       newPlanId: newPlan.razorpay_plan_id,
       category: newPlan.category,
-      billingCycle: newPlan.billing_cycle
+      billingCycle: newPlan.billing_cycle,
+      newTotalCount: newTotalCount
     });
 
     // Update Razorpay subscription
@@ -101,6 +106,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         plan_id: newPlan.razorpay_plan_id,
         quantity: 1,
+        remaining_count: newTotalCount,  // Reset to full 30-year duration
         schedule_change_at: "now",
         customer_notify: true
       })
@@ -134,8 +140,8 @@ export async function POST(request: NextRequest) {
         current_start: razorpayData.current_start ? new Date(razorpayData.current_start) : currentSubscription.current_start,
         current_end: razorpayData.current_end ? new Date(razorpayData.current_end) : currentSubscription.current_end,
         next_charge_at: razorpayData.next_charge_at ? new Date(razorpayData.next_charge_at) : currentSubscription.next_charge_at,
-        total_count: razorpayData.total_count || currentSubscription.total_count,
-        remaining_count: razorpayData.remaining_count || currentSubscription.remaining_count
+        total_count: razorpayData.total_count || newTotalCount,  // Use Razorpay response or our calculated value
+        remaining_count: razorpayData.remaining_count || newTotalCount  // Reset to full duration
       },
       include: {
         subscription_plans: true

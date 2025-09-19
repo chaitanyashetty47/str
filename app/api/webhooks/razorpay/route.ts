@@ -204,6 +204,30 @@ async function handleSubscriptionCharged(subscriptionData: any, paymentData: any
   // Check if this is a recovery from PENDING/HALTED state
   const isRecovery = subscription.status === 'PENDING' || subscription.status === 'HALTED';
 
+  // 🔍 COMPREHENSIVE LOGGING FOR DEBUGGING
+  console.log('🔍 Subscription Charged - Raw Razorpay Data:', {
+    subscriptionId: subscriptionData.id,
+    charge_at: subscriptionData.charge_at,
+    charge_at_type: typeof subscriptionData.charge_at,
+    remaining_count: subscriptionData.remaining_count,
+    remaining_count_type: typeof subscriptionData.remaining_count,
+    paid_count: subscriptionData.paid_count,
+    total_count: subscriptionData.total_count,
+    current_start: subscriptionData.current_start,
+    current_end: subscriptionData.current_end,
+    status: subscriptionData.status
+  });
+
+  console.log('🔍 Current Database State:', {
+    subscriptionId: subscription.id,
+    currentStatus: subscription.status,
+    currentPaymentStatus: subscription.payment_status,
+    currentNextChargeAt: subscription.next_charge_at,
+    currentRemainingCount: subscription.remaining_count,
+    currentPaidCount: subscription.paid_count,
+    currentTotalCount: subscription.total_count
+  });
+
 
   // Prepare safe billing cycle update - Force UTC storage
   const newStart = subscriptionData.current_start 
@@ -220,14 +244,28 @@ async function handleSubscriptionCharged(subscriptionData: any, paymentData: any
     newEnd
   );
 
+  // 🔍 LOG NEXT_CHARGE_AT CALCULATION
+  const hasRemainingCount = subscriptionData.remaining_count > 0;
+  const hasChargeAt = !!subscriptionData.charge_at;
+  const calculatedNextChargeAt = (hasRemainingCount && hasChargeAt) 
+    ? new Date(subscriptionData.charge_at * 1000) 
+    : null;
+
+  console.log('🔍 Next Charge At Calculation:', {
+    hasRemainingCount,
+    remainingCount: subscriptionData.remaining_count,
+    hasChargeAt,
+    chargeAt: subscriptionData.charge_at,
+    calculatedNextChargeAt: calculatedNextChargeAt?.toISOString(),
+    calculationLogic: `(${hasRemainingCount} && ${hasChargeAt}) ? new Date(${subscriptionData.charge_at} * 1000) : null`
+  });
+
   // Build update data
   const updateData = {
     payment_status: 'COMPLETED',
     
     // Set next_charge_at using charge_at field if available and remaining cycles > 0 (UTC)
-    next_charge_at: (subscriptionData.remaining_count > 0 && subscriptionData.charge_at) 
-      ? new Date(subscriptionData.charge_at * 1000) 
-      : null,
+    next_charge_at: calculatedNextChargeAt,
     
     // Update counters atomically
     paid_count: subscriptionData.paid_count,
@@ -241,13 +279,37 @@ async function handleSubscriptionCharged(subscriptionData: any, paymentData: any
     ...(safeBillingUpdate || {})
   };
 
+  console.log('🔍 Final Update Data:', {
+    payment_status: updateData.payment_status,
+    next_charge_at: updateData.next_charge_at?.toISOString(),
+    paid_count: updateData.paid_count,
+    remaining_count: updateData.remaining_count,
+    total_count: updateData.total_count,
+    retry_attempts: updateData.retry_attempts,
+    billingCycleUpdate: safeBillingUpdate
+  });
+
   // Update subscription with payment info using safe status update
-  await safeUpdateSubscriptionStatus(
+  const updatedSubscription = await safeUpdateSubscriptionStatus(
     tx,
     subscription.id,
     'ACTIVE' as SubscriptionStatus,
     updateData
   );
+
+  // 🔍 LOG DATABASE UPDATE RESULT
+  console.log('🔍 Database Update Result:', {
+    subscriptionId: subscription.id,
+    updatedSubscription: updatedSubscription ? {
+      id: updatedSubscription.id,
+      status: updatedSubscription.status,
+      payment_status: updatedSubscription.payment_status,
+      next_charge_at: updatedSubscription.next_charge_at?.toISOString(),
+      remaining_count: updatedSubscription.remaining_count,
+      paid_count: updatedSubscription.paid_count,
+      total_count: updatedSubscription.total_count
+    } : 'No update performed (status unchanged)'
+  });
 
   // Log the payment event
   await tx.subscription_events.create({
