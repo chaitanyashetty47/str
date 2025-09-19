@@ -115,11 +115,45 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
     
     const scheduledCancellations = userSubscriptions.filter(sub => sub.cancel_at_cycle_end);
 
+    // Category filtering logic
+    const determineAllowedCategories = (activeSubscriptions: any[], allActivePlans: any[]) => {
+      const availableCategories = [...new Set(allActivePlans.map(plan => plan.category))];
+      const individualCategories = availableCategories.filter(cat => cat !== 'ALL_IN_ONE');
+      const hasThreeIndividualCategories = individualCategories.length >= 3;
+      
+      const userActiveCategories = activeSubscriptions.map(sub => sub.subscription_plans.category);
+      
+      // Case 1: User has All-In-One - show all categories
+      if (userActiveCategories.includes('ALL_IN_ONE')) {
+        return availableCategories;
+      }
+      
+      // Case 2: Three individual categories available (Manifestation enabled) - show all
+      if (hasThreeIndividualCategories) {
+        return availableCategories;
+      }
+      
+      // Case 3: Two individual categories available (current scenario)
+      if (userActiveCategories.length > 0 && individualCategories.length === 2) {
+        const individualCategory = userActiveCategories[0];
+        return [individualCategory, 'ALL_IN_ONE'].filter(cat => availableCategories.includes(cat));
+      }
+      
+      // Case 4: No active subscription - show all available categories
+      return availableCategories;
+    };
+
+    // Filter plans by allowed categories
+    const allowedCategories = determineAllowedCategories(activeSubscriptions, allPlans);
+    const filteredPlans = allPlans.filter(plan => 
+      allowedCategories.includes(plan.category)
+    );
+
     // Check if user has multiple active plans - this affects upgrade/downgrade logic
     const hasMultipleActivePlans = activeSubscriptions.length > 1;
 
     // Build matrix with computed states
-    const planMatrix: PlanMatrixItem[] = allPlans.map(plan => {
+    const planMatrix: PlanMatrixItem[] = filteredPlans.map(plan => {
       // Check if user has truly active subscription in this category
       const trulyActiveInCategory = trulyActiveSubscriptions.find(sub => 
         sub.subscription_plans.category === plan.category
@@ -285,7 +319,7 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
       } else if (plan.category === 'ALL_IN_ONE' && activeSubscriptions.length > 1) {
         // ALL_IN_ONE with multiple active subscriptions - show actionable cancel option
         // Get available categories dynamically
-        const availableCategories = allPlans
+        const availableCategories = filteredPlans
           .filter(p => p.category !== 'ALL_IN_ONE')
           .map(p => p.category);
         

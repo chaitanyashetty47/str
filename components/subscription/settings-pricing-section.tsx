@@ -418,19 +418,31 @@ Are you sure you want to proceed with this downgrade?`;
   };
 
   const getButtonClassName = (plan: PlanMatrixItem) => {
+    const baseClasses = "w-full text-white text-sm font-medium py-2 px-3 min-h-[40px] flex items-center justify-center text-center whitespace-normal break-words";
+    
     if (plan.buttonState === 'current') {
-      return "w-full bg-green-500 hover:bg-green-600 text-white";
+      return `${baseClasses} bg-green-500 hover:bg-green-600`;
     }
     if (plan.buttonState === 'payment_verification') {
-      return "w-full bg-yellow-500 hover:bg-yellow-600 text-white";
+      return `${baseClasses} bg-yellow-500 hover:bg-yellow-600`;
     }
     if (plan.buttonState === 'retry_payment') {
-      return "w-full bg-strentor-orange hover:bg-strentor-orange/90 text-white";
+      return `${baseClasses} bg-strentor-orange hover:bg-strentor-orange/90`;
     }
     if (plan.buttonState === 'resume_subscription') {
-      return "w-full bg-blue-500 hover:bg-blue-600 text-white";
+      return `${baseClasses} bg-blue-500 hover:bg-blue-600`;
     }
-    return "w-full bg-strentor-red hover:bg-strentor-red/90 text-white";
+    return `${baseClasses} bg-strentor-red hover:bg-strentor-red/90`;
+  };
+
+  const getGridLayout = (planCount: number) => {
+    if (planCount === 1) return "grid-cols-1 max-w-sm mx-auto";
+    if (planCount === 2) return "grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto";
+    if (planCount === 3) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto";
+    if (planCount === 4) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto";
+    if (planCount === 5) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 max-w-8xl mx-auto";
+    if (planCount === 6) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 max-w-9xl mx-auto";
+    return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"; // Fallback
   };
 
   // Filter plans based on selected billing cycle
@@ -450,7 +462,7 @@ Are you sure you want to proceed with this downgrade?`;
       />
 
       {/* Single Grid Layout - No Category Grouping */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className={`grid ${getGridLayout(filteredPlans.length)} gap-4`}>
         {filteredPlans
           .sort((a, b) => {
             // Sort by category only since all plans have the same billing cycle now
