@@ -314,18 +314,34 @@ const handler = async (data: InputType): Promise<ActionState<InputType, ReturnTy
         };
         variant = 'default';
       } else if (activeSubscriptions.some(sub => sub.subscription_plans.category === 'ALL_IN_ONE')) {
-        // User has ALL_IN_ONE, trying to subscribe to individual plan
-        buttonState = 'conflict_all_in_one';
-        buttonText = 'Keep one plan active';
-        action = { 
-          type: 'cancel_first', 
-          planId: plan.id,
-          conflictSubscriptions: activeSubscriptions.filter(sub => 
-            sub.subscription_plans.category === 'ALL_IN_ONE'
-          ).map(sub => sub.id)
-        };
-        disabled = true;
-        variant = 'destructive';
+        // User has ALL_IN_ONE, allow downgrade to individual plan
+        const allInOneSub = activeSubscriptions.find(sub => sub.subscription_plans.category === 'ALL_IN_ONE');
+        
+        if (allInOneSub && plan.category !== 'ALL_IN_ONE') {
+          // Allow downgrade from All-In-One to individual category
+          buttonState = 'downgrade';
+          buttonText = `Downgrade to ${plan.name}`;
+          action = { 
+            type: 'downgrade', 
+            subscriptionId: allInOneSub.id, 
+            planId: plan.id 
+          };
+          disabled = false;
+          variant = 'outline';
+        } else {
+          // Fallback to original logic for other cases
+          buttonState = 'conflict_all_in_one';
+          buttonText = 'Keep one plan active';
+          action = { 
+            type: 'cancel_first', 
+            planId: plan.id,
+            conflictSubscriptions: activeSubscriptions.filter(sub => 
+              sub.subscription_plans.category === 'ALL_IN_ONE'
+            ).map(sub => sub.id)
+          };
+          disabled = true;
+          variant = 'destructive';
+        }
       } else if (plan.category !== 'ALL_IN_ONE' && activeSubscriptions.length >= 2) {
         // User already has 2+ individual plans, trying to add another category
         // Suggest managing existing subscriptions first

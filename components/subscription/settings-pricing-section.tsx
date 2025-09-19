@@ -269,6 +269,39 @@ export function SettingsPricingSection({
     onSubscriptionSuccess?.();
   };
 
+  const getConfirmationMessage = (currentPlan: PlanMatrixItem | null, newPlan: PlanMatrixItem) => {
+    // Check if this is an All-In-One downgrade
+    if (currentPlan?.category === 'ALL_IN_ONE' && newPlan.category !== 'ALL_IN_ONE') {
+      const lostCategories = ['FITNESS', 'PSYCHOLOGY', 'MANIFESTATION']
+        .filter(cat => cat !== newPlan.category)
+        .map(cat => cat.toLowerCase())
+        .join(' and ');
+      
+      return `You are downgrading from All-In-One to ${newPlan.name}.
+      
+You'll lose access to ${lostCategories} features.
+
+Your subscription will be updated immediately and charges will be prorated accordingly.
+
+Are you sure you want to proceed with this downgrade?`;
+    }
+    
+    // Default upgrade/downgrade messages
+    if (newPlan.action.type === 'upgrade') {
+      return `You are about to upgrade your subscription to ${newPlan.name}.
+      
+Your subscription will be upgraded immediately and the charges will be prorated accordingly.
+
+Are you sure you want to proceed with this upgrade?`;
+    } else {
+      return `You are about to downgrade your subscription to ${newPlan.name}.
+      
+Your subscription will be downgraded immediately and the charges will be prorated accordingly.
+
+Are you sure you want to proceed with this downgrade?`;
+    }
+  };
+
   const handleConfirmPlanUpdate = async () => {
     if (!selectedPlan || !selectedPlan.action.subscriptionId || !selectedPlan.action.planId) {
       return;
@@ -547,23 +580,11 @@ export function SettingsPricingSection({
               {selectedPlan?.action.type === 'upgrade' ? 'Upgrade Subscription' : 'Downgrade Subscription'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {selectedPlan?.action.type === 'upgrade' ? (
-                <>
-                  You are about to upgrade your subscription to <strong>{selectedPlan?.name}</strong>.
-                  <br /><br />
-                  Your subscription will be upgraded immediately and the charges will be prorated accordingly.
-                  <br /><br />
-                  Are you sure you want to proceed with this upgrade?
-                </>
-              ) : (
-                <>
-                  You are about to downgrade your subscription to <strong>{selectedPlan?.name}</strong>.
-                  <br /><br />
-                  Your subscription will be downgraded immediately and the charges will be prorated accordingly.
-                  <br /><br />
-                  Are you sure you want to proceed with this downgrade?
-                </>
-              )}
+              {(() => {
+                // Find current plan to determine if this is All-In-One downgrade
+                const currentPlan = plans.find(p => p.action.type === 'current');
+                return getConfirmationMessage(currentPlan, selectedPlan!);
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
