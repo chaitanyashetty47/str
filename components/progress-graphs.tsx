@@ -185,17 +185,6 @@ export default function ProgressGraphs({ weightLogs }: ProgressGraphsProps) {
   const buttonText = isTodayWeightLogged ? "Update Today's Weight" : "Add Today's Weight";
   const buttonIcon = isTodayWeightLogged ? <EditIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />;
 
-  // Debug logging
-  console.log("ProgressGraphs Debug:", {
-    user: user?.id,
-    isTodayWeightLogged,
-    todaysWeightData,
-    showAddWeightForm,
-    todayWeight,
-    isTodayWeightLoggedError,
-    todaysWeightError
-  });
-
   return (
     <div className="border rounded-lg p-6">
       <div className="flex flex-row justify-between mb-6">
@@ -204,7 +193,7 @@ export default function ProgressGraphs({ weightLogs }: ProgressGraphsProps) {
           <p className="text-muted-foreground">Track your fitness journey over time</p>
         </div>
         <Button 
-          className="bg-strentor-red text-white"
+          className="bg-strentor-red hover:bg-strentor-red/80 text-white"
           onClick={() => setShowAddWeightForm(!showAddWeightForm)}
           disabled={isUpdating}
         >
@@ -248,13 +237,14 @@ export default function ProgressGraphs({ weightLogs }: ProgressGraphsProps) {
                 <Button 
                   onClick={() => handleUpdateWeight({ weight: todayWeight })} 
                   disabled={!todayWeight || todayWeight < 10 || isUpdating}
-                  className="bg-strentor-red text-white"
+                  className="bg-strentor-red hover:bg-strentor-red/80 text-white"
                 >
                   {isUpdating ? "Updating..." : (isTodayWeightLogged ? "Update Weight" : "Add Weight")}
                 </Button>
                 <Button 
                   variant="outline"
                   onClick={() => setShowAddWeightForm(false)}
+                  className="hover:bg-muted/80"
                 >
                   Cancel
                 </Button>

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useOptimistic, startTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Calendar, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -215,8 +216,6 @@ export function WorkoutLoggerClient({
 
   // Week navigation
   const navigateWeek = (direction: "prev" | "next") => {
-    console.log('Navigation clicked:', direction, 'Current weekNumber:', weekNumber);
-    
     const newWeekNumber = direction === "prev" 
       ? weekNumber - 1 
       : weekNumber + 1;
@@ -228,7 +227,6 @@ export function WorkoutLoggerClient({
 
     const newUrl = `/workout/${workoutId}?weekNumber=${newWeekNumber}`;
     router.push(newUrl);
-    console.log('Navigating to:', newUrl);
     
     // const currentDate = new Date(startDate + 'T12:00:00.000Z'); // Add time to avoid timezone issues
     // console.log('Current date object:', currentDate);
@@ -276,6 +274,17 @@ export function WorkoutLoggerClient({
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <div className="mb-2">
+        <Link 
+          href={`/workout-plan/${workoutId}`}
+          className="inline-flex items-center gap-2 text-strentor-red hover:text-strentor-red/80 font-medium transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back To Workout Plan
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">{optimisticData.planTitle}</h1>
@@ -305,6 +314,7 @@ export function WorkoutLoggerClient({
       <div className="flex items-center justify-between">
         <Button
           variant="outline"
+          className="bg-strentor-red hover:bg-strentor-red/80 text-white"
           onClick={() => navigateWeek("prev")}
           disabled={isFetching || weekNumber === 1}
         >
@@ -321,6 +331,7 @@ export function WorkoutLoggerClient({
 
         <Button
           variant="outline"
+          className="bg-strentor-red hover:bg-strentor-red/80 text-white"
           onClick={() => navigateWeek("next")}
           disabled={isFetching || weekNumber === totalWeeks}
         >

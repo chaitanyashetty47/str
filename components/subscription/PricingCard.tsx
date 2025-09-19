@@ -43,7 +43,7 @@ export const PricingCard = ({ plan, selectedCycle }: { plan: SubscriptionPlan, s
           razorpayPlanId={plan.razorpay_plan_id}
           selectedCycle={selectedCycle}
           buttonText="Subscribe"
-          className="w-full rounded-lg bg-strentor-red hover:bg-strentor-red/90"
+          className="w-full rounded-lg bg-strentor-red hover:bg-strentor-red/80"
         />
       </div>
     </div>

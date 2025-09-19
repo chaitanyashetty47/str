@@ -38,7 +38,7 @@ const ProgramsCard = () => {
           <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-[#F31818]">
             Our Programs
           </h2>
-          <p className="max-w-[900px] text-gray-700 font-semibold md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-zinc-400">
+          <p className="max-w-[900px] text-muted-foreground font-semibold md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
             Empower your journey with a range of tailored programs combining fitness training, manifestation mentoring and psychological support to ensure your success and transformation.
           </p>
         </div>
@@ -50,7 +50,7 @@ const ProgramsCard = () => {
             {programs.map((program, index) => (
               <Card
                 key={index}
-                className="group bg-white hover:shadow-xl transition-all duration-300 border-none overflow-hidden relative"
+                className="group bg-card hover:shadow-xl transition-all duration-300 border-none overflow-hidden relative"
               >
                 <CardContent className="p-6 flex flex-col items-center relative z-10">
                   <div
@@ -71,10 +71,10 @@ const ProgramsCard = () => {
                       />
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold mb-4 text-gray-800 group-hover:text-gray-900">
+                  <h3 className="text-xl font-bold mb-4 text-card-foreground group-hover:text-card-foreground">
                     {program.title}
                   </h3>
-                  <p className="text-gray-700 font-bold leading-relaxed text-center text-muted-foreground">
+                  <p className="text-muted-foreground font-bold leading-relaxed text-center">
                     {program.description}
                   </p>
                 </CardContent>

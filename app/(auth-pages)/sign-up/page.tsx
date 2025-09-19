@@ -22,10 +22,10 @@ export default async function Signup(props: {
             <div className="flex justify-center md:justify-start">
               <Image src="/strentor.png" alt="Strentor Logo" width={150} height={120} className="w-32 h-24" />
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold">
+            <h1 className="text-4xl md:text-6xl font-bold text-foreground">
               CONNECT, SHARE AND <span className="text-[#F31818]">PLAY</span>
             </h1>
-            <p className="text-xl md:text-2xl font-medium text-gray-700">
+            <p className="text-xl md:text-2xl font-medium text-muted-foreground">
               Join our community of wellness seekers and transform your life. Start your journey to become unstoppable today.
             </p>
           </div>
@@ -41,17 +41,17 @@ export default async function Signup(props: {
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D115] flex items-center justify-center">
                   <Check className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-base font-bold text-gray-800">{benefit}</span>
+                <span className="text-base font-bold text-foreground">{benefit}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Right Section - Sign Up Form (Mobile First) */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 space-y-8 order-1 md:order-2">
+        <div className="bg-card/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 space-y-8 order-1 md:order-2">
           <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold">Create an account</h2>
-            <p className="text-gray-600">
+            <h2 className="text-3xl font-bold text-card-foreground">Create an account</h2>
+            <p className="text-muted-foreground">
               Already have an account?{" "}
               <Link href="/sign-in" className="text-[#F31818] hover:underline font-semibold">
                 Sign in
@@ -68,17 +68,17 @@ export default async function Signup(props: {
           {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500 font-medium">Or continue with email</span>
+              <span className="px-4 bg-card text-muted-foreground font-medium">Or continue with email</span>
             </div>
           </div>
 
           {/* Email Sign Up Form */}
           <SignUpForm searchParams={searchParams} />
 
-          <p className="text-xs text-gray-500 text-center leading-relaxed">
+          <p className="text-xs text-muted-foreground text-center leading-relaxed">
             By signing up, you agree to our{" "}
             <Link href="/terms" className="text-[#F31818] hover:underline">
               Terms of Service

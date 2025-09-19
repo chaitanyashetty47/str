@@ -69,7 +69,7 @@ export default function ProgressCharts() {
               <XAxis dataKey="week" />
               <YAxis label={{ value: "Volume (lbs)", angle: -90, position: "insideLeft" }} />
               <Tooltip />
-              <Bar dataKey="volume" fill="#8884d8" />
+              <Bar dataKey="volume" fill="hsl(var(--chart-1))" />
             </BarChart>
           </ResponsiveContainer>
         </TabsContent>

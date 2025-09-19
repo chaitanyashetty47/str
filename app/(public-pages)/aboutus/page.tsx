@@ -7,7 +7,7 @@ import Footer from '@/components/landing/Footer'
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen ">
+    <main className="min-h-screen bg-background">
       <Header/>
       <HeroSection />
       <BrandStory />

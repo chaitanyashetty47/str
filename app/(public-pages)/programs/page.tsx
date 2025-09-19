@@ -59,7 +59,7 @@ export default function TeamPage() {
   ]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <Header/>
       <div className="relative h-[40vh] bg-black mb-16">
         <Image
@@ -91,7 +91,7 @@ export default function TeamPage() {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="p-8 space-y-6 order-2 md:order-none">
                     <div>
-                      <h2 className="text-4xl font-bold text-gray-900 mb-2">
+                      <h2 className="text-4xl font-bold text-foreground mb-2">
                         {member.name}
                       </h2>
                       <Badge className="bg-[#FFBD22] text-black text-md font-semibold">
@@ -102,7 +102,7 @@ export default function TeamPage() {
                           <h3 className="text-lg font-semibold text-[#0D97FF] mb-4">
                             Qualifications
                           </h3>
-                          <ul className="space-y-3 text-gray-700 font-bold">
+                          <ul className="space-y-3 text-muted-foreground font-bold">
                             {member.qualifications.map((qual, idx) => (
                               <li key={idx} className="flex items-start">
                                 <Star className="h-5 w-5 text-[#FFBD22] mt-1 mr-3 flex-shrink-0" />
@@ -115,7 +115,7 @@ export default function TeamPage() {
                           <h3 className="text-lg font-semibold text-[#00D115] mb-4">
                             What We Offer
                           </h3>
-                          <ul className="space-y-3 text-gray-700 font-bold">
+                          <ul className="space-y-3 text-muted-foreground font-bold">
                             {member.offerings.map((offer, idx) => (
                               <li key={idx} className="flex items-start">
                                 <Check className="h-5 w-5 text-[#00D115] mt-1 mr-3 flex-shrink-0" />
@@ -135,7 +135,7 @@ export default function TeamPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="relative h-[600px] bg-gray-100 order-1 md:order-none">
+                  <div className="relative h-[600px] bg-muted order-1 md:order-none">
                     <Image
                       src={member.image}
                       alt={`${member.name} - ${member.role}`}

@@ -432,7 +432,7 @@ Are you sure you want to proceed with this downgrade?`;
     if (plan.buttonState === 'resume_subscription') {
       return `${baseClasses} bg-blue-500 hover:bg-blue-600`;
     }
-    return `${baseClasses} bg-strentor-red hover:bg-strentor-red/90`;
+    return `${baseClasses} bg-strentor-red hover:bg-strentor-red/80`;
   };
 
   const getGridLayout = (planCount: number) => {
@@ -606,7 +606,7 @@ Are you sure you want to proceed with this downgrade?`;
             <AlertDialogAction
               onClick={handleConfirmPlanUpdate}
               disabled={isUpdatingPlan}
-              className="bg-strentor-red hover:bg-strentor-red/90 text-white"
+              className="bg-strentor-red hover:bg-strentor-red/80 text-white"
             >
               {isUpdatingPlan ? (
                 <>

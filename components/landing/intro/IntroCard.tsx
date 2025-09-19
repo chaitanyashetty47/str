@@ -26,7 +26,7 @@ export function IntroCard({ icon, title, description }: IntroCardProps) {
   const iconColor = colorMap[icon];
 
   return (
-    <div className="flex items-start gap-4 rounded-lg border border-gray-700 bg-white p-6 shadow-sm transition-all hover:shadow-lg">
+    <div className="flex items-start gap-4 rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:shadow-lg">
       <div 
         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
         style={{ backgroundColor: `${iconColor}15` }}
@@ -48,7 +48,7 @@ export function IntroCard({ icon, title, description }: IntroCardProps) {
         >
           {title}
         </h3>
-        <p className="text-lg font-semibold text-gray-900">
+        <p className="text-lg font-semibold text-card-foreground">
           {description}
         </p>
       </div>

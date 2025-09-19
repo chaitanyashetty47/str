@@ -28,26 +28,20 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>div>svg]:rotate-180",
         className
       )}
       {...props}
     >
-      {/* {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" /> */}
-
-<div // This div prevents the error by wrapping children + icon into a single element
-      className={cn(
+      <div className={cn(
         "flex w-full items-center justify-between",
         !props.asChild && "gap-2",
-      )}
-    >
-      {children}
-      {!props.asChild && ( // This conditional prevents the chevron from rendering if `asChild` is being used
-      
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-      )}
-    </div>
+      )}>
+        {children}
+        {!props.asChild && (
+          <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+        )}
+      </div>
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))

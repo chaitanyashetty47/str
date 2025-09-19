@@ -18,8 +18,8 @@ export default async function PersonalRecords() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold">Personal Records</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold text-foreground">Personal Records</h1>
+        <p className="text-muted-foreground mt-2">
           Track your personal records and progress over time
         </p>
       </div>

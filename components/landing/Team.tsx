@@ -61,7 +61,7 @@ export default function Team() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-[#F31818]">Meet Our Team</h2>
-          <p className="max-w-[900px] text-gray-700 font-semibold md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-zinc-400">
+          <p className="max-w-[900px] text-muted-foreground font-semibold md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
             Our Expert Team is comprised of fitness specialists, psychological experts, and manifestation mentors. Together, they bring a holistic blend of knowledge and passion to empower your journey toward wellness and transformation.
           </p>
         </div>
@@ -75,7 +75,7 @@ export default function Team() {
                 passHref
               >
                 <Card
-                  className="group relative overflow-hidden rounded-lg backdrop-blur-sm bg-white/10 border-white/20 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer"
+                  className="group relative overflow-hidden rounded-lg backdrop-blur-sm bg-card/10 border-border transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer"
                 >
                   <div className="aspect-square overflow-hidden relative">
                     <Image
@@ -88,13 +88,13 @@ export default function Team() {
                     />
                   </div>
                   <div className="p-4">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{member.name}</h3>
-                    <p className="text-sm text-gray-700 font-medium dark:text-zinc-400">{member.role}</p>
+                    <h3 className="text-lg font-semibold text-card-foreground">{member.name}</h3>
+                    <p className="text-sm text-muted-foreground font-medium">{member.role}</p>
                     <div className="flex space-x-3 mt-4">
                       {member.social.instagram && (
                         <button
                           onClick={(e) => handleSocialClick(e, member.social.instagram!)}
-                          className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+                          className="text-muted-foreground hover:text-card-foreground"
                         >
                           <Instagram className="h-6 w-6" />
                         </button>

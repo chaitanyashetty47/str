@@ -46,7 +46,7 @@ export default function ProgressGraph() {
                 <XAxis dataKey="date" />
                 <YAxis domain={["auto", "auto"]} />
                 <Tooltip />
-                <Line type="monotone" dataKey="weight" stroke="#8884d8" strokeWidth={2} />
+                <Line type="monotone" dataKey="weight" stroke="hsl(var(--chart-1))" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </TabsContent>
@@ -57,7 +57,7 @@ export default function ProgressGraph() {
                 <XAxis dataKey="date" />
                 <YAxis domain={["auto", "auto"]} />
                 <Tooltip />
-                <Line type="monotone" dataKey="volume" stroke="#82ca9d" strokeWidth={2} />
+                <Line type="monotone" dataKey="volume" stroke="hsl(var(--chart-2))" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </TabsContent>

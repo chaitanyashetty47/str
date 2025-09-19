@@ -46,7 +46,7 @@ export const DashboardHeader = () => {
         />
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* <div className="flex items-center gap-3">
         <Button
           variant="outline"
           size="icon"
@@ -68,7 +68,7 @@ export const DashboardHeader = () => {
         </Button>
 
         <ModeToggle />
-      </div>
+      </div> */}
     </header>
   );
 };

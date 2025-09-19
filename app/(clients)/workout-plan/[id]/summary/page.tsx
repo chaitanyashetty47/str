@@ -1,6 +1,6 @@
 import { getClientWorkoutPlanFull } from "@/actions/client-workout/client-full-workout.action";
 import WeekColumnSelection from "@/components/workout-summary/WeekColumnSelection";
-import PRDebugPanel from "@/components/workout-summary/PRDebugPanel";
+// import PRDebugPanel from "@/components/workout-summary/PRDebugPanel";
 
 export default async function WorkoutPlanSummaryPage({ 
   params 
@@ -56,7 +56,7 @@ export default async function WorkoutPlanSummaryPage({
       />
 
       {/* Temporary Debug Panel - Remove after debugging */}
-      <PRDebugPanel planId={workoutPlan.id} />
+      {/* <PRDebugPanel planId={workoutPlan.id} /> */}
     </div>
   );
 }

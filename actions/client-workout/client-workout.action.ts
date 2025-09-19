@@ -39,6 +39,7 @@ export interface PersonalRecordOutput {
   weight: number;
   reps: number | null;
   oneRepMax: number | null;
+  maxReps: number | null;
   date: string; // formatted
 }
 
@@ -267,8 +268,9 @@ async function prsHandler(_: z.infer<typeof prsInput>) {
       id: pr.id,
       exerciseName,
       weight: pr.max_weight ?? 0,
-      reps: null, // reps not stored in new schema
+      reps: pr.max_reps ?? null,
       oneRepMax: pr.max_weight ?? 0, // 1RM approximated as max weight lifted
+      maxReps: pr.max_reps ?? null, // Max reps for reps-based exercises
       date: dateStr,
     };
   });

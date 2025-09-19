@@ -10,10 +10,10 @@ export function NoSubscriptionCard() {
         <h2 className="text-2xl font-bold">Active Subscriptions</h2>
       </div>
 
-      <Alert className="border-orange-200 bg-orange-50">
-        <AlertCircle className="h-4 w-4 text-orange-600" />
-        <AlertTitle className="text-orange-800">No Active Subscription Found</AlertTitle>
-        <AlertDescription className="text-orange-700 mt-2">
+      <Alert className="border-accent/20 bg-accent/5">
+        <AlertCircle className="h-4 w-4 text-accent" />
+        <AlertTitle className="text-accent-foreground">No Active Subscription Found</AlertTitle>
+        <AlertDescription className="text-accent-foreground/80 mt-2">
           Subscribe to a plan to get access to personalized workout plans and trainer guidance.
         </AlertDescription>
       </Alert>

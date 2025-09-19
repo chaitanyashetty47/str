@@ -97,8 +97,8 @@ function ConfirmEmailContent() {
         return (
           <div className="text-center space-y-4">
             <Loader2 className="w-12 h-12 animate-spin mx-auto text-[#F31818]" />
-            <h2 className="text-2xl font-bold">Verifying your email...</h2>
-            <p className="text-gray-600">Please wait while we confirm your account.</p>
+            <h2 className="text-2xl font-bold text-card-foreground">Verifying your email...</h2>
+            <p className="text-muted-foreground">Please wait while we confirm your account.</p>
           </div>
         );
 
@@ -107,7 +107,7 @@ function ConfirmEmailContent() {
           <div className="text-center space-y-4">
             <CheckCircle className="w-16 h-16 mx-auto text-[#00D115]" />
             <h2 className="text-3xl font-bold text-[#00D115]">Email Confirmed!</h2>
-            <p className="text-gray-600 text-lg">
+            <p className="text-muted-foreground text-lg">
               Your account has been successfully verified. You'll be redirected to your dashboard shortly.
             </p>
             <div className="pt-4">
@@ -127,7 +127,7 @@ function ConfirmEmailContent() {
             <div className="text-center space-y-4">
               <XCircle className="w-16 h-16 mx-auto text-[#F31818]" />
               <h2 className="text-3xl font-bold text-[#F31818]">Link Expired</h2>
-              <p className="text-gray-600 text-lg">
+              <p className="text-muted-foreground text-lg">
                 The confirmation link has expired or is invalid. Don't worry, we can send you a new one!
               </p>
             </div>
@@ -164,8 +164,8 @@ function ConfirmEmailContent() {
               </Button>
 
               {resendMessage && (
-                <Alert className={resendMessage.type === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
-                  <AlertDescription className={resendMessage.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+                <Alert className={resendMessage.type === 'success' ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'}>
+                  <AlertDescription className={resendMessage.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}>
                     {resendMessage.message}
                   </AlertDescription>
                 </Alert>
@@ -173,7 +173,7 @@ function ConfirmEmailContent() {
             </div>
 
             <div className="text-center space-y-4">
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Still having trouble? Try signing up again or contact support.
               </p>
               <div className="space-x-4">
@@ -193,7 +193,7 @@ function ConfirmEmailContent() {
           <div className="text-center space-y-4">
             <XCircle className="w-16 h-16 mx-auto text-[#F31818]" />
             <h2 className="text-3xl font-bold text-[#F31818]">Something went wrong</h2>
-            <p className="text-gray-600 text-lg">
+            <p className="text-muted-foreground text-lg">
               We encountered an error while verifying your email. Please try again or contact support.
             </p>
             <div className="pt-4 space-x-4">
@@ -227,10 +227,10 @@ function ConfirmEmailContent() {
         </div>
 
         {/* Main Content */}
-        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-card/90 backdrop-blur-sm">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl font-bold">Email Confirmation</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-bold text-card-foreground">Email Confirmation</CardTitle>
+            <CardDescription className="text-muted-foreground">
               {status === 'loading' && 'Verifying your account...'}
               {status === 'success' && 'Your account is now verified!'}
               {status === 'expired' && 'Let\'s get you verified'}
@@ -244,7 +244,7 @@ function ConfirmEmailContent() {
 
         {/* Footer Links */}
         <div className="text-center mt-6 space-y-2">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             <Link href="/sign-in" className="text-[#F31818] hover:underline font-medium">
               Back to Sign In
             </Link>

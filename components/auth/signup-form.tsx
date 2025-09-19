@@ -37,27 +37,27 @@ export function SignUpForm({ searchParams }: SignUpFormProps) {
     return (
       <div className="space-y-6">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-[#00D115]/10 flex items-center justify-center">
-            <Mail className="w-8 h-8 text-[#00D115]" />
+          <div className="w-16 h-16 mx-auto rounded-full bg-strentor-green/10 flex items-center justify-center">
+            <Mail className="w-8 h-8 text-strentor-green" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Check your email!</h3>
-          <p className="text-gray-600">
+          <h3 className="text-xl font-bold text-foreground">Check your email!</h3>
+          <p className="text-muted-foreground">
             We've sent a confirmation link to <span className="font-semibold">{email}</span>
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Click the link in your email to verify your account and get started.
           </p>
         </div>
 
         {!hasResent && (
           <div className="text-center space-y-3">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               📧 Didn't get the email yet?
             </p>
             <Button
               onClick={() => setIsModalOpen(true)}
               variant="outline"
-              className="text-[#F31818] border-[#F31818] hover:bg-[#F31818] hover:text-white rounded-full"
+              className="text-strentor-red border-strentor-red hover:bg-strentor-red/80 hover:text-white rounded-full"
             >
               Let's Try Again
             </Button>
@@ -65,8 +65,8 @@ export function SignUpForm({ searchParams }: SignUpFormProps) {
         )}
 
         {hasResent && (
-          <div className="text-center p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-800">
+          <div className="text-center p-3 bg-strentor-green/10 border border-strentor-green/20 rounded-lg">
+            <p className="text-sm text-strentor-green">
               ✅ New confirmation email sent! Check your inbox.
             </p>
           </div>
@@ -109,7 +109,7 @@ export function SignUpForm({ searchParams }: SignUpFormProps) {
           type="text"
           placeholder="Enter your full name"
           required
-          className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+          className="w-full p-3 border-2 rounded-lg focus:border-strentor-red focus:ring-strentor-red transition-colors"
         />
       </div>
       
@@ -123,7 +123,7 @@ export function SignUpForm({ searchParams }: SignUpFormProps) {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+          className="w-full p-3 border-2 rounded-lg focus:border-strentor-red focus:ring-strentor-red transition-colors"
         />
       </div>
       
@@ -137,7 +137,7 @@ export function SignUpForm({ searchParams }: SignUpFormProps) {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+          className="w-full p-3 border-2 rounded-lg focus:border-strentor-red focus:ring-strentor-red transition-colors"
         />
         <PasswordStrength password={password} className="mt-2" />
       </div>
@@ -152,17 +152,17 @@ export function SignUpForm({ searchParams }: SignUpFormProps) {
           required
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+          className="w-full p-3 border-2 rounded-lg focus:border-strentor-red focus:ring-strentor-red transition-colors"
         />
         {password && confirmPassword && password !== confirmPassword && (
-          <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+          <p className="text-xs text-destructive mt-1">Passwords do not match</p>
         )}
       </div>
       
       <SubmitButton
         formAction={signUpAction}
         pendingText="Creating account..."
-        className="w-full bg-[#F31818] hover:bg-[#F31818]/90 text-white font-bold py-3 rounded-full text-lg transform hover:scale-105 transition-all"
+        className="w-full bg-strentor-red hover:bg-strentor-red/80 text-white font-bold py-3 rounded-full text-lg transform hover:scale-105 transition-all"
       >
         Get Started
       </SubmitButton>

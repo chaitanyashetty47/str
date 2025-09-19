@@ -1,5 +1,7 @@
-import { Dumbbell, Brain, Sparkles, Crown } from "lucide-react";
+import { Dumbbell, Brain, Sparkles, Crown, Settings } from "lucide-react";
 import { ActiveSubscriptionWithPlan } from "@/actions/subscriptions/get-active-subscriptions.action";
+import Link from "next/link";
+import Image from "next/image";
 
 interface ActiveSubscriptionCardProps {
   subscriptions: ActiveSubscriptionWithPlan[];
@@ -14,41 +16,68 @@ export function ActiveSubscriptionCard({ subscriptions }: ActiveSubscriptionCard
     });
   };
 
-  const getIcon = (category: string) => {
-    switch (category.toLowerCase()) {
-      case "fitness":
-        return <Dumbbell className="h-5 w-5 text-blue-700" />
-      case "psychology":
-        return <Brain className="h-5 w-5 text-purple-700" />
-      case "manifestation":
-        return <Sparkles className="h-5 w-5 text-amber-700" />
-      case "all_in_one":
-        return <Crown className="h-5 w-5 text-green-700" />
-      default:
-        return <Dumbbell className="h-5 w-5 text-gray-700" />
-    }
-  }
+  const categoryGradients = {
+    FITNESS: "from-blue-500 to-purple-500",
+    PSYCHOLOGY: "from-orange-500 to-red-500",
+    MANIFESTATION: "from-purple-500 to-pink-500",
+    ALL_IN_ONE: "from-green-500 to-emerald-500"
+  };
 
-  const getIconBg = (category: string) => {
-    switch (category.toLowerCase()) {
-      case "fitness":
-        return "bg-blue-100"
-      case "psychology":
-        return "bg-purple-100"
-      case "manifestation":
-        return "bg-amber-100"
-      case "all_in_one":
-        return "bg-green-100"
-      default:
-        return "bg-gray-100"
-    }
-  }
+  const categoryIcons = {
+    FITNESS: (
+      <div className={`rounded-full bg-gradient-to-r ${categoryGradients.FITNESS} w-10 h-10 flex items-center justify-center flex-shrink-0`}>
+        <div className="relative w-6 h-6">
+          <Image
+            src="/fitness.svg"
+            alt="Fitness Training"
+            fill
+            sizes="24px"
+            className="object-contain"
+            priority
+          />
+        </div>
+      </div>
+    ),
+    PSYCHOLOGY: (
+      <div className={`rounded-full bg-gradient-to-r ${categoryGradients.PSYCHOLOGY} w-10 h-10 flex items-center justify-center flex-shrink-0`}>
+        <div className="relative w-6 h-6">
+          <Image
+            src="/brains.svg"
+            alt="Psychological Support"
+            fill
+            sizes="24px"
+            className="object-contain"
+            priority
+          />
+        </div>
+      </div>
+    ),
+    MANIFESTATION: (
+      <div className={`rounded-full bg-gradient-to-r ${categoryGradients.MANIFESTATION} w-10 h-10 flex items-center justify-center flex-shrink-0`}>
+        <div className="relative w-6 h-6">
+          <Image
+            src="/manifestation.png"
+            alt="Manifestation Guidance"
+            fill
+            sizes="24px"
+            className="object-contain"
+            priority
+          />
+        </div>
+      </div>
+    ),
+    ALL_IN_ONE: (
+      <div className={`rounded-full bg-gradient-to-r ${categoryGradients.ALL_IN_ONE} w-10 h-10 flex items-center justify-center flex-shrink-0`}>
+        <Crown className="h-6 w-6 text-white" />
+      </div>
+    )
+  };
 
   return (
     <div className="border rounded-lg p-6 shadow-sm">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Active Subscriptions</h2>
-        <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+        <div className="px-3 py-1 bg-strentor-green/10 text-strentor-green rounded-full text-sm font-medium">
           {subscriptions.length} Active
         </div>
       </div>
@@ -62,9 +91,11 @@ export function ActiveSubscriptionCard({ subscriptions }: ActiveSubscriptionCard
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className={`${getIconBg(subscription.plan.category)} p-3 rounded-full`}>
-                {getIcon(subscription.plan.category)}
-              </div>
+              {categoryIcons[subscription.plan.category as keyof typeof categoryIcons] || (
+                <div className="rounded-full bg-gradient-to-r from-gray-500 to-gray-600 w-10 h-10 flex items-center justify-center flex-shrink-0">
+                  <Crown className="h-6 w-6 text-white" />
+                </div>
+              )}
               <div>
                 <p className="font-bold text-lg">{subscription.plan.name}</p>
                 <p className="text-muted-foreground text-sm">
@@ -89,6 +120,16 @@ export function ActiveSubscriptionCard({ subscriptions }: ActiveSubscriptionCard
           </p>
         </div>
       )}
+
+      <div className="mt-6 pt-4 border-t">
+        <Link 
+          href="/settings/subscription" 
+          className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium transition-colors"
+        >
+          <Settings className="h-4 w-4" />
+          Manage Subscriptions
+        </Link>
+      </div>
     </div>
   );
 } 

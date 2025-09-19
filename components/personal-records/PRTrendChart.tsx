@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import {
   Card,
   CardContent,
@@ -130,20 +130,20 @@ export function PRTrendChart({
       </CardHeader>
       <CardContent>
         {chartData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="text-lg font-medium mb-2">No Data Available</div>
             <div className="text-sm">Start logging workouts to see your progress here!</div>
           </div>
         ) : chartData.length === 1 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="text-lg font-medium mb-2">Need More Data</div>
             <div className="text-sm">Log another PR to see your progress trend</div>
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+            <div className="mt-4 p-4 bg-primary/10 rounded-lg">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-primary">
                   {chartData[0].value}{isRepsBased ? '' : ' kg'}
                 </div>
-                <div className="text-sm text-blue-600">
+                <div className="text-sm text-primary">
                   {new Date(chartData[0].date).toLocaleDateString('en-US', { 
                     month: 'short', 
                     day: 'numeric', 
@@ -156,7 +156,7 @@ export function PRTrendChart({
         ) : (
           <div style={{ width: "100%", height: 200 }}>
             <ResponsiveContainer>
-              <LineChart data={chartData} margin={{ left: 12, right: 12 }}>
+              <AreaChart data={chartData} margin={{ left: 50, right: 12, top: 12, bottom: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -172,15 +172,29 @@ export function PRTrendChart({
                   dataKey="value"
                   tickLine={false}
                   axisLine={false}
-                  tickMargin={8}
-                  width={40}
+                  tickMargin={10}
+                  width={50}
                   domain={["auto", "auto"]}
                   tickFormatter={(value) => `${value}`}
                 />
                 <Tooltip
-                  contentStyle={{ background: "#fff3e0", border: "1px solid #ffa726" }}
-                  labelStyle={{ color: "#ff9800" }}
-                  itemStyle={{ color: "#ff9800" }}
+                  contentStyle={{ 
+                    background: "rgba(255, 189, 34, 0.6)", 
+                    border: "1px solid rgba(255, 189, 34, 0.9)",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(255, 189, 34, 0.3)",
+                    backdropFilter: "blur(8px)"
+                  }}
+                  labelStyle={{ 
+                    color: "#1a1a1a", 
+                    fontWeight: "600",
+                    fontSize: "12px"
+                  }}
+                  itemStyle={{ 
+                    color: "#1a1a1a", 
+                    fontWeight: "500",
+                    fontSize: "11px"
+                  }}
                   formatter={(value: any, name: string) => [
                     `${isRepsBased ? 'Reps' : 'ORM'}: ${value}${isRepsBased ? '' : ' kg'}`, 
                     ""
@@ -190,15 +204,15 @@ export function PRTrendChart({
                     return `${d.getDate()} ${d.toLocaleString("default", { month: "short" })} ${d.getFullYear()}`;
                   }}
                 />
-                <Line
+                <Area
                   dataKey="value"
-                  type="monotone"
-                  stroke="#ff9800"
-                  strokeWidth={3}
-                  dot={{ fill: "#ff9800", strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: "#ff9800", strokeWidth: 2 }}
+                  type="natural"
+                  fill="rgba(255, 189, 34, 0.2)"
+                  fillOpacity={0.3}
+                  stroke="rgba(255, 189, 34, 0.8)"
+                  strokeWidth={2}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         )}

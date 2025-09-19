@@ -15,7 +15,7 @@ export default async function ForgotPassword(props: {
   if ("message" in searchParams) {
     return (
       <div className="w-full flex-1 flex items-center h-screen justify-center gap-2 p-4">
-        <div className="bg-white/90 backdrop-blur-sm border rounded-2xl shadow-xl p-8 max-w-md w-full">
+        <div className="bg-card/90 backdrop-blur-sm border border-border rounded-2xl shadow-xl p-8 max-w-md w-full">
           <FormMessage message={searchParams} />
           <Link href="/forgot-password" className="w-full mt-6 bg-[#F31818] hover:bg-[#F31818]/90 rounded-full font-bold inline-block text-center py-3 text-white">
             Try Again
@@ -35,10 +35,10 @@ export default async function ForgotPassword(props: {
             <div className="flex justify-center md:justify-start">
               <Image src="/strentor.png" alt="Strentor Logo" width={150} height={120} className="w-32 h-24" />
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold">
+            <h1 className="text-4xl md:text-6xl font-bold text-foreground">
               RESET YOUR <span className="text-[#F31818]">PASSWORD</span>
             </h1>
-            <p className="text-xl md:text-2xl font-medium text-gray-700">
+            <p className="text-xl md:text-2xl font-medium text-muted-foreground">
               No worries! We'll help you reset your password and get back on track to your transformation journey.
             </p>
           </div>
@@ -54,17 +54,17 @@ export default async function ForgotPassword(props: {
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D115] flex items-center justify-center">
                   <Check className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-base font-bold text-gray-800">{benefit}</span>
+                <span className="text-base font-bold text-foreground">{benefit}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Right Section - Reset Password Form (Mobile First) */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 space-y-8 order-1 md:order-2">
+        <div className="bg-card/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 space-y-8 order-1 md:order-2">
           <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold">Reset Password</h2>
-            <p className="text-gray-600">
+            <h2 className="text-3xl font-bold text-card-foreground">Reset Password</h2>
+            <p className="text-muted-foreground">
               Remember your password?{" "}
               <Link href="/sign-in" className="text-[#F31818] hover:underline font-semibold">
                 Sign in
@@ -97,10 +97,10 @@ export default async function ForgotPassword(props: {
 
           {/* Help Text */}
           <div className="text-center space-y-2">
-            <p className="text-xs text-gray-500 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               If you don't receive an email within a few minutes, please check your spam folder.
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Need help?{" "}
               <Link href="/contact" className="text-[#F31818] hover:underline">
                 Contact support

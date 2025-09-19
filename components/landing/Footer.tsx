@@ -4,38 +4,38 @@ import { Facebook, Linkedin, Instagram, Youtube } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t bg-black/5 backdrop-blur-lg">
+    <footer className="w-full border-t border-border bg-background/5 backdrop-blur-lg">
       <div className="container mx-auto px-4 py-12 grid gap-8 sm:grid-cols-3 text-center sm:text-left">
         {/* Company Sections */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Company</h3>
-          <ul className="space-y-2 text-sm text-gray-800 dark:text-gray-400">
-            <li className="hover:text-[#F31818]">
+          <h3 className="text-lg font-semibold text-foreground">Company</h3>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="hover:text-primary">
               <Link href="/aboutus">About Us</Link>
             </li>
-            <li className="hover:text-[#F31818]">
+            <li className="hover:text-primary">
               <Link href="/programs">Programs</Link>
             </li>
-            <li className="hover:text-[#F31818]">
+            <li className="hover:text-primary">
               <Link href="/community">Community</Link>
             </li>
-            <li className="hover:text-[#F31818]">
+            <li className="hover:text-primary">
               <Link href="https://empowerment-hub.strentor.com/">Empowerment Hub</Link>
             </li>
           </ul>
         </div>
 
         {/* Center Section */}
-        <div className="flex items-center justify-center font-bold">
+        <div className="flex items-center justify-center font-bold text-foreground">
           Strentor © 2025
         </div>
 
         {/* Stay Connected Section */}
         <div className="space-y-4 justify-self-end">
-          <h3 className="text-lg font-semibold">Stay Connected</h3>
-          <div className="flex justify-center sm:justify-start gap-4 text-gray-500 dark:text-gray-400">
+          <h3 className="text-lg font-semibold text-foreground">Stay Connected</h3>
+          <div className="flex justify-center sm:justify-start gap-4 text-muted-foreground">
             <Link
-              className="hover:text-[#F31818] dark:hover:text-gray-100"
+              className="hover:text-primary"
               href="https://www.facebook.com/strentor/"
               target="_blank"
               rel="noopener noreferrer"
@@ -44,7 +44,7 @@ export default function Footer() {
             </Link>
 
             <Link
-              className="hover:text-[#F31818] dark:hover:text-gray-100"
+              className="hover:text-primary"
               href="https://in.linkedin.com/company/strentor"
               target="_blank"
               rel="noopener noreferrer"
@@ -53,7 +53,7 @@ export default function Footer() {
             </Link>
 
             <Link
-              className="hover:text-[#F31818] dark:hover:text-gray-100"
+              className="hover:text-primary"
               href="https://www.instagram.com/strentor/"
               target="_blank"
               rel="noopener noreferrer"
@@ -62,7 +62,7 @@ export default function Footer() {
             </Link>
 
             <Link
-              className="hover:text-[#F31818] dark:hover:text-gray-100"
+              className="hover:text-primary"
               href="https://www.youtube.com/@STRENTOR"
               target="_blank"
               rel="noopener noreferrer"

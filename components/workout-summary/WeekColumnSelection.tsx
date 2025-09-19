@@ -48,20 +48,25 @@ export default function WeekColumnSelection({
           <div className="flex items-center justify-between">
             <CardTitle>Workout Analytics</CardTitle>
             <Button
-              variant={viewMode === 'overall' ? 'default' : 'outline'}
+              variant={viewMode === 'overall' ? 'outline' : 'default'}
               size="sm"
               onClick={handleOverallToggle}
-              className="flex items-center gap-2"
+              className={cn(
+                "flex items-center gap-2",
+                viewMode === 'weekly' 
+                  ? "bg-strentor-red hover:bg-strentor-red/80 text-white" 
+                  : "bg-white text-strentor-red hover:bg-strentor-red/10 border-strentor-red"
+              )}
             >
               {viewMode === 'overall' ? (
                 <>
                   <BarChart3 className="h-4 w-4" />
-                  Weekly Summary
+                  Switch To Weekly Summary
                 </>
               ) : (
                 <>
                   <TrendingUp className="h-4 w-4" />
-                  View Overall Progress
+                  Switch To Overall Progress
                 </>
               )}
             </Button>

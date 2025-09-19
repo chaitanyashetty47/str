@@ -6,10 +6,10 @@ export function BrandStory() {
       <div className="grid md:grid-cols-2 gap-12 items-center">
         <div className="space-y-6">
           <span className="text-[#0D97FF] font-semibold text-5xl">Our Story</span>
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold text-foreground">
             A Movement of <span className="text-[#F31818]">Transformation</span>
           </h2>
-          <div className="space-y-4 text-lg text-gray-700 font-semibold leading-relaxed">
+          <div className="space-y-4 text-lg text-muted-foreground font-semibold leading-relaxed">
             <p>
               STRENTOR was born from a vision of transformation - a sanctuary for the bold, 
               the resilient, the dreamers, and the doers. Here, strength isn&apos;t measured 

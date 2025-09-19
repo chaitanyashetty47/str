@@ -15,7 +15,7 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
   if ("message" in searchParams) {
     return (
       <div className="w-full flex-1 flex items-center h-screen justify-center gap-2 p-4">
-        <div className="bg-white/90 backdrop-blur-sm border rounded-2xl shadow-xl p-8 max-w-md w-full">
+        <div className="bg-card/90 backdrop-blur-sm border border-border rounded-2xl shadow-xl p-8 max-w-md w-full">
           <FormMessage message={searchParams} />
           <Link href="/sign-in" className="w-full mt-6 bg-[#F31818] hover:bg-[#F31818]/90 rounded-full font-bold inline-block text-center py-3 text-white">
             Try Again
@@ -35,10 +35,10 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
             <div className="flex justify-center md:justify-start">
               <Image src="/strentor.png" alt="Strentor Logo" width={150} height={120} className="w-32 h-24" />
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold">
+            <h1 className="text-4xl md:text-6xl font-bold text-foreground">
               WELCOME BACK TO <span className="text-[#F31818]">STRENTOR</span>
             </h1>
-            <p className="text-xl md:text-2xl font-medium text-gray-700">
+            <p className="text-xl md:text-2xl font-medium text-muted-foreground">
               Your catalyst for total transformation. Continue your journey to become unstoppable.
             </p>
           </div>
@@ -54,17 +54,17 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D115] flex items-center justify-center">
                   <Check className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-base font-bold text-gray-800">{benefit}</span>
+                <span className="text-base font-bold text-foreground">{benefit}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Right Section - Sign In Form (Mobile First) */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 space-y-8 order-1 md:order-2">
+        <div className="bg-card/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 space-y-8 order-1 md:order-2">
           <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold">Welcome back</h2>
-            <p className="text-gray-600">
+            <h2 className="text-3xl font-bold text-card-foreground">Welcome back</h2>
+            <p className="text-muted-foreground">
               Don't have an account?{" "}
               <Link href="/sign-up" className="text-[#F31818] hover:underline font-semibold">
                 Sign up
@@ -81,10 +81,10 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
           {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500 font-medium">Or continue with email</span>
+              <span className="px-4 bg-card text-muted-foreground font-medium">Or continue with email</span>
             </div>
           </div>
 

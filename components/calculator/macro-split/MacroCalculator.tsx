@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calculator, Target, Zap, Activity, Scale, User, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MacroCalculatorProps {
   height: number;
@@ -217,17 +218,22 @@ export function MacroCalculator({
             {/* Fitness Goal Selection */}
             <div className="space-y-3">
               <div className="text-sm font-medium text-gray-700">Select Your Goal:</div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-wrap gap-3">
                 {(["weight_loss", "maintenance", "weight_gain"] as FitnessGoal[]).map((goal) => (
                   <Button
                     key={goal}
                     variant={fitnessGoal === goal ? "default" : "outline"}
                     size="sm"
                     onClick={() => setFitnessGoal(goal)}
-                    className="flex items-center gap-2"
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-3 rounded-full transition-all hover:scale-105",
+                      fitnessGoal === goal 
+                        ? "bg-strentor-red hover:bg-strentor-red/80 text-white shadow-md" 
+                        : "bg-white text-strentor-red hover:bg-strentor-red/10 border-strentor-red border-2"
+                    )}
                   >
                     {getGoalIcon(goal)}
-                    <span className="text-xs">{getGoalName(goal)}</span>
+                    <span className="text-sm font-medium">{getGoalName(goal)}</span>
                   </Button>
                 ))}
               </div>

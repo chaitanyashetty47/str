@@ -98,23 +98,10 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
 
       try {
         const parsed = parsePhoneNumber(newValue);
-        console.log("Phone number details:", {
-          isPossible: parsed?.isPossible(),
-          isValid: parsed?.isValid(),
-          country: parsed?.country,
-          nationalNumber: parsed?.nationalNumber,
-          formatNational: parsed?.formatNational(),
-          formatInternational: parsed?.formatInternational(),
-          getType: parsed?.getType(),
-          countryCallingCode: parsed?.countryCallingCode,
-          getURI: parsed?.getURI(),
-          parsed: parsed,
-        });
 
         if (parsed && parsed.country) {
           // Update flag first
           const countryCode = parsed.country;
-          console.log("Setting flag to:", countryCode.toLowerCase());
 
           // Force immediate update
           setDisplayFlag(""); // Clear first

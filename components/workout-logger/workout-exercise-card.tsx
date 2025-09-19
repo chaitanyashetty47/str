@@ -236,7 +236,8 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
               variant="ghost"
               size="sm"
               onClick={() => setShowInstructions(!showInstructions)}
-              className="h-6 px-2"
+              className="h-6 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md"
+              title="View trainer notes"
             >
               <Info className="h-3 w-3" />
             </Button>
@@ -246,9 +247,10 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
               variant="ghost"
               size="sm"
               onClick={() => setShowYoutube(true)}
-              className="h-6 px-2"
+              className="h-6 px-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
+              title="Watch YouTube tutorial"
             >
-              <Play className="h-3 w-3" />
+              <Play className="h-3 w-3 fill-white" />
             </Button>
           )}
         </div>
@@ -314,9 +316,6 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
                   min="0"
                 />
               )}
-              
-              {/* Spacer for reps-based exercises to maintain layout */}
-              {exercise.isRepsBased && <div className="h-8" />}
 
               {/* Reps Input */}
               <Input
@@ -374,7 +373,7 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
                   variant="ghost"
                   onClick={() => handleEditSet(set.setNumber, set)}
                   disabled={isPastDeadline}
-                  className="h-8 px-2"
+                  className="h-8 px-2 bg-strentor-red hover:bg-strentor-red/80 text-white"
                   title={isPastDeadline ? `Logging deadline passed (${deadlineDate})` : undefined}
                 >
                   <Edit className="h-3 w-3" />
@@ -385,7 +384,7 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
                     size="sm"
                     onClick={() => handleSaveSet(set.setNumber)}
                     disabled={(!inputs.weight && !exercise.isRepsBased) || !inputs.reps || isSaving || !!validationErrors[`${set.setNumber}-rpe`] || isPastDeadline}
-                    className={`h-8 px-2 ${validationErrors[`${set.setNumber}-rpe`] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`h-8 px-2 bg-strentor-red hover:bg-strentor-red/80 text-white ${validationErrors[`${set.setNumber}-rpe`] ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={isPastDeadline ? `Logging deadline passed (${deadlineDate})` : undefined}
                   >
                     Save
@@ -404,7 +403,7 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
                   size="sm"
                   onClick={() => handleSaveSet(set.setNumber)}
                   disabled={(!inputs.weight && !exercise.isRepsBased) || !inputs.reps || isSaving || !!validationErrors[`${set.setNumber}-rpe`] || isPastDeadline}
-                  className={`h-8 px-2 ${validationErrors[`${set.setNumber}-rpe`] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`h-8 px-2 bg-strentor-red hover:bg-strentor-red/80 text-white ${validationErrors[`${set.setNumber}-rpe`] ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title={isPastDeadline ? `Logging deadline passed (${deadlineDate})` : undefined}
                 >
                   Log

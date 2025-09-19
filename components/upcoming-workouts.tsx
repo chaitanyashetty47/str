@@ -1,9 +1,8 @@
 import Link from "next/link"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { getUpcomingWorkouts } from "@/actions/client-workout/client-workout.action"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WorkoutDayOutput } from "@/actions/client-workout/client-workout.action"
-import { cn } from "@/lib/utils"
 
 function UpcomingWorkoutsLoading() {
   return (
@@ -11,17 +10,28 @@ function UpcomingWorkoutsLoading() {
       <h2 className="text-2xl font-bold mb-1">Upcoming Workouts</h2>
       <p className="text-muted-foreground mb-6">Your scheduled sessions for this week</p>
 
-      <div className="space-y-6">
-        {/* Create 3 skeleton items to match the layout in the image */}
-        {[1, 2, 3].map((index) => (
-          <div key={index} className="flex items-center justify-between border-b pb-6 last:border-0 last:pb-0">
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-32" /> {/* Workout type */}
-              <Skeleton className="h-4 w-16" /> {/* Day number */}
+      {/* Horizontal Scrollable Skeleton */}
+      <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+        <div className="flex items-center gap-4 min-w-max">
+          {[1, 2, 3, 4, 5].map((index) => (
+            <div key={index} className="flex items-center gap-4 flex-shrink-0">
+              <div className="text-center space-y-2">
+                <Skeleton className="h-4 w-20 md:h-5 md:w-24" /> {/* Workout type */}
+                <Skeleton className="h-3 w-12 md:h-4 md:w-14" /> {/* Day number */}
+              </div>
+              {index < 5 && (
+                <div className="text-muted-foreground text-lg">•</div>
+              )}
             </div>
-            <Skeleton className="h-10 w-20" /> {/* Start button */}
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
+
+      {/* Single Start Current Week Link Skeleton */}
+      <div className="mt-6 pt-4 border-t">
+        <div className="flex items-center justify-center">
+          <Skeleton className="h-5 w-32" />
+        </div>
       </div>
     </div>
   )
@@ -43,23 +53,33 @@ export default async function UpcomingWorkouts({planId, week}: {planId: string, 
 
       {error && <p className="text-red-500">{error}</p>}
 
-      <div className="space-y-6">
-        {workouts?.map((workout: WorkoutDayOutput) => (
-          <div key={workout.id} className="flex items-center justify-between border-b pb-6 last:border-0 last:pb-0">
-            <div>
-              <p className="font-bold text-lg">{workout.title}</p>
-              <p className="text-muted-foreground">
-                Day {workout.dayNumber}
-              </p>
+      {/* Horizontal Scrollable Workout List */}
+      <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+        <div className="flex items-center gap-4 min-w-max">
+          {workouts?.map((workout: WorkoutDayOutput, index) => (
+            <div key={workout.id} className="flex items-center gap-4 flex-shrink-0">
+              <div className="text-center">
+                <p className="font-bold text-sm md:text-base">{workout.title}</p>
+                <p className="text-muted-foreground text-xs md:text-sm">
+                  Day {workout.dayNumber}
+                </p>
+              </div>
+              {index < workouts.length - 1 && (
+                <div className="text-muted-foreground text-lg">•</div>
+              )}
             </div>
-            
-            <Button className="bg-primary hover:bg-gray-800 text-white" asChild>
-              <Link href={`/workout-plan/${planId}`} className={cn(buttonVariants({ variant: "default" }))}>
-                Start
-              </Link>
-            </Button>
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
+
+      {/* Single Start Current Week Link */}
+      <div className="mt-6 pt-4 border-t">
+        <Link 
+          href={`/workout-plan/${planId}`}
+          className="text-strentor-red hover:text-strentor-red/80 font-medium flex items-center justify-center gap-2 transition-colors"
+        >
+          Start Current Week →
+        </Link>
       </div>
     </div>
   )

@@ -53,7 +53,7 @@ const communityGroups = [
 
 export default function CommunityPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-background">
       <Header/>
       {/* Hero Section */}
       <div className="relative h-[50vh] bg-black">
@@ -77,10 +77,10 @@ export default function CommunityPage() {
       {/* Welcome Section */}
       <section className="max-w-7xl mx-auto px-4 py-16">
         <div className="text-center max-w-4xl mx-auto mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-6">
+          <h2 className="text-4xl font-bold text-foreground mb-6">
             Welcome to the <span className="text-[#F31818]">STRENTOR</span> Community!
           </h2>
-          <p className="text-lg text-gray-900 font-semibold leading-relaxed">
+          <p className="text-lg text-foreground font-semibold leading-relaxed">
             We are excited to have you join our journey of holistic empowerment and personal growth. 
             Our community is designed to inspire, support, and guide individuals through a range of 
             specialized services.
@@ -92,7 +92,7 @@ export default function CommunityPage() {
           {communityGroups.map((group, index) => (
             <div
               key={index}
-              className={`rounded-xl p-6 bg-gradient-to-br ${group.color} border border-gray-200`}
+              className={`rounded-xl p-6 bg-gradient-to-br ${group.color} border border-border`}
             >
               <div className="flex items-start gap-4">
                 <div className="rounded-full bg-black p-3 shadow-md">
@@ -108,8 +108,8 @@ export default function CommunityPage() {
                 </div>
                 <div className="flex-1 space-y-4">
                   <div>
-                    <h3 className="text-xl font-semibold">{group.title}</h3>
-                    <p className="text-gray-600 mt-1">{group.description}</p>
+                    <h3 className="text-xl font-semibold text-foreground">{group.title}</h3>
+                    <p className="text-muted-foreground mt-1">{group.description}</p>
                   </div>
                   <a
                     href={group.whatsappLink}

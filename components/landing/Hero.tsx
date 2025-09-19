@@ -47,15 +47,15 @@ export default function Hero() {
         <div className="absolute inset-0 bg-gradient-to-br from-[#F31818]/5 via-[#00D115]/5 to-[#0D97FF]/5" />
         
         <div className="container mx-auto p-4">
-          <div className="relative flex flex-col md:grid md:grid-cols-2 gap-8 p-6 md:p-12 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl">
+          <div className="relative flex flex-col md:grid md:grid-cols-2 gap-8 p-6 md:p-12 bg-background/90 backdrop-blur-sm rounded-2xl shadow-xl">
             {/* Headline Section */}
             <div className="flex flex-col justify-center space-y-6">
-              <h1 className="text-4xl md:text-6xl font-bold">
+              <h1 className="text-4xl md:text-6xl font-bold text-foreground">
                  Wellness Programs
                 <br />
                 Made For <span className="text-[#F31818]">YOU</span>
               </h1>
-              <p className="text-xl md:text-2xl font-medium text-gray-700">
+              <p className="text-xl md:text-2xl font-medium text-muted-foreground">
                 Personalized pathways to your best self, crafted by experts who understand your unique journey.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -88,12 +88,12 @@ export default function Hero() {
             {guarantees.map((guarantee, index) => (
               <div
                 key={index}
-                className="flex items-center gap-3 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg transform hover:scale-105 transition-all w-full sm:w-auto"
+                className="flex items-center gap-3 bg-background/90 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg transform hover:scale-105 transition-all w-full sm:w-auto"
               >
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D115] flex items-center justify-center">
                   <Check className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-base font-bold text-gray-800">{guarantee}</span>
+                <span className="text-base font-bold text-foreground">{guarantee}</span>
               </div>
             ))}
           </div>

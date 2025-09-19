@@ -117,18 +117,18 @@ export default function WorkoutPageHeader({
             <div className="space-y-4 mt-3">
               {planId ? (
                 <Link href={`/workout/${planId}?weekNumber=${progress?.currentWeek}`}>
-                  <Button size="sm" className="w-full bg-strentor-red text-white hover:bg-strentor-red/90 hover:text-white">
+                  <Button size="sm" className="w-full bg-strentor-red text-white hover:bg-strentor-red/80 hover:text-white">
                     Start Current Week
                   </Button>
                 </Link>
               ) : (
-                <Button size="sm" className="w-full bg-strentor-red text-white hover:bg-strentor-red/90 hover:text-white" disabled>
+                <Button size="sm" className="w-full bg-strentor-red text-white hover:bg-strentor-red/80 hover:text-white" disabled>
                   Start Current Week
                 </Button>
               )}
               {planId && (
                 <Link href={`/workout-plan/${planId}/summary`}>
-                  <Button size="sm" variant="outline" className="w-full border-strentor-red text-strentor-red hover:bg-strentor-red hover:text-white mt-2">
+                  <Button size="sm" variant="outline" className="w-full border-strentor-red text-strentor-red hover:bg-strentor-red/80 hover:text-white mt-2">
                     View Analytics & Progress
                   </Button>
                 </Link>

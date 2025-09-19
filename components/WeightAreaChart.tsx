@@ -49,7 +49,7 @@ export function WeightAreaChart({ data }: { data: { date: string, weight: number
       <CardContent>
         <div style={{ width: "100%", height: 200 }}>
           <ResponsiveContainer>
-            <AreaChart data={chartData} margin={{ left: 12, right: 12 }}>
+            <AreaChart data={chartData} margin={{ left: 50, right: 12, top: 12, bottom: 12 }}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="date"
@@ -65,16 +65,30 @@ export function WeightAreaChart({ data }: { data: { date: string, weight: number
                 dataKey="weight"
                 tickLine={false}
                 axisLine={false}
-                tickMargin={8}
-                width={40}
+                tickMargin={10}
+                width={50}
                 domain={["auto", "auto"]}
                 tickFormatter={(value) => value}
               />
               <Tooltip
-                contentStyle={{ background: "#fff3e0", border: "1px solid #ffa726" }}
-                labelStyle={{ color: "#ff9800" }}
-                itemStyle={{ color: "#ff9800" }}
-                formatter={(value: any) => [`Weight: ${value} kg`, ""]}
+                contentStyle={{ 
+                  background: "rgba(255, 189, 34, 0.6)", 
+                  border: "1px solid rgba(255, 189, 34, 0.9)",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 12px rgba(255, 189, 34, 0.3)",
+                  backdropFilter: "blur(8px)"
+                }}
+                labelStyle={{ 
+                  color: "#1a1a1a", 
+                  fontWeight: "600",
+                  fontSize: "12px"
+                }}
+                itemStyle={{ 
+                  color: "#1a1a1a", 
+                  fontWeight: "500",
+                  fontSize: "11px"
+                }}
+                formatter={(value: any) => [`${value} kg`, "Weight"]}
                 labelFormatter={(label) => {
                   const d = new Date(label);
                   return `${d.getDate()} ${d.toLocaleString("default", { month: "short" })}`;
@@ -83,9 +97,9 @@ export function WeightAreaChart({ data }: { data: { date: string, weight: number
               <Area
                 dataKey="weight"
                 type="natural"
-                fill="#ff9800"
-                fillOpacity={0.4}
-                stroke="#ff9800"
+                fill="rgba(255, 189, 34, 0.2)"
+                fillOpacity={0.3}
+                stroke="rgba(255, 189, 34, 0.8)"
                 strokeWidth={2}
               />
             </AreaChart>

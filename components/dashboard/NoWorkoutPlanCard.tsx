@@ -6,10 +6,10 @@ export function NoWorkoutPlanCard() {
     <div className="md:col-span-2 border rounded-lg p-6">
       <h2 className="text-2xl font-bold mb-6">Workout Plan Progress</h2>
 
-      <Alert className="border-blue-200 bg-blue-50">
-        <Dumbbell className="h-4 w-4 text-blue-600" />
-        <AlertTitle className="text-blue-800">No Active Workout Plan</AlertTitle>
-        <AlertDescription className="text-blue-700 mt-2">
+      <Alert className="border-accent/20 bg-accent/5">
+        <Dumbbell className="h-4 w-4 text-accent" />
+        <AlertTitle className="text-accent">No Active Workout Plan</AlertTitle>
+        <AlertDescription className="text-black mt-2">
           Currently you got no plans assigned, please contact your trainer for a personalized workout plan based on your goals.
         </AlertDescription>
       </Alert>

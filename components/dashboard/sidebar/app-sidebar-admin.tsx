@@ -115,7 +115,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className="hover:bg-accent/50 data-[state=open]:bg-accent"
                     aria-label="Switch between admin and fitness trainer views"
                   >
-                    <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                    <div className="bg-white text-black flex aspect-square size-8 items-center justify-center rounded-full">
                       {getCurrentIcon()}
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">

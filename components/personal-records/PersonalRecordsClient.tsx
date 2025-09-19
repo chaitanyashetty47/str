@@ -177,22 +177,20 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
   return (
     <ClientTooltip>
       <div className="flex flex-col gap-6">
+
         {/* Filter Controls */}
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Body Part Dropdown */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Body Part</label>
+            <label className="text-sm font-medium text-foreground">Body Part</label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-48 bg-primary hover:bg-red-700 text-white border-red-600">
-                  <ChevronDown className="w-4 h-4 mr-2" />
-                  <span>{selectedBodyPart || "Select Body Part"}</span>
+                <Button variant="outline" className="w-48 justify-between">
+                  <span className="text-foreground">{selectedBodyPart || "Select Body Part"}</span>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {/* <DropdownMenuItem onClick={() => setSelectedBodyPart("")}>
-                  All Body Parts
-                </DropdownMenuItem> */}
                 {uniqueBodyParts.map((bodyPart) => (
                   <DropdownMenuItem 
                     key={bodyPart} 
@@ -210,27 +208,22 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
 
           {/* Exercise Dropdown */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Exercise</label>
+            <label className="text-sm font-medium text-foreground">Exercise</label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-48 bg-primary hover:bg-red-700 text-white border-red-600">
-                  <ChevronDown className="w-4 h-4 mr-2" />
-                  <span>{selectedExercise || "Select Exercise"}</span>
+                <Button variant="outline" className="w-48 justify-between">
+                  <span className="text-foreground">{selectedExercise || "Select Exercise"}</span>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {/* <DropdownMenuItem onClick={() => setSelectedExercise("")}>
-                  All Exercises
-                </DropdownMenuItem> */}
                 {filteredExercises.map((exercise) => (
                   <DropdownMenuItem 
                     key={exercise.exerciseId} 
-                    onClick={
-                      () => {
-                        setSelectedExercise(exercise.exerciseName);
-                        setSelectedBodyPart(exercise.exerciseType);
-                      }
-                    }
+                    onClick={() => {
+                      setSelectedExercise(exercise.exerciseName);
+                      setSelectedBodyPart(exercise.exerciseType);
+                    }}
                   >
                     <div className="flex flex-col">
                       <span className="font-medium">{exercise.exerciseName}</span>
@@ -244,12 +237,12 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
 
           {/* Date Range Filter */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Date Range</label>
+            <label className="text-sm font-medium text-foreground">Date Range</label>
             <DateRangePicker
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
               placeholder="Select date range"
-              className="w-64 [&_button]:text-red-600 [&_button]:border-red-600 [&_button:hover]:text-red-700 [&_button:hover]:border-red-700"
+              className="w-64"
             />
           </div>
 
@@ -260,7 +253,7 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
               <Button 
                 variant="outline" 
                 onClick={clearAllFilters}
-                className="bg-primary hover:bg-primary/50 text-white border-red-600"
+                className="hover:bg-muted/80"
               >
                 Clear Filters
               </Button>
@@ -285,9 +278,9 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
         </div> */}
 
         {/* Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
+        <div className="bg-card p-6 rounded-lg border">
           {!selectedBodyPart || !selectedExercise ? (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
               <div className="text-lg font-medium mb-2">Select Filters to View Chart</div>
               <div className="text-sm text-center">
                 Select a Body Part and Exercise to show your Progress Chart 
@@ -306,45 +299,45 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
         </div>
 
         {/* Personal Records Table */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Personal Records</h3>
+        <div className="bg-card p-6 rounded-lg border">
+          <h3 className="text-lg font-semibold mb-4 text-card-foreground">Personal Records</h3>
           {filteredTableData.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               No personal records found. Start logging your workouts to see your PRs here!
             </div>
           ) : (
             <div className="overflow-x-auto max-h-96 overflow-y-auto">
               <table className="w-full">
-                <thead className="sticky top-0 bg-white dark:bg-gray-800 z-10">
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium text-gray-700">Date</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-700">Exercise</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-700">Type</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-700">ORM</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-700">Reps</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-700">Actions</th>
+                <thead className="sticky top-0 bg-card z-10">
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Date</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Exercise</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Type</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">ORM</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Reps</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTableData.map((record) => (
-                    <tr key={record.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="py-3 px-2">
+                    <tr key={record.id} className="border-b border-border hover:bg-muted/50">
+                      <td className="py-3 px-2 text-foreground">
                         {new Date(record.dateAchieved).toLocaleDateString('en-US', { 
                           month: 'short', 
                           day: 'numeric', 
                           year: 'numeric' 
                         })}
                       </td>
-                      <td className="py-3 px-2 font-medium">{record.exerciseName}</td>
+                      <td className="py-3 px-2 font-medium text-foreground">{record.exerciseName}</td>
                       <td className="py-3 px-2">
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
                           {record.exerciseTypeEnum === "WEIGHT_BASED" ? "ORM" : "Reps"}
                         </span>
                       </td>
-                      <td className="py-3 px-2">
+                      <td className="py-3 px-2 text-foreground">
                         {record.maxWeight ? `${record.maxWeight} kg` : "-"}
                       </td>
-                      <td className="py-3 px-2">
+                      <td className="py-3 px-2 text-foreground">
                         {record.maxReps ? `${record.maxReps}` : "-"}
                       </td>
                       <td className="py-3 px-2">
@@ -361,7 +354,7 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
                                 record.exerciseName, 
                                 record.isInvalid || false
                               )}
-                              className="text-red-600 focus:text-red-600"
+                              className="text-destructive focus:text-destructive"
                             >
                               <AlertTriangle className="h-4 w-4 mr-2" />
                               {record.isInvalid ? "Restore PR" : "Invalidate PR"}
@@ -379,17 +372,17 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
 
         {/* Exercise List - Only show when no filters applied */}
         {!selectedExercise && !selectedBodyPart && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
-            <h3 className="text-lg font-semibold mb-4">Available Exercises</h3>
+          <div className="bg-card p-6 rounded-lg border">
+            <h3 className="text-lg font-semibold mb-4 text-card-foreground">Available Exercises</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {uniqueExercises.map((exercise) => (
                 <div 
                   key={exercise.exerciseId}
-                  className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                  className="p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
                   onClick={() => setSelectedExercise(exercise.exerciseName)}
                 >
-                  <div className="font-medium">{exercise.exerciseName}</div>
-                  <div className="text-sm text-gray-500">{exercise.exerciseType}</div>
+                  <div className="font-medium text-card-foreground">{exercise.exerciseName}</div>
+                  <div className="text-sm text-muted-foreground">{exercise.exerciseType}</div>
                 </div>
               ))}
             </div>

@@ -68,7 +68,6 @@ export default function OnboardingWizard({ userEmail, userName }: OnboardingWiza
     const subscription = methods.watch((data) => {
       // Only save if we have meaningful data (not just initial values)
       if (data.name || data.country || data.phone || data.weight || data.height) {
-        console.log('💾 Auto-saving form data:', data)
         setSavedData(data as Partial<OnboardingData>)
       }
     })
@@ -135,8 +134,6 @@ export default function OnboardingWizard({ userEmail, userName }: OnboardingWiza
     setIsSubmitting(true)
     
     try {
-      console.log('Submitting onboarding data:', data)
-      
       const result = await completeOnboardingAction(data)
       
       if (result.success) {
@@ -239,7 +236,7 @@ export default function OnboardingWizard({ userEmail, userName }: OnboardingWiza
                   <div className="flex justify-center space-x-[20px]">
                     <button
                       type="button"
-                      className="w-[100px] px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-[100px] px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-strentor-red disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handleBack}
                       disabled={activeStep === 1}
                     >
@@ -248,7 +245,7 @@ export default function OnboardingWizard({ userEmail, userName }: OnboardingWiza
                     {activeStep === ONBOARDING_STEPS.length ? (
                       <button
                         type="submit"
-                        className="w-[100px] px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-[100px] px-4 py-2 text-sm font-medium text-white bg-strentor-red border border-transparent rounded-md hover:bg-strentor-red/80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-strentor-red disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? 'Submitting...' : 'Submit'}
@@ -256,7 +253,7 @@ export default function OnboardingWizard({ userEmail, userName }: OnboardingWiza
                     ) : (
                       <button
                         type="button"
-                        className="w-[100px] px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                        className="w-[100px] px-4 py-2 text-sm font-medium text-white bg-strentor-red border border-transparent rounded-md hover:bg-strentor-red/80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-strentor-red"
                         onClick={handleNext}
                       >
                         Next
