@@ -22,6 +22,7 @@ interface UserSubscriptionsTabProps {
 
 export function UserSubscriptionsTab({ userId, initialData, onDataUpdate, userData }: UserSubscriptionsTabProps) {
   const [subscriptions, setSubscriptions] = useState<SubscriptionWithPlan[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Memoize the callbacks to prevent unnecessary re-renders
   const onSuccess = useCallback((data: SubscriptionWithPlan[]) => {
@@ -44,6 +45,7 @@ export function UserSubscriptionsTab({ userId, initialData, onDataUpdate, userDa
     error 
   } = useAction(getUserSubscriptions, actionOptions);
 
+
   useEffect(() => {
     // If initialData is provided, use it instead of fetching
     if (initialData) {
@@ -62,13 +64,21 @@ export function UserSubscriptionsTab({ userId, initialData, onDataUpdate, userDa
     }
   }, [initialData]);
 
-  const handleRefresh = useCallback(() => {
-    if (initialData) {
-      // If using cached data, notify parent to refresh
-      onDataUpdate?.();
-    } else {
-      // Otherwise, fetch directly
-      fetchSubscriptions({ userId });
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    
+    try {
+      if (initialData) {
+        // If using cached data, notify parent to refresh
+        onDataUpdate?.();
+        // Add a small delay to show the spinning animation
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        // Otherwise, fetch directly
+        await fetchSubscriptions({ userId });
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   }, [fetchSubscriptions, userId, initialData, onDataUpdate]);
 
@@ -115,10 +125,10 @@ export function UserSubscriptionsTab({ userId, initialData, onDataUpdate, userDa
             variant="outline" 
             size="sm" 
             onClick={handleRefresh}
-            disabled={isLoading}
+            disabled={isLoading || isRefreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Retry
+            <RefreshCw className={`h-4 w-4 mr-2 ${(isLoading || isRefreshing) ? 'animate-spin' : ''}`} />
+            {(isLoading || isRefreshing) ? 'Retrying...' : 'Retry'}
           </Button>
         </AlertDescription>
       </Alert>
@@ -138,10 +148,10 @@ export function UserSubscriptionsTab({ userId, initialData, onDataUpdate, userDa
           variant="outline" 
           size="sm" 
           onClick={handleRefresh}
-          disabled={isLoading}
+          disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
+          <RefreshCw className={`h-4 w-4 mr-2 ${(isLoading || isRefreshing) ? 'animate-spin' : ''}`} />
+          {(isLoading || isRefreshing) ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
 
