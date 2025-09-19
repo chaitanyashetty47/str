@@ -39,6 +39,21 @@ export interface RazorpayResponse {
   razorpay_subscription_id?: string;
 }
 
+export interface RazorpayErrorResponse {
+  error: {
+    code: string;
+    description: string;
+    source: string;
+    step: string;
+    reason: string;
+    metadata: {
+      order_id?: string;
+      payment_id?: string;
+      subscription_id?: string;
+    };
+  };
+}
+
 // Load the Razorpay script dynamically
 export const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
@@ -61,7 +76,7 @@ export const loadRazorpayScript = (): Promise<boolean> => {
 };
 
 // Create and open Razorpay checkout
-export const openRazorpayCheckout = async (options: RazorpayOptions): Promise<void> => {
+export const openRazorpayCheckout = async (options: RazorpayOptions): Promise<any> => {
   const scriptLoaded = await loadRazorpayScript();
   
   if (!scriptLoaded) {
@@ -70,5 +85,6 @@ export const openRazorpayCheckout = async (options: RazorpayOptions): Promise<vo
   
   const razorpay = new window.Razorpay(options);
   razorpay.open();
+  return razorpay; // Return instance for event listeners
 };
 

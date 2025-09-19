@@ -23,7 +23,7 @@ export default async function Signup(props: {
               <Image src="/strentor.png" alt="Strentor Logo" width={150} height={120} className="w-32 h-24" />
             </div>
             <h1 className="text-4xl md:text-6xl font-bold text-foreground">
-              CONNECT, SHARE AND <span className="text-[#F31818]">PLAY</span>
+              <span className="text-strentor-red">BREAK.</span> <span className="text-strentor-orange">BUILD.</span> <span className="text-strentor-green">INSPIRE.</span>
             </h1>
             <p className="text-xl md:text-2xl font-medium text-muted-foreground">
               Join our community of wellness seekers and transform your life. Start your journey to become unstoppable today.

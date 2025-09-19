@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { subscriptionId, error, failureReason } = await request.json();
+    const { subscriptionId, error, failureReason, errorDetails } = await request.json();
 
     if (!subscriptionId) {
       return NextResponse.json(
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Log the payment failure event
+    // Log the payment failure event with comprehensive error details
     await prisma.subscription_events.create({
       data: {
        // id: crypto.randomUUID(),
@@ -48,9 +48,22 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         subscription_id: subscriptionId,
         metadata: {
+          // Legacy fields for backward compatibility
           error: error || 'Unknown error',
           failure_reason: failureReason || 'Payment processing failed',
           failed_at: new Date().toISOString(),
+          
+          // Enhanced error details from Razorpay payment.failed event
+          ...(errorDetails && {
+            razorpay_error_code: errorDetails.code,
+            razorpay_error_description: errorDetails.description,
+            razorpay_error_source: errorDetails.source,
+            razorpay_error_step: errorDetails.step,
+            razorpay_error_reason: errorDetails.reason,
+            razorpay_order_id: errorDetails.orderId,
+            razorpay_payment_id: errorDetails.paymentId,
+            razorpay_subscription_id: errorDetails.subscriptionId,
+          }),
         },
       },
     });
