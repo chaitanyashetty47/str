@@ -580,11 +580,11 @@ Are you sure you want to proceed with this downgrade?`;
               {selectedPlan?.action.type === 'upgrade' ? 'Upgrade Subscription' : 'Downgrade Subscription'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {(() => {
+              {selectedPlan ? (() => {
                 // Find current plan to determine if this is All-In-One downgrade
                 const currentPlan = plans.find(p => p.action.type === 'current') || null;
-                return getConfirmationMessage(currentPlan, selectedPlan!);
-              })()}
+                return getConfirmationMessage(currentPlan, selectedPlan);
+              })() : 'Loading...'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
