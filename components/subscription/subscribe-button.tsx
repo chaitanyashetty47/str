@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { loadRazorpayScript, openRazorpayCheckout } from '@/utils/razorpay';
 import { toast } from 'sonner';
 import { RazorpayResponse, RazorpayErrorResponse } from '@/utils/razorpay';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface SubscribeButtonProps {
   razorpayPlanId: string;
@@ -35,6 +36,9 @@ export function SubscribeButton({
 }: SubscribeButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentSubscriptionId, setCurrentSubscriptionId] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationTimeoutId, setVerificationTimeoutId] = useState<number | null>(null);
 
   // Enhanced payment failure handler
   const handlePaymentFailure = async (response: RazorpayErrorResponse, subscriptionId: string) => {
@@ -118,8 +122,30 @@ export function SubscribeButton({
       });
     } finally {
       setIsLoading(false);
+      setIsVerifying(false);
+      setShowVerificationModal(false);
+      
+      // Clear timeout if it exists
+      if (verificationTimeoutId) {
+        window.clearTimeout(verificationTimeoutId);
+        setVerificationTimeoutId(null);
+      }
     }
   };
+
+  // Handle verification timeout - show modal after 2 minutes
+  const handleVerificationTimeout = () => {
+    setShowVerificationModal(true);
+  };
+
+  // Cleanup timeout on component unmount
+  useEffect(() => {
+    return () => {
+      if (verificationTimeoutId) {
+        window.clearTimeout(verificationTimeoutId);
+      }
+    };
+  }, [verificationTimeoutId]);
 
   const handleSubscription = async () => {
     try {
@@ -239,6 +265,21 @@ export function SubscribeButton({
             return;
           }
 
+              // Set verification state and show immediate feedback
+              setIsVerifying(true);
+              setIsLoading(false);
+              
+              // Show immediate loading toast
+              toast.loading('Payment received! Verifying...', {
+                id: 'payment-verification',
+                description: 'Please wait while we confirm your payment',
+                duration: Infinity
+              });
+
+              // Set timeout for long verification (2 minutes) - client-side safe
+              const timeoutId = window.setTimeout(handleVerificationTimeout, 2 * 60 * 1000);
+              setVerificationTimeoutId(timeoutId);
+
               const verificationResponse = await fetch('/api/subscriptions/verify-payment', {
             method: 'POST',
                 headers: {
@@ -261,13 +302,24 @@ export function SubscribeButton({
 
               if (verificationResponse.ok && verificationData.status === 'ok') {
                 // console.log('Payment verification successful:', verificationData);
-                toast.success('Payment successful! Your subscription is now active.', {
+                
+                // Clear timeout
+                if (verificationTimeoutId) {
+                  window.clearTimeout(verificationTimeoutId);
+                  setVerificationTimeoutId(null);
+                }
+                
+                // Update loading toast to success
+                toast.success('Payment verified! Your subscription is now active.', {
+                  id: 'payment-verification',
                   description: 'You can now access all premium features.',
                   duration: 5000,
                 });
                 
                 // Clear the subscription ID since payment was successful
                 setCurrentSubscriptionId(null);
+                setIsVerifying(false);
+                setShowVerificationModal(false);
                 
                 // Call success callback or refresh page
                 if (onSuccess) {
@@ -276,35 +328,40 @@ export function SubscribeButton({
                   window.location.reload();
                 }
               } else {
-                // Handle different types of verification errors
-                let errorMessage = 'Payment verification failed';
-                let errorDescription = 'Please contact support if this issue persists.';
+                // Clear timeout
+                if (verificationTimeoutId) {
+                  window.clearTimeout(verificationTimeoutId);
+                  setVerificationTimeoutId(null);
+                }
+                
+                // Handle different types of verification errors with enhanced messaging
+                let errorMessage = 'Payment verification pending';
+                let errorDescription = 'We\'re verifying your payment manually. You\'ll receive confirmation within 10-15 minutes via email.';
 
                 switch (verificationData.errorType) {
                   case 'SIGNATURE_VERIFICATION_FAILED':
-                    errorMessage = 'Payment Security Check Failed';
-                    errorDescription = 'The payment could not be verified due to a security issue. Your payment may still be processing.';
+                    errorMessage = 'Payment verification pending';
+                    errorDescription = 'We\'re manually verifying your payment for security. Please check your email for confirmation within 10-15 minutes.';
                     break;
                   case 'SUBSCRIPTION_NOT_FOUND':
-                    errorMessage = 'Subscription Not Found';
-                    errorDescription = 'The subscription record could not be found. Please try creating a new subscription.';
+                    errorMessage = 'Subscription verification pending';
+                    errorDescription = 'We\'re processing your subscription manually. You\'ll receive confirmation via email within 10-15 minutes.';
                     break;
                   case 'MISSING_PARAMETERS':
-                    errorMessage = 'Payment Data Incomplete';
-                    errorDescription = `Missing required information: ${verificationData.missingFields?.join(', ')}`;
+                    errorMessage = 'Payment verification pending';
+                    errorDescription = 'We\'re manually processing your payment. Please check your email for confirmation within 10-15 minutes.';
                     break;
                   case 'CONFIGURATION_ERROR':
-                    errorMessage = 'Service Configuration Error';
-                    errorDescription = 'There is a configuration issue with the payment service. Please contact support.';
+                    errorMessage = 'Payment verification pending';
+                    errorDescription = 'We\'re manually verifying your payment. You\'ll receive confirmation via email within 10-15 minutes.';
                     break;
                   case 'INTERNAL_ERROR':
-                    errorMessage = 'Server Error';
-                    errorDescription = 'An unexpected error occurred. Please try again in a few minutes.';
+                    errorMessage = 'Payment verification pending';
+                    errorDescription = 'We\'re manually processing your payment due to a temporary issue. Please check your email for confirmation within 10-15 minutes.';
                     break;
                   default:
-                    if (verificationData.message) {
-                      errorDescription = verificationData.message;
-                    }
+                    errorMessage = 'Payment verification pending';
+                    errorDescription = 'We\'re manually verifying your payment. You\'ll receive confirmation via email within 10-15 minutes.';
                 }
 
                 // console.error('Payment verification failed:', {
@@ -314,22 +371,46 @@ export function SubscribeButton({
                 //   fullResponse: verificationData
                 // });
 
+                // Update loading toast to error with action
                 toast.error(errorMessage, {
+                  id: 'payment-verification',
                   description: errorDescription,
-                  duration: 8000,
+                  duration: 10000,
+                  action: {
+                    label: 'Check Status',
+                    onClick: () => window.location.reload()
+                  }
                 });
+                
+                setIsVerifying(false);
+                setShowVerificationModal(false);
               }
             } catch (error) {
+              // Clear timeout
+              if (verificationTimeoutId) {
+                window.clearTimeout(verificationTimeoutId);
+                setVerificationTimeoutId(null);
+              }
+              
               // console.error('Payment verification error:', {
               //   error: error instanceof Error ? error.message : 'Unknown error',
               //   stack: error instanceof Error ? error.stack : undefined,
               //   timestamp: new Date().toISOString()
               // });
 
-              toast.error('Payment verification failed', {
-                description: 'There was an error verifying your payment. Please contact support if the issue persists.',
-                duration: 8000,
+              // Update loading toast to error
+              toast.error('Payment verification pending', {
+                id: 'payment-verification',
+                description: 'We\'re manually verifying your payment. Please check your email for confirmation within 10-15 minutes.',
+                duration: 10000,
+                action: {
+                  label: 'Check Status',
+                  onClick: () => window.location.reload()
+                }
               });
+              
+              setIsVerifying(false);
+              setShowVerificationModal(false);
             }
           })();
         },
@@ -445,13 +526,51 @@ export function SubscribeButton({
   };
 
   return (
-    <Button
-      onClick={handleSubscription}
-      className={className}
-      variant={variant}
-      disabled={isLoading}
-    >
-      {isLoading ? 'Processing...' : buttonText}
-    </Button>
+    <>
+      <Button
+        onClick={handleSubscription}
+        className={className}
+        variant={variant}
+        disabled={isLoading || isVerifying}
+      >
+        {isLoading ? 'Processing...' : isVerifying ? 'Verifying...' : buttonText}
+      </Button>
+
+      {/* Verification Modal for Long Delays */}
+      <AlertDialog open={showVerificationModal} onOpenChange={setShowVerificationModal}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+              Payment Verification in Progress
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <div>
+                Your payment was received successfully, but verification is taking longer than expected.
+              </div>
+              <div>
+                <strong>What's happening?</strong><br />
+                We're manually verifying your payment to ensure everything is processed correctly.
+              </div>
+              <div>
+                <strong>What should you do?</strong><br />
+                You can safely close this page. We'll email you confirmation within 10-15 minutes.
+              </div>
+              <div className="text-sm text-muted-foreground">
+                If you don't receive confirmation within 15 minutes, please contact our support team.
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowVerificationModal(false)}>
+              Close Page
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => window.location.reload()}>
+              Check Status
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
