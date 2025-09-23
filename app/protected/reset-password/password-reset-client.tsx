@@ -22,7 +22,7 @@ export function PasswordResetClient({ searchParams }: PasswordResetClientProps) 
   const supabase = createClient();
 
   useEffect(() => {
-    // Check initial session and auth state
+    // Check initial session and auth states
     const checkAuthState = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       
