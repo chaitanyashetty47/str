@@ -35,9 +35,9 @@ function isCacheValid(timestamp: number): boolean {
 
 // Helper to detect if we're in trainer context
 function isTrainerContext(pathname: string): boolean {
-  console.log('🔍 Checking context for path:', pathname);
+  // console.log('🔍 Checking context for path:', pathname);
   const isTrainer = pathname.includes('/fitness/plans/') && pathname.includes('/progress');
-  console.log('Is trainer context?', isTrainer);
+  // console.log('Is trainer context?', isTrainer);
   return isTrainer;
 }
 
@@ -59,25 +59,25 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
 
-  console.log("inside weekly analytics hook")
+  // console.log("inside weekly analytics hook")
 
   const fetchData = useCallback(async (forceRefresh = false) => {
-    console.log('📊 Weekly Analytics - Starting fetch', { planId, weekNumber, pathname });
+    // console.log('📊 Weekly Analytics - Starting fetch', { planId, weekNumber, pathname });
     
     const isTrainer = isTrainerContext(pathname);
     const cacheKey = getWeekCacheKey(planId, weekNumber, isTrainer);
-    console.log('🔑 Cache key generated:', cacheKey);
+    // console.log('🔑 Cache key generated:', cacheKey);
     
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
       const cachedEntry = analyticsCache.weeklyData.get(cacheKey);
-      console.log('🔍 Cache check:', { 
-        hasCachedEntry: !!cachedEntry,
-        isValid: cachedEntry && isCacheValid(cachedEntry.timestamp)
-      });
+      // console.log('🔍 Cache check:', { 
+      //   hasCachedEntry: !!cachedEntry,
+      //   isValid: cachedEntry && isCacheValid(cachedEntry.timestamp)
+      // });
       
       if (cachedEntry && isCacheValid(cachedEntry.timestamp)) {
-        console.log(`📦 Using cached weekly data for ${cacheKey}`);
+        // console.log(`📦 Using cached weekly data for ${cacheKey}`);
         setData(cachedEntry.data);
         setLoading(false);
         setError(null);
@@ -86,10 +86,10 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
     }
 
     // Fetch fresh data
-    console.log(`🔄 Fetching fresh weekly data for ${cacheKey}`, {
-      context: isTrainer ? 'trainer' : 'client',
-      action: isTrainer ? 'getTrainerWeekAnalytics' : 'getWeekAnalytics'
-    });
+    // console.log(`🔄 Fetching fresh weekly data for ${cacheKey}`, {
+    //   context: isTrainer ? 'trainer' : 'client',
+    //   action: isTrainer ? 'getTrainerWeekAnalytics' : 'getWeekAnalytics'
+    // });
     
     setLoading(true);
     setError(null);
@@ -100,25 +100,25 @@ export function useWeeklyAnalytics(planId: string, weekNumber: number) {
         ? await getTrainerWeekAnalytics({ planId, weekNumber })
         : await getWeekAnalytics({ planId, weekNumber });
       
-      console.log('📥 Server action response:', { 
-        hasError: !!result.error,
-        hasData: !!result.data,
-        error: result.error
-      });
+      // console.log('📥 Server action response:', { 
+      //   hasError: !!result.error,
+      //   hasData: !!result.data,
+      //   error: result.error
+      // });
       
       if (result.error) {
         console.error('❌ Server action error:', result.error);
         setError(result.error);
         setData(null);
       } else if (result.data) {
-        console.log('✅ Server action success, caching data');
+        // console.log('✅ Server action success, caching data');
         setData(result.data);
         // Cache the result
         analyticsCache.weeklyData.set(cacheKey, {
           data: result.data,
           timestamp: Date.now(),
         });
-        console.log(`💾 Cached weekly data for ${cacheKey}`);
+        // console.log(`💾 Cached weekly data for ${cacheKey}`);
       }
     } catch (err) {
       console.error('💥 Unexpected error:', err);
@@ -148,22 +148,22 @@ export function useOverallAnalytics(planId: string) {
   const pathname = usePathname();
 
   const fetchData = useCallback(async (forceRefresh = false) => {
-    console.log('📈 Overall Analytics - Starting fetch', { planId, pathname });
+    // console.log('📈 Overall Analytics - Starting fetch', { planId, pathname });
     
     const isTrainer = isTrainerContext(pathname);
     const cacheKey = getOverallCacheKey(planId, isTrainer);
-    console.log('🔑 Cache key generated:', cacheKey);
+    // console.log('🔑 Cache key generated:', cacheKey);
     
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
       const cachedEntry = analyticsCache.overallData.get(cacheKey);
-      console.log('🔍 Cache check:', { 
-        hasCachedEntry: !!cachedEntry,
-        isValid: cachedEntry && isCacheValid(cachedEntry.timestamp)
-      });
+      // console.log('🔍 Cache check:', { 
+      //   hasCachedEntry: !!cachedEntry,
+      //   isValid: cachedEntry && isCacheValid(cachedEntry.timestamp)
+      // });
       
       if (cachedEntry && isCacheValid(cachedEntry.timestamp)) {
-        console.log(`📦 Using cached overall data for ${cacheKey}`);
+        // console.log(`📦 Using cached overall data for ${cacheKey}`);
         setData(cachedEntry.data);
         setLoading(false);
         setError(null);
@@ -172,10 +172,10 @@ export function useOverallAnalytics(planId: string) {
     }
 
     // Fetch fresh data
-    console.log(`🔄 Fetching fresh overall data for ${cacheKey}`, {
-      context: isTrainer ? 'trainer' : 'client',
-      action: isTrainer ? 'getTrainerOverallAnalytics' : 'getOverallAnalytics'
-    });
+    // console.log(`🔄 Fetching fresh overall data for ${cacheKey}`, {
+    //   context: isTrainer ? 'trainer' : 'client',
+    //   action: isTrainer ? 'getTrainerOverallAnalytics' : 'getOverallAnalytics'
+    // });
     
     setLoading(true);
     setError(null);
@@ -186,25 +186,25 @@ export function useOverallAnalytics(planId: string) {
         ? await getTrainerOverallAnalytics({ planId })
         : await getOverallAnalytics({ planId });
       
-      console.log('📥 Server action response:', { 
-        hasError: !!result.error,
-        hasData: !!result.data,
-        error: result.error
-      });
+      // console.log('📥 Server action response:', { 
+      //   hasError: !!result.error,
+      //   hasData: !!result.data,
+      //   error: result.error
+      // });
       
       if (result.error) {
         console.error('❌ Server action error:', result.error);
         setError(result.error);
         setData(null);
       } else if (result.data) {
-        console.log('✅ Server action success, caching data');
+        // console.log('✅ Server action success, caching data');
         setData(result.data);
         // Cache the result
         analyticsCache.overallData.set(cacheKey, {
           data: result.data,
           timestamp: Date.now(),
         });
-        console.log(`💾 Cached overall data for ${cacheKey}`);
+        // console.log(`💾 Cached overall data for ${cacheKey}`);
       }
     } catch (err) {
       console.error('💥 Unexpected error:', err);
@@ -232,7 +232,7 @@ export const analyticsUtils = {
   clearCache: () => {
     analyticsCache.weeklyData.clear();
     analyticsCache.overallData.clear();
-    console.log('🗑️ Cleared analytics cache');
+    // console.log('🗑️ Cleared analytics cache');
   },
 
   // Clear cache for specific plan
@@ -250,7 +250,7 @@ export const analyticsUtils = {
     analyticsCache.overallData.delete(clientOverallKey);
     analyticsCache.overallData.delete(trainerOverallKey);
     
-    console.log(`🗑️ Cleared cache for plan ${planId} (both contexts)`);
+    // console.log(`🗑️ Cleared cache for plan ${planId} (both contexts)`);
   },
 
   // Get cache stats
@@ -286,7 +286,7 @@ export const analyticsUtils = {
               data: result.data,
               timestamp: Date.now(),
             });
-            console.log(`⚡ Preloaded week ${weekNumber} data (${isTrainer ? 'trainer' : 'client'})`);
+            // console.log(`⚡ Preloaded week ${weekNumber} data (${isTrainer ? 'trainer' : 'client'})`);
           }
         });
       }

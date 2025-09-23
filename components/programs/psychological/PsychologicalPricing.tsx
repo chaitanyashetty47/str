@@ -69,7 +69,7 @@ export default function PsychologicalPricing() {
   const router = useRouter();
 
   const handleGetStarted = () => {
-    router.push('/sign-in');
+    router.push('/sign-up');
   };
 
   const pricing = psychologyPlan.pricing[selectedCycle as keyof typeof psychologyPlan.pricing];
@@ -133,7 +133,7 @@ export default function PsychologicalPricing() {
               <div className="mt-auto">
                 <Button
                   onClick={handleGetStarted}
-                  className="w-full bg-strentor-red hover:bg-strentor-red/90 text-white py-3 text-lg font-semibold"
+                    className="w-full bg-strentor-blue hover:bg-strentor-blue/90 text-white py-3 text-lg font-semibold"
                 >
                   Get Started with Psychology Plan
                 </Button>

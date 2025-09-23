@@ -62,7 +62,7 @@ export default function FitnessPricing() {
   const router = useRouter();
 
   const handleGetStarted = () => {
-    router.push('/sign-in');
+    router.push('/sign-up');
   };
 
   const pricing = fitnessPlan.pricing[selectedCycle as keyof typeof fitnessPlan.pricing];
@@ -126,7 +126,7 @@ export default function FitnessPricing() {
               <div className="mt-auto">
                 <Button
                   onClick={handleGetStarted}
-                  className="w-full bg-strentor-red hover:bg-strentor-red/90 text-white py-3 text-lg font-semibold"
+                  className="w-full bg-strentor-blue hover:bg-strentor-blue/90 text-white py-3 text-lg font-semibold"
                 >
                   Get Started with Fitness Plan
                 </Button>

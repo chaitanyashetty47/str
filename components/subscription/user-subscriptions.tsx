@@ -241,7 +241,7 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId, userData }
     // Standard status badges
     switch (subscription.status) {
       case 'ACTIVE':
-        return <Badge variant="default">Active</Badge>;
+        return <Badge className="bg-green-600 text-white">Active</Badge>;
       case 'PENDING':
         return <Badge variant="secondary">Pending</Badge>;
       case 'CANCELLED':
@@ -305,11 +305,10 @@ export function UserSubscriptions({ subscriptions, onRefresh, userId, userData }
                 <strong>Payment Verification in Progress with Razorpay</strong>
               </p>
               <p className="text-sm text-yellow-700 mt-2">
-                Wait for 15-30 minutes. If you see this message still, then cancel this subscription 
-                and start all over again or retry the payment using same subscription.
+                Wait for 15-30 minutes. If you see this message still then retry the payment using same subscription or cancel the subscription and start all over again.
               </p>
               <p className="text-sm text-yellow-700 mt-1">
-                <strong>Note:</strong> Ideally it would be better to cancel and start all over again.
+                <strong>Note:</strong> Ideally it would be better to retry payment once. If it fails again, then cancel and start all over again.
               </p>
             </div>
             <div className="flex gap-2">

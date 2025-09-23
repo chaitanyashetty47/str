@@ -1,21 +1,18 @@
 import {
-  SquareTerminal,
+
   Users,
-  FileText,
-  BarChart,
-  Settings2,
+
+  Settings,
   LifeBuoy,
   Send,
   Frame,
   PieChart,
   Map,
-  HandCoins,
-  ShoppingCart,
+
 
   LayoutDashboard, 
   Dumbbell, 
-  LineChart, 
-  Menu
+
   
 
 } from "lucide-react";
@@ -56,13 +53,13 @@ export const sidebarMenus = {
 
       ],
     },
-    // {
-    //   title: "Client Progress",
-    //   url: "/fitness/progress",
-    //   icon: LineChart,
+    {
+      title: "Settings",
+      url: "/fitness/settings",
+      icon: Settings,
+      isActive: true,
 
-    // },
-
+    },
 
   ],
   navSecondary: [

@@ -1,6 +1,6 @@
 import { getTrainerClientWorkoutPlanFull } from "@/actions/trainer-clients/get-trainer-client-workout-plan-summary.action";
 import WeekColumnSelection from "@/components/workout-summary/WeekColumnSelection";
-import PRDebugPanel from "@/components/workout-summary/PRDebugPanel";
+// import PRDebugPanel from "@/components/workout-summary/PRDebugPanel";
 import { validateServerRole } from "@/lib/server-role-validation";
 import { Metadata } from "next";
 
@@ -80,7 +80,7 @@ export default async function TrainerWorkoutPlanSummaryPage({
       />
 
       {/* Debug Panel - Same as client view */}
-      <PRDebugPanel planId={workoutPlan.id} />
+      {/* <PRDebugPanel planId={workoutPlan.id} /> */}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/app/actions";
+import { Lock, LogOut } from "lucide-react";
 
 interface SettingsHeaderProps {
   user: User;
@@ -48,11 +49,13 @@ export function SettingsActions({ hasResetPassword = true }: SettingsActionsProp
           variant="outline" 
           onClick={() => window.location.href = '/protected/reset-password'}
         >
+          <Lock className="w-4 h-4" />
           Reset Password
         </Button>
       )}
       <form action={signOutAction}>
-        <Button variant="outline" className="bg-primary text-primary-foreground hover:bg-primary/90" type="submit">
+        <Button className="bg-strentor-red text-white hover:bg-strentor-red/80" type="submit">
+          <LogOut className="w-4 h-4" />
           Logout
         </Button>
       </form>

@@ -22,11 +22,11 @@ export const Tab = ({
     <button
       onClick={() => setSelected(value)}
       className={cn(
-        "relative w-fit px-4 py-2 text-sm font-semibold capitalize text-foreground transition-colors focus:outline-none focus:ring-0",
-        discount && "flex items-center justify-center gap-2.5",
+        "relative flex-1 sm:w-fit px-2 sm:px-3 md:px-4 py-2 text-xs sm:text-sm font-semibold capitalize text-foreground transition-colors focus:outline-none focus:ring-0",
+        discount && "flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2.5",
       )}
     >
-      <span className={cn("relative z-10", selected && "text-white")}>{text}</span>
+      <span className={cn("relative z-10 truncate", selected && "text-white")}>{text}</span>
       {selected && (
         <motion.span
           layoutId="tab"
@@ -37,13 +37,13 @@ export const Tab = ({
       {discount && (
         <Badge
           className={cn(
-            "relative z-10 whitespace-nowrap text-xs shadow-none",
+            "relative z-10 whitespace-nowrap text-[10px] sm:text-xs shadow-none px-1 sm:px-2 py-0.5 min-w-0 flex-shrink-0",
             selected
               ? "bg-white/20 text-white hover:bg-white/20"
               : "bg-green-100 text-green-700 hover:bg-green-100",
           )}
         >
-          Save {discount}%
+          <span className="hidden sm:inline">Save&nbsp;</span><span className="sm:hidden">{discount}%</span><span className="hidden sm:inline"> &nbsp;{discount}%</span>
         </Badge>
       )}
     </button>
