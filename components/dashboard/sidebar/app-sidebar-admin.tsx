@@ -149,7 +149,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link 
-                      href="/fitness/clients" 
+                      href="/fitness" 
                       className="flex items-center gap-2 cursor-pointer"
                     >
                       <Users className="size-4" />

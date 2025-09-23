@@ -18,7 +18,7 @@ export default function ManifestationPage() {
         <ManifestationTrainerProfile />
         <TransformationSteps />
         <ManifestationTestimonials />
-        <ManifestationPricing />
+        {/* <ManifestationPricing /> */}
         <ManifestationBanner />
       </main>
       <Footer />

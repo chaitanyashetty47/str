@@ -60,12 +60,12 @@ export async function getTrainerClients(
     }
   } : {};
 
-  console.log('Date filter being applied:', dateFilter); // Debug log
+  //console.log('Date filter being applied:', dateFilter); // Debug log
   if (dateFilter.start_date) {
-    console.log('Filtering subscriptions between:', {
-      from: dateFilter.start_date.gte,
-      to: dateFilter.start_date.lte,
-    });
+    // console.log('Filtering subscriptions between:', {
+    //   from: dateFilter.start_date.gte,
+    //   to: dateFilter.start_date.lte,
+    // });
   }
 
   // First, get all trainer clients with their subscriptions
@@ -127,7 +127,7 @@ export async function getTrainerClients(
     take: pageSize,
   });
 
-  console.log('Raw trainer clients found:', trainerClients.length); // Debug log
+  // console.log('Raw trainer clients found:', trainerClients.length); // Debug log
 
   // Transform the nested Prisma result into flat TrainerClientRow objects
   // Group by client to prevent duplicates and show best subscription
@@ -167,7 +167,7 @@ export async function getTrainerClients(
       joinDate: bestSubscription?.start_date?.toISOString() || tc.assigned_at.toISOString(),
     };
 
-    console.log(`Client ${clientProfile.name} join date: ${clientRow.joinDate}`); // Debug log
+    // console.log(`Client ${clientProfile.name} join date: ${clientRow.joinDate}`); // Debug log
 
     clientMap.set(clientId, clientRow);
   });

@@ -26,8 +26,26 @@ export default function Footer() {
         </div>
 
         {/* Center Section */}
-        <div className="flex items-center justify-center font-bold text-foreground">
-          Strentor © 2025
+        {/* Center Section */}
+        <div className="flex flex-col items-center justify-center space-y-2">
+          <div className="font-bold text-foreground">
+            Strentor © 2025
+          </div>
+          <div className="flex gap-4 text-sm text-muted-foreground">
+            <Link 
+              href="/privacy-policy" 
+              className="hover:text-primary"
+            >
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link 
+              href="/terms-of-use" 
+              className="hover:text-primary"
+            >
+              Terms of Use
+            </Link>
+          </div>
         </div>
 
         {/* Stay Connected Section */}

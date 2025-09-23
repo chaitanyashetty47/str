@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { checkAdminAccess, getAdminUser } from "@/utils/user";
 import { createServiceClient } from "@/utils/supabase/service";
+import { headers } from "next/headers";
 
 const InviteTrainerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -32,6 +33,7 @@ export const inviteTrainer = createSafeAction(
 
       // Use service client with admin privileges
       const supabase = createServiceClient();
+      const origin = (await headers()).get("origin");
 
       console.log('Attempting to invite trainer:', { email, name, role });
 
@@ -43,7 +45,8 @@ export const inviteTrainer = createSafeAction(
           invited_by: adminUser.userId,
           invited_at: new Date().toISOString(),
         },
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?type=invite&role=${role}`,
+        redirectTo: `${origin}/auth/callback?redirect_to=/protected/reset-password`,
+        //redirectTo: `${origin}/auth/callback?type=invite&role=${role}`,
       });
 
       if (error) {

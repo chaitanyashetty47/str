@@ -90,58 +90,58 @@ const pricingData = {
       12: { original: 300000, discounted: 210000 }
     }
   },
-  PSYCHOLOGY: {
-    name: "The Emotional Clarity Blueprint",
-    description: "Mental peace, emotional regulation, and personal resilience",
-    features: [
-      "12 Weeks Intensive + Follow-Up Support",
-      "Weekly Live Coaching Call with Certified Psychologist",
-      "Monthly 1:1 Strategy & Evaluation (3 total)",
-      "Daily Accountability Submissions",
-      "Unlimited WhatsApp/Text Support",
-      "Results Guarantee"
-    ],
-    pricing: {
-      3: { original: 75000, discounted: 67500 },
-      6: { original: 150000, discounted: 120000 },
-      12: { original: 300000, discounted: 210000 }
-    }
-  },
-  MANIFESTATION: {
-    name: "The Manifestation Mastery Blueprint",
-    description: "Break through limitations and live in alignment with purpose",
-    features: [
-      "12 Weeks Intensive + Follow-Up Support",
-      "Weekly Live Coaching Call with Manifestation Coach",
-      "Monthly 1:1 Strategy & Evaluation (3 total)",
-      "Weekly Accountability Submissions",
-      "Unlimited WhatsApp/Text Support",
-      "Results Guarantee"
-    ],
-    pricing: {
-      3: { original: 75000, discounted: 67500 },
-      6: { original: 150000, discounted: 120000 },
-      12: { original: 300000, discounted: 210000 }
-    }
-  },
-  ALL_IN_ONE: {
-    name: "Complete Transformation Blueprint",
-    description: "Everything in Fitness + Psychology + Manifestation",
-    features: [
-      "Everything in Fitness + Psychology + Manifestation",
-      "12 Weeks Intensive + Follow-Up Support",
-      "Weekly Live Coaching Calls (All 3 Coaches)",
-      "Monthly 1:1 Strategy & Evaluation (3 total)",
-      "Daily Accountability Submissions",
-      "Unlimited WhatsApp/Text Support",
-      "Results Guarantee"
-    ],
-    pricing: {
-      3: { original: 225000, discounted: 202500 },
-      6: { original: 450000, discounted: 360000 },
-      12: { original: 900000, discounted: 630000 }
-    }
-  }
+  // PSYCHOLOGY: {
+  //   name: "The Emotional Clarity Blueprint",
+  //   description: "Mental peace, emotional regulation, and personal resilience",
+  //   features: [
+  //     "12 Weeks Intensive + Follow-Up Support",
+  //     "Weekly Live Coaching Call with Certified Psychologist",
+  //     "Monthly 1:1 Strategy & Evaluation (3 total)",
+  //     "Daily Accountability Submissions",
+  //     "Unlimited WhatsApp/Text Support",
+  //     "Results Guarantee"
+  //   ],
+  //   pricing: {
+  //     3: { original: 75000, discounted: 67500 },
+  //     6: { original: 150000, discounted: 120000 },
+  //     12: { original: 300000, discounted: 210000 }
+  //   }
+  // },
+  // MANIFESTATION: {
+  //   name: "The Manifestation Mastery Blueprint",
+  //   description: "Break through limitations and live in alignment with purpose",
+  //   features: [
+  //     "12 Weeks Intensive + Follow-Up Support",
+  //     "Weekly Live Coaching Call with Manifestation Coach",
+  //     "Monthly 1:1 Strategy & Evaluation (3 total)",
+  //     "Weekly Accountability Submissions",
+  //     "Unlimited WhatsApp/Text Support",
+  //     "Results Guarantee"
+  //   ],
+  //   pricing: {
+  //     3: { original: 75000, discounted: 67500 },
+  //     6: { original: 150000, discounted: 120000 },
+  //     12: { original: 300000, discounted: 210000 }
+  //   }
+  // },
+  // ALL_IN_ONE: {
+  //   name: "Complete Transformation Blueprint",
+  //   description: "Everything in Fitness + Psychology + Manifestation",
+  //   features: [
+  //     "Everything in Fitness + Psychology + Manifestation",
+  //     "12 Weeks Intensive + Follow-Up Support",
+  //     "Weekly Live Coaching Calls (All 3 Coaches)",
+  //     "Monthly 1:1 Strategy & Evaluation (3 total)",
+  //     "Daily Accountability Submissions",
+  //     "Unlimited WhatsApp/Text Support",
+  //     "Results Guarantee"
+  //   ],
+  //   pricing: {
+  //     3: { original: 225000, discounted: 202500 },
+  //     6: { original: 450000, discounted: 360000 },
+  //     12: { original: 900000, discounted: 630000 }
+  //   }
+  // }
 };
 
 export default function Pricing() {
@@ -192,7 +192,7 @@ export default function Pricing() {
         />
 
         {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+        <div className="grid grid-cols-1 max-w-sm mx-auto mt-12">
           {Object.entries(pricingData).map(([category, plan]) => {
             const pricing = plan.pricing[selectedCycle as keyof typeof plan.pricing];
             const discountPercentage = getDiscountPercentage(selectedCycle);
@@ -246,7 +246,7 @@ export default function Pricing() {
                   <ul className="space-y-2">
                     {(() => {
                       const isExpanded = expandedCards.has(category);
-                      const featuresToShow = isExpanded ? plan.features : plan.features.slice(0, 3);
+                      const featuresToShow = isExpanded ? plan.features : plan.features.slice(0, 6);
                       
                       return featuresToShow.map((feature: string, index: number) => (
                         <li key={index} className="flex items-center gap-2 text-sm font-medium text-foreground/60">
@@ -257,7 +257,7 @@ export default function Pricing() {
                     })()}
                   </ul>
                   
-                  {plan.features.length > 3 && (
+                  {/* {plan.features.length > 3 && (
                     <button 
                       onClick={() => toggleExpansion(category)}
                       className="mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
@@ -267,7 +267,7 @@ export default function Pricing() {
                         : `View ${plan.features.length - 3} More`
                       }
                     </button>
-                  )}
+                  )} */}
                 </div>
                 
                 {/* Button Section */}
@@ -277,7 +277,7 @@ export default function Pricing() {
                     className={`w-full ${
                       isAllInOne 
                         ? 'bg-green-600 hover:bg-green-700 text-white' 
-                        : 'bg-strentor-red hover:bg-strentor-red/90 text-white'
+                        : 'bg-strentor-blue hover:bg-strentor-blue/90 text-white'
                     }`}
                   >
                     Get Started

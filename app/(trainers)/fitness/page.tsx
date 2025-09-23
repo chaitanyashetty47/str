@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default async function TrainerDashboard() {
   // Validate user authentication and FITNESS_TRAINER/FITNESS_TRAINER_ADMIN role
-  // const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
+  const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
   
   // Fetch data using the server action
   const dashboardData = await getTrainerDashboardData();

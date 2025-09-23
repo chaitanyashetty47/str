@@ -1,15 +1,15 @@
+import Image from "next/image"
+
+
 export default function OnboardingLoading() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-strentor-blue/10 via-white to-strentor-yellow/10 flex items-center justify-center">
       <div className="text-center">
         {/* Strentor Logo */}
         <div className="inline-flex items-center gap-2 mb-8">
-          <div className="w-12 h-12 bg-gradient-to-r from-strentor-red to-strentor-orange rounded-xl flex items-center justify-center animate-pulse">
-            <span className="text-white font-bold text-2xl">S</span>
+          <div className="flex justify-center mb-4">
+            <Image src="/strentor.png" alt="Strentor Logo" width={150} height={120} className="w-32 h-24" />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-strentor-red to-strentor-orange bg-clip-text text-transparent">
-            Strentor
-          </h1>
         </div>
 
         {/* Loading Animation */}

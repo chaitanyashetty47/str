@@ -42,13 +42,13 @@ export const fetchTrainerClients = createSafeAction(
       const pageSize = validatedData.pageSize ?? 10;
 
       // Debug logging for date range
-      console.log('Backend received dateRange:', validatedData.dateRange);
-      console.log('Date range types:', {
-        from: validatedData.dateRange?.from,
-        fromType: typeof validatedData.dateRange?.from,
-        to: validatedData.dateRange?.to,
-        toType: typeof validatedData.dateRange?.to,
-      });
+      // console.log('Backend received dateRange:', validatedData.dateRange);
+      // console.log('Date range types:', {
+      //   from: validatedData.dateRange?.from,
+      //   fromType: typeof validatedData.dateRange?.from,
+      //   to: validatedData.dateRange?.to,
+      //   toType: typeof validatedData.dateRange?.to,
+      // });
 
       // Fetch trainer clients data
       // Note: We now only show ACTIVE, CREATED, and AUTHENTICATED subscriptions

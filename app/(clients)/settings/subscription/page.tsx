@@ -57,7 +57,7 @@ export default async function SettingsSubscriptionPage() {
         </div>
         <div className="flex gap-2">
           <form action={signOutAction}>
-            <Button variant="outline" type="submit">Logout</Button>
+            <Button className="bg-strentor-red text-white hover:bg-strentor-red/80" type="submit">Logout</Button>
           </form>
         </div>
       </div>

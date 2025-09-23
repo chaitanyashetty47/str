@@ -80,11 +80,11 @@ export default async function Signup(props: {
 
           <p className="text-xs text-muted-foreground text-center leading-relaxed">
             By signing up, you agree to our{" "}
-            <Link href="/terms" className="text-[#F31818] hover:underline">
+            <Link href="/terms-of-service" className="text-[#F31818] hover:underline">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="text-[#F31818] hover:underline">
+            <Link href="/privacy-policy" className="text-[#F31818] hover:underline">
               Privacy Policy
             </Link>
           </p>

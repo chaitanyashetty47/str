@@ -67,7 +67,7 @@ export default function ManifestationPricing() {
   const router = useRouter();
 
   const handleGetStarted = () => {
-    router.push('/sign-in');
+    router.push('/sign-up');
   };
 
   const pricing = manifestationPlan.pricing[selectedCycle as keyof typeof manifestationPlan.pricing];
@@ -131,7 +131,7 @@ export default function ManifestationPricing() {
               <div className="mt-auto">
                 <Button
                   onClick={handleGetStarted}
-                  className="w-full bg-strentor-red hover:bg-strentor-red/90 text-white py-3 text-lg font-semibold"
+                    className="w-full bg-strentor-blue hover:bg-strentor-blue/90 text-white py-3 text-lg font-semibold"
                 >
                   Get Started with Manifestation Plan
                 </Button>

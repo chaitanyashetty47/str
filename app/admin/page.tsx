@@ -50,13 +50,14 @@ export default async function AdminPage() {
       change: `${dashboardData.stats.subscribedClientsChange >= 0 ? '+' : ''}${dashboardData.stats.subscribedClientsChange} from last month`,
       changeType: dashboardData.stats.subscribedClientsChange >= 0 ? "positive" : "negative",
     },
-    {
-      title: "Total Revenue",
-      value: `₹${dashboardData.stats.totalRevenue.toLocaleString()}`,
-      icon: TrendingUp,
-      change: `${dashboardData.stats.revenueGrowthPercentage >= 0 ? '+' : ''}${dashboardData.stats.revenueGrowthPercentage}% from last month`,
-      changeType: dashboardData.stats.revenueGrowthPercentage >= 0 ? "positive" : "negative",
-    },
+    //{
+      //title: "Total Revenue",
+      // value: `₹${dashboardData.stats.totalRevenue.toLocaleString()}`,
+      //icon: TrendingUp,
+      //change: `${dashboardData.stats.revenueGrowthPercentage >= 0 ? '+' : ''}${dashboardData.stats.revenueGrowthPercentage}% from last month`,
+      //changeType: dashboardData.stats.revenueGrowthPercentage >= 0 ? "positive" : "negative",
+    //},
+  
   ];
 
   return (
@@ -65,7 +66,7 @@ export default async function AdminPage() {
         <h2 className="text-3xl font-bold">Admin Dashboard</h2>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="p-6">
@@ -124,10 +125,10 @@ export default async function AdminPage() {
                 <span className="text-sm text-muted-foreground">Total Users</span>
                 <Badge variant="outline" className="ml-auto">{dashboardData.stats.totalUsers}</Badge>
               </div>
-              <div className="flex items-center">
+              {/* <div className="flex items-center">
                 <span className="text-sm text-muted-foreground">Monthly Revenue</span>
                 <Badge variant="outline" className="ml-auto">₹{dashboardData.stats.totalRevenue.toLocaleString()}</Badge>
-              </div>
+              </div> */}
             </div>
           </CardContent>
         </Card>
@@ -154,7 +155,7 @@ export default async function AdminPage() {
                   </span>
                 </div>
               </div>
-              <div className="flex items-center">
+              {/* <div className="flex items-center">
                 <span className="text-sm text-muted-foreground">Revenue Growth</span>
                 <div className="flex items-center gap-2 ml-auto">
                   {dashboardData.stats.revenueGrowthPercentage >= 0 ? (
@@ -168,7 +169,7 @@ export default async function AdminPage() {
                     {dashboardData.stats.revenueGrowthPercentage >= 0 ? '+' : ''}{dashboardData.stats.revenueGrowthPercentage}%
                   </span>
                 </div>
-              </div>
+              </div> */}
             </div>
           </CardContent>
         </Card>

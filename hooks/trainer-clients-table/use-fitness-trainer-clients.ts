@@ -59,14 +59,14 @@ export const useTrainerClients = (initialData?: TrainerClientsResponse): {
       }>;
     };
     
-    console.log('Fetcher received params:', rawParams);
-    console.log('Fetcher dateRange:', rawParams.dateRange);
-    console.log('Fetcher dateRange types:', {
-      from: rawParams.dateRange?.from,
-      fromType: typeof rawParams.dateRange?.from,
-      to: rawParams.dateRange?.to,
-      toType: typeof rawParams.dateRange?.to,
-    });
+    // console.log('Fetcher received params:', rawParams);
+    // console.log('Fetcher dateRange:', rawParams.dateRange);
+    // console.log('Fetcher dateRange types:', {
+    //   from: rawParams.dateRange?.from,
+    //   fromType: typeof rawParams.dateRange?.from,
+    //   to: rawParams.dateRange?.to,
+    //   toType: typeof rawParams.dateRange?.to,
+    // });
     
     // Convert ISO date strings back to Date objects
     const params = {
@@ -77,13 +77,13 @@ export const useTrainerClients = (initialData?: TrainerClientsResponse): {
       } : undefined,
     };
     
-    console.log('Fetcher converted dateRange:', params.dateRange);
-    console.log('Fetcher converted dateRange types:', {
-      from: params.dateRange?.from,
-      fromType: typeof params.dateRange?.from,
-      to: params.dateRange?.to,
-      toType: typeof params.dateRange?.to,
-    });
+    // console.log('Fetcher converted dateRange:', params.dateRange);
+    // console.log('Fetcher converted dateRange types:', {
+    //   from: params.dateRange?.from,
+    //   fromType: typeof params.dateRange?.from,
+    //   to: params.dateRange?.to,
+    //   toType: typeof params.dateRange?.to,
+    // });
     
     const result = await fetchTrainerClients(params);
     if (result.error) {
@@ -105,16 +105,16 @@ export const useTrainerClients = (initialData?: TrainerClientsResponse): {
   });
 
   // Debug logging for date range
-  console.log('Current filters:', filters);
-  console.log('Date range being sent:', filters.dateRange);
-  console.log('Date range types:', {
-    from: filters.dateRange?.from,
-    fromType: typeof filters.dateRange?.from,
-    to: filters.dateRange?.to,
-    toType: typeof filters.dateRange?.to,
-  });
-  console.log('SWR key:', swrKey);
-  console.log('Parsed SWR key:', JSON.parse(swrKey));
+  // console.log('Current filters:', filters);
+  // console.log('Date range being sent:', filters.dateRange);
+  // console.log('Date range types:', {
+  //   from: filters.dateRange?.from,
+  //   fromType: typeof filters.dateRange?.from,
+  //   to: filters.dateRange?.to,
+  //   toType: typeof filters.dateRange?.to,
+  // });
+  // console.log('SWR key:', swrKey);
+  // console.log('Parsed SWR key:', JSON.parse(swrKey));
 
   // Use SWR for data fetching with caching
   const { data: swrData, error, isLoading: swrLoading, mutate } = useSWR(
@@ -126,7 +126,7 @@ export const useTrainerClients = (initialData?: TrainerClientsResponse): {
       dedupingInterval: 5000, // 5 seconds - reduced for faster updates
       errorRetryCount: 3,
       onError: (error) => {
-        console.error("Failed to fetch trainer clients:", error);
+        // console.error("Failed to fetch trainer clients:", error);
       },
     }
   );
@@ -210,10 +210,10 @@ export const useTrainerClients = (initialData?: TrainerClientsResponse): {
 
   // Function to manually refetch data
   const fetchClients = useCallback(async () => {
-    console.log('Manually refetching trainer clients data...');
+    // console.log('Manually refetching trainer clients data...');
     // Force revalidation by passing undefined (refetch) and revalidate: true
     const result = await mutate(undefined, { revalidate: true });
-    console.log('Refetch completed:', result);
+    // console.log('Refetch completed:', result);
   }, [mutate]);
 
   return {

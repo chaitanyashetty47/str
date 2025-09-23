@@ -17,7 +17,7 @@ export default function FitnessPage() {
       <TrainerProfile />
       <SuccessStories />
       <PsychologicalTestimonials />
-      <PsychologicalPricing />
+      {/* <PsychologicalPricing /> */}
       <Banner />
       <Footer />
     </div>

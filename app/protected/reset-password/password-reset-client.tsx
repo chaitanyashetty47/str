@@ -22,12 +22,12 @@ export function PasswordResetClient({ searchParams }: PasswordResetClientProps) 
   const supabase = createClient();
 
   useEffect(() => {
-    // Check initial session and auth state
+    // Check initial session and auth states
     const checkAuthState = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       
       if (!currentSession) {
-        // No session - redirect to sign in
+        // No session - redirect to sign-in
         router.push('/sign-in?error=Please%20sign%20in%20to%20reset%20your%20password');
         return;
       }
