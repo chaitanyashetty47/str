@@ -8,6 +8,7 @@ import { FormMessage, Message } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordStrength } from "@/components/ui/password-strength";
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 interface PasswordResetClientProps {
@@ -18,6 +19,8 @@ export function PasswordResetClient({ searchParams }: PasswordResetClientProps) 
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const router = useRouter();
   const supabase = createClient();
 
@@ -140,23 +143,33 @@ export function PasswordResetClient({ searchParams }: PasswordResetClientProps) 
           <div className="space-y-2">
             <Label htmlFor="password" className="font-semibold">New Password</Label>
             <Input
+              id="password"
               type="password"
               name="password"
               placeholder="Enter new password"
               required
-              className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 border-2 rounded-lg focus:border-strentor-red focus:ring-strentor-red transition-colors"
             />
+            <PasswordStrength password={password} className="mt-2" />
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="confirmPassword" className="font-semibold">Confirm Password</Label>
             <Input
+              id="confirmPassword"
               type="password"
               name="confirmPassword"
               placeholder="Confirm new password"
               required
-              className="w-full p-3 border-2 rounded-lg focus:border-[#F31818] transition-colors"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full p-3 border-2 rounded-lg focus:border-strentor-red focus:ring-strentor-red transition-colors"
             />
+            {password && confirmPassword && password !== confirmPassword && (
+              <p className="text-xs text-destructive mt-1">Passwords do not match</p>
+            )}
           </div>
           
           <SubmitButton 

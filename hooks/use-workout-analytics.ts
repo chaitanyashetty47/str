@@ -237,7 +237,7 @@ export const analyticsUtils = {
 
   // Clear cache for specific plan
   clearPlanCache: (planId: string) => {
-    // Clear weekly data for this plan (both client and trainer contexts)
+    //Clear weekly data for this plan (both client and trainer contexts)
     for (const [key] of analyticsCache.weeklyData) {
       if (key.startsWith(planId)) {
         analyticsCache.weeklyData.delete(key);
