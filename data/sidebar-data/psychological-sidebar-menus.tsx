@@ -21,7 +21,7 @@ export const clientSidebarMenus = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/psychology",
+      url: "/psychological",
       icon: LayoutDashboard,
       isActive: true,
 
@@ -29,7 +29,7 @@ export const clientSidebarMenus = {
 
     {
       title: "My Clients",
-      url: "/psychology/clients",
+      url: "/psychological/clients",
       icon: Users,
       isActive: true,
 
@@ -39,7 +39,7 @@ export const clientSidebarMenus = {
 
     {
       title: "Settings",
-      url: "/psychology/settings",
+      url: "/psychological/settings",
       icon: Settings,
     },
   ],

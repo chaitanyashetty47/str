@@ -37,7 +37,7 @@ export default function BodyMetricsStep() {
           id="weight"
           type="number"
           step="0.1"
-          placeholder="70"
+          placeholder="Enter your weight in kilograms (For eg: 70 kg)"
           className="w-full"
         />
         <p className="text-xs text-gray-500">
@@ -60,7 +60,7 @@ export default function BodyMetricsStep() {
           id="height"
           type="number"
           step="0.1"
-          placeholder="175"
+          placeholder="Enter your height in centimeters (For eg: 175 cm)"
           className="w-full"
         />
         <p className="text-xs text-gray-500">

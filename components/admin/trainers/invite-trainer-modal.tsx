@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Mail, User, UserPlus } from "lucide-react";
 import { inviteTrainer } from "@/actions/admin/invite-trainer.action";
+import { toast } from "sonner";
 
 interface InviteTrainerModalProps {
   isOpen: boolean;
@@ -76,15 +77,15 @@ export function InviteTrainerModal({
       });
 
       if (result.data) {
-        alert(`Invitation sent successfully to ${formData.email}!`);
+        toast.success(`Invitation sent successfully to ${formData.email}!`);
         onTrainerInvited();
         handleClose();
       } else if (result.error) {
-        alert(`Failed to send invitation: ${result.error}`);
+        toast.error(`Failed to send invitation: ${result.error}`);
       }
     } catch (error) {
       console.error('Failed to invite trainer:', error);
-      alert('An unexpected error occurred. Please try again.');
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

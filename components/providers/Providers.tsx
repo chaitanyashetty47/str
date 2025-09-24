@@ -14,7 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             disableTransitionOnChange
             >
             {children}
-            <SonnerToaster position="top-right" />
+            <SonnerToaster position="top-right" richColors />
           </ThemeProvider>
           </AuthProvider>;
 }
