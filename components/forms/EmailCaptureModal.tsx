@@ -45,14 +45,17 @@ export const EmailCaptureModal: React.FC<EmailCaptureModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Call your calendly-partial API to capture email
-      const response = await fetch("/api/calendly-partial", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      // Commented out API call - directly proceed to Calendly embed
+      // const response = await fetch("/api/calendly-partial", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ email }),
+      // });
 
-      if (!response.ok) throw new Error("Failed to capture email");
+      // if (!response.ok) throw new Error("Failed to capture email");
+
+      // Simulate brief loading for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Close modal and trigger calendly embed
       onEmailCaptured(email);
