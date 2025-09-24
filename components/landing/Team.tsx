@@ -35,19 +35,12 @@ export default function Team() {
     {
       name: "Anisha Jhunjhunwala",
       role: "Mind & Emotions Specialist",
-      image: "/Anisha.jpeg",
+      image: "/anisha.jpeg",
       social: {
         instagram: "https://www.instagram.com/healingwithanisha?igsh=ejZ5dnprNzJ6bXd3"
       }
     },
-    // {
-    //   name: "Arun Kunjunny",
-    //   role: "Personal Transformation Architect",
-    //   image: "/Arun.jpg",
-    //   social: {
-    //     instagram: "https://www.instagram.com/akunjunny?igsh=MXQ3dWJhNTEzZWh6NA=="
-    //   }
-    // }
+
   ]
 
   const handleSocialClick = (e: React.MouseEvent, link: string) => {
