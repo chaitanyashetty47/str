@@ -57,6 +57,8 @@ async function saveSetHandler({
   }
 
   try {
+
+    console.log("Saving set process started")
     // Find the specific set instruction for this exercise and set number
     const setInstruction = await prisma.workout_set_instructions.findFirst({
       where: {
@@ -79,7 +81,9 @@ async function saveSetHandler({
     if (!setInstruction) {
       return { error: "Set instruction not found" };
     }
+    
 
+    console.log("Set instruction found, now verifying user")
     // Verify user owns this workout plan
     if (setInstruction.workout_day_exercises.workout_days.workout_plans.client_id !== userId) {
       return { error: "Access denied" };
@@ -87,6 +91,8 @@ async function saveSetHandler({
 
     // Check if log already exists for this set (one row per set policy)
     // We now use set_id + client_id as the unique identifier, ignoring dates
+    
+    console.log("User verified, now checking if log already exists")
     const existingLog = await prisma.exercise_logs.findFirst({
       where: {
         set_id: setInstruction.id,
@@ -101,7 +107,9 @@ async function saveSetHandler({
     const scheduledDate = new Date(workoutDay.day_date);
     const performedDate = new Date(); // Current date when user logs
 
+    console.log("Scheduled date found, now checking if log already exists")
       if (existingLog) {
+        console.log("Log already exists, now updating")
         // Update existing log - keep scheduled_date, update performed_date
         savedLog = await prisma.exercise_logs.update({
           where: { id: existingLog.id },
@@ -118,12 +126,14 @@ async function saveSetHandler({
         const exerciseId = setInstruction.workout_day_exercises.list_exercise_id;
         
         // Get exercise info to check if it's reps-based
+        console.log("Getting exercise info")
         const exerciseInfo = await prisma.workout_exercise_lists.findUnique({
           where: { id: exerciseId },
           select: { is_reps_based: true },
         });
 
         // Check if this set was previously linked to a PR
+        console.log("Checking if this set was previously linked to a PR")
         const existingPrLinkedToSet = await prisma.client_max_lifts.findFirst({
           where: {
             client_id: userId,
@@ -133,6 +143,7 @@ async function saveSetHandler({
           },
         });
 
+        console.log("Getting current best PR and invalidating this set's PR")
         // Get current best PR (excluding invalid ones and this set's PR)
         const currentPr = await prisma.client_max_lifts.findFirst({
           where: {
@@ -145,11 +156,15 @@ async function saveSetHandler({
         });
 
         if (exerciseInfo?.is_reps_based) {
+
+          console.log("For reps-based exercises, updating PR")
           // For reps-based exercises
           const isNewPr = !currentPr || reps > (currentPr.max_reps || 0);
           
           if (existingPrLinkedToSet) {
+            console.log("Existing PR linked to set, now checking if new PR")
             if (isNewPr) {
+              console.log("New PR, now updating existing PR")
               // Update existing PR
               await prisma.client_max_lifts.update({
                 where: { id: existingPrLinkedToSet.id },
@@ -160,6 +175,8 @@ async function saveSetHandler({
                 },
               });
             } else {
+              console.log("This set is no longer a PR, now invalidating the linked PR")
+
               // This set is no longer a PR, invalidate the linked PR
               await prisma.client_max_lifts.update({
                 where: { id: existingPrLinkedToSet.id },
@@ -168,6 +185,7 @@ async function saveSetHandler({
             }
           } else if (isNewPr) {
             // Create new PR linked to this set
+            console.log("Creating new PR linked to this set")
             // const { randomUUID } = await import('crypto');
             await prisma.client_max_lifts.create({
               data: {
@@ -185,11 +203,13 @@ async function saveSetHandler({
           }
         } else {
           // For weight-based exercises
+          console.log("For weight-based exercises, calculating estimated 1-RM")
           const cappedReps = Math.min(reps, 12);
           const estimatedOneRm = Math.round(weightKg * (1 + cappedReps / 30));
           const isNewPr = !currentPr || estimatedOneRm > (currentPr.max_weight || 0);
           
           if (existingPrLinkedToSet) {
+            console.log("Existing PR linked to set, now checking if new PR")
             if (isNewPr) {
               // Update existing PR
               await prisma.client_max_lifts.update({
@@ -200,7 +220,8 @@ async function saveSetHandler({
                   date_achieved: scheduledDate,
                 },
               });
-            } else {
+            } else {  
+              console.log("This set is no longer a PR, now invalidating the linked PR")
               // This set is no longer a PR, invalidate the linked PR
               await prisma.client_max_lifts.update({
                 where: { id: existingPrLinkedToSet.id },
@@ -209,6 +230,7 @@ async function saveSetHandler({
             }
           } else if (isNewPr) {
             // Create new PR linked to this set
+            console.log("Creating new PR linked to this set")
             // const { randomUUID } = await import('crypto');
             await prisma.client_max_lifts.create({
               data: {
@@ -226,6 +248,7 @@ async function saveSetHandler({
           }
         }
       } else {
+        console.log("Log does not exist, now creating new log")
       // Create new log - generate UUID for id
       // const { randomUUID } = await import('crypto');
       savedLog = await prisma.exercise_logs.create({
@@ -245,12 +268,14 @@ async function saveSetHandler({
       const exerciseId = setInstruction.workout_day_exercises.list_exercise_id;
       
       // Get exercise info to check if it's reps-based
+      console.log("Getting exercise info")
       const exerciseInfo = await prisma.workout_exercise_lists.findUnique({
         where: { id: exerciseId },
         select: { is_reps_based: true },
       });
 
       // Check if this set was previously linked to a PR (for updates)
+      console.log("Checking if this set was previously linked to a PR")
       const existingPrLinkedToSet = await prisma.client_max_lifts.findFirst({
         where: {
           client_id: userId,
@@ -261,6 +286,7 @@ async function saveSetHandler({
       });
 
       // Get current best PR (excluding invalid ones)
+      console.log("Getting current best PR")
       const currentPr = await prisma.client_max_lifts.findFirst({
         where: {
           client_id: userId,
@@ -270,11 +296,13 @@ async function saveSetHandler({
         orderBy: exerciseInfo?.is_reps_based ? { max_reps: "desc" } : { max_weight: "desc" },
       });
 
-      if (exerciseInfo?.is_reps_based) {
+      if (exerciseInfo?.is_reps_based) {  
         // For reps-based exercises, track max reps achieved
+        console.log("For reps-based exercises, tracking max reps achieved")
         const isNewPr = !currentPr || reps > (currentPr.max_reps || 0);
         
         if (existingPrLinkedToSet) {
+          console.log("Existing PR linked to set, now updating")
           // Update existing PR linked to this set
           await prisma.client_max_lifts.update({
             where: { id: existingPrLinkedToSet.id },
@@ -285,6 +313,7 @@ async function saveSetHandler({
             },
           });
         } else if (isNewPr) {
+          console.log("Creating new PR linked to this set")
           // Create new PR linked to this set
           await prisma.client_max_lifts.create({
             data: {
@@ -302,11 +331,13 @@ async function saveSetHandler({
         }
       } else {
         // For weight-based exercises, calculate estimated 1-RM using Epley formula capped at 12 reps
+        console.log("For weight-based exercises, calculating estimated 1-RM")
         const cappedReps = Math.min(reps, 12);
         const estimatedOneRm = Math.round(weightKg * (1 + cappedReps / 30));
         const isNewPr = !currentPr || estimatedOneRm > (currentPr.max_weight || 0);
         
         if (existingPrLinkedToSet) {
+          console.log("Existing PR linked to set, now updating")
           // Update existing PR linked to this set
           await prisma.client_max_lifts.update({
             where: { id: existingPrLinkedToSet.id },
@@ -317,6 +348,7 @@ async function saveSetHandler({
             },
           });
         } else if (isNewPr) {
+          console.log("Creating new PR linked to this set")
           // Create new PR linked to this set
           await prisma.client_max_lifts.create({
             data: {
@@ -335,6 +367,7 @@ async function saveSetHandler({
       }
     }
 
+    console.log("Saving set process completed")
     const result: SavedSetData = {
       logId: savedLog.id,
       setId: setInstruction.id,

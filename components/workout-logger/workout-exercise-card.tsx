@@ -9,6 +9,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { type WorkoutExercise } from "@/actions/client-workout/client-weekly-workout.action";
 import  YoutubeModal  from "@/components/client-workout-page/youtube-modal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { toast } from "sonner";
 
 interface WorkoutExerciseCardProps {
@@ -274,7 +279,22 @@ export function WorkoutExerciseCard({ exercise, onSaveSet, isSaving, isPastDeadl
           <span>Set</span>
           {!exercise.isRepsBased && <span>Weight (kg)</span>}
           <span>Reps</span>
-          <span>RPE</span>
+          {/* Add info icon and Tooltip content */}
+          <span className="inline-flex items-center gap-1">RPE <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3 w-3 text-gray-500" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>The Rate of Perceived Exertion (RPE) scale is a 1–10 rating system that helps measure how hard exercise feels based on effort</p>
+                    <div className="text-sm text-gray-600">
+                      <p className="text-blue-400">1-3: Warm-up, no burn &#40;Very Easy&#41;</p>
+                      <p className="text-cyan-400">4-6: Light pump, could go much further &#40;Easy&#41;</p>
+                      <p className="text-strentor-green">7-8: Strong pump, muscles working hard, can push another 2-3 reps &#40;Moderate&#41;</p>
+                      <p className="text-strentor-orange">9: Near failure, strong burn, can push another rep &#40;Hard&#41;</p>
+                      <p className="text-strentor-red">10: Absolute failure, can&apos;t complete another rep &#40;Very Hard&#41;</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip></span>
           <span>Target</span>
           <span>Action</span>
         </div>
