@@ -75,7 +75,7 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
           {/* Social Sign In Options */}
           <div className="space-y-4">
             <GoogleSignInButton />
-            <AppleSignInButton />
+            {/* <AppleSignInButton /> */}
           </div>
 
           {/* Divider */}

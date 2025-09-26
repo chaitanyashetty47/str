@@ -306,7 +306,7 @@ export default function BMICalculator({ initialWeight, initialHeight }: { initia
                   </div>
                   {weightData?.isLocked && (
                     <p className="text-sm text-muted-foreground">
-                      ⚠️ Weight is locked for today. Use the same weight across all calculators.
+                      ⚠️ Weight is locked for today. Use the same weight across all calculators. Update your today&apos;s weight in the <a href="/dashboard" className="text-blue-600 hover:underline">Dashboard</a>.
                     </p>
                   )}
                 </div>

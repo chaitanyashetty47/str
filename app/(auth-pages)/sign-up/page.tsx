@@ -62,7 +62,7 @@ export default async function Signup(props: {
           {/* Social Sign Up Options*/}
           <div className="space-y-4">
             <GoogleSignInButton />
-            <AppleSignInButton />
+            {/* <AppleSignInButton /> */}
           </div>
 
           {/* Divider */}
