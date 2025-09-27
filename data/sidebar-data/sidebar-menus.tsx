@@ -9,6 +9,8 @@ import {
   PieChart,
   Map,
 
+  ListTodo,
+
 
   LayoutDashboard, 
   Dumbbell, 
@@ -40,7 +42,7 @@ export const sidebarMenus = {
     {
       title: "Workout Plans",
       url: "/fitness/plans",
-      icon: Dumbbell,
+      icon: ListTodo,
       items: [
         {
           title: "All Plans",
@@ -52,6 +54,12 @@ export const sidebarMenus = {
         },
 
       ],
+    },
+    {
+      title: "Exercises List",
+      url: "/fitness/exercises",
+      icon: Dumbbell,
+
     },
     {
       title: "Settings",
