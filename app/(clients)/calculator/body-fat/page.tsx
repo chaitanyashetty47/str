@@ -9,14 +9,7 @@ import { validateServerRole } from "@/lib/server-role-validation";
 export const dynamic = 'force-dynamic';
 
 export default async function BodyFatCalculatorPage() {
-  //Check if user is logged in
-  // const supabase = await createClient();
-  // const { data: user } = await supabase.auth.getUser();
-  // if(!user) {
-  //   return redirect("/settings");
-  // }
 
-  // Validate user authentication and CLIENT role
   const { user } = await validateServerRole(['CLIENT']);
 
   let weight = 0;

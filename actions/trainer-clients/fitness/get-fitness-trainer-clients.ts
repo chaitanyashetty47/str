@@ -68,30 +68,36 @@ export async function getTrainerClients(
     // });
   }
 
-  // First, get all trainer clients with their subscriptions
-  const trainerClients = await prisma.trainer_clients.findMany({
-    where: {
-      trainer_id: trainerId,
-      client: {
-        ...(search && {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-          ],
-        }),
-        // Always restrict to allowed plan categories and statuses
-        user_subscriptions: {
-          some: {
-            subscription_plans: {
-              category: { in: ALLOWED_CATEGORIES },
-            },
-            status: { in: ALLOWED_STATUSES },
-            // Apply date range filter to subscription start_date
-            ...dateFilter,
+  // Build the where clause
+  const whereClause = {
+    trainer_id: trainerId,
+    // CRITICAL FIX: Filter by category in trainer_clients table to ensure we only get
+    // clients assigned to this trainer for FITNESS category
+    category: { in: ALLOWED_CATEGORIES },
+    client: {
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+        ],
+      }),
+      // Always restrict to allowed plan categories and statuses
+      user_subscriptions: {
+        some: {
+          subscription_plans: {
+            category: { in: ALLOWED_CATEGORIES },
           },
+          status: { in: ALLOWED_STATUSES },
+          // Apply date range filter to subscription start_date
+          ...dateFilter,
         },
       },
     },
+  };
+
+  // First, get all trainer clients with their subscriptions
+  const trainerClients = await prisma.trainer_clients.findMany({
+    where: whereClause,
     include: {
       client: {
         select: {
@@ -134,7 +140,7 @@ export async function getTrainerClients(
   const clientMap = new Map<string, TrainerClientRow>();
 
   trainerClients.forEach((tc) => {
-    const clientProfile = tc.client;
+    const clientProfile = (tc as any).client;
     const clientId = clientProfile.id;
     
     // If we already have this client, skip (prevent duplicates)
@@ -148,7 +154,7 @@ export async function getTrainerClients(
 
     if (subscriptions.length > 0) {
       // First try to find an ACTIVE subscription
-      const activeSubscription = subscriptions.find(sub => sub.status === SubscriptionStatus.ACTIVE);
+      const activeSubscription = subscriptions.find((sub: any) => sub.status === SubscriptionStatus.ACTIVE);
       if (activeSubscription) {
         bestSubscription = activeSubscription;
       } else {
@@ -207,11 +213,14 @@ export async function getTrainerClientsCount(
     by: ['client_id'],
     where: {
       trainer_id: trainerId,
+      // CRITICAL FIX: Filter by category in trainer_clients table to ensure we only get
+      // clients assigned to this trainer for FITNESS category
+      category: { in: ALLOWED_CATEGORIES },
       client: {
         ...(search && {
           OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
+            { name: { contains: search, mode: "insensitive" as const } },
+            { email: { contains: search, mode: "insensitive" as const } },
           ],
         }),
         user_subscriptions: {

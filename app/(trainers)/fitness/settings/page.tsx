@@ -4,22 +4,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TrainerProfileForm } from "@/components/profile/trainer-profile-form";
 import { SettingsHeader, SettingsActions } from "@/components/settings/settings-header";
 import { FormMessage, Message } from "@/components/form-message";
+import { validateServerRole } from "@/lib/server-role-validation";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Trainer Settings - Strentor",
+  description: "Manage your trainer profile and account information",
+  keywords: ["trainer settings", "trainer profile", "trainer account", "trainer information"],
+};
 
 export default async function SettingsPage(props: {
   searchParams: Promise<Message>;
 }) {
   const searchParams = await props.searchParams;
+  const { user } = await validateServerRole(['FITNESS_TRAINER', 'FITNESS_TRAINER_ADMIN']);
+
   const supabase = await createClient();
 
   // Get user data
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  // const {
+  //   data: { user },
+  //   error: userError,
+  // } = await supabase.auth.getUser();
 
-  if (userError || !user) {
-    return redirect("/sign-in?error=Session%20expired");
-  }
+  // if (userError || !user) {
+  //   return redirect("/sign-in?error=Session%20expired");
+  // }
 
   // Get profile data
   const { data: profile, error: profileError } = await supabase

@@ -260,7 +260,7 @@ async function handler({ trainerId, meta, weeks }: CreateWorkoutPlanInput) {
     
     // Parse startDate from YYYY-MM-DD string as local date (no timezone conversion)
     const [year, month, day] = meta.startDate.split('-').map(Number);
-    const startDate = new Date(year, month - 1, day); // month is 0-indexed
+    const startDate = new Date(Date.UTC(year, month - 1, day)); // month is 0-indexed
     console.log('🔍 DEBUG - Parsed startDate:', startDate);
     console.log('🔍 DEBUG - Parsed startDate.toISOString():', startDate.toISOString());
     

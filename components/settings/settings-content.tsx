@@ -33,7 +33,7 @@ export function SettingsContent({ user }: SettingsContentProps) {
 
   // Fetch all data once on component mount
   useEffect(() => {
-    console.log("fetching all data again");
+    // console.log("fetching all data again");
     const fetchAllData = async () => {
       try {
         setIsLoading(true);

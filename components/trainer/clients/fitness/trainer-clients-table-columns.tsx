@@ -4,9 +4,16 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrainerClientRow } from "@/types/trainer-clients.types";
-import { Eye, ArrowUpDown, ChevronDown } from "lucide-react";
+import { Eye, ArrowUpDown, ChevronDown, MoreVertical, FileText } from "lucide-react";
 import { useMemo } from "react";
 import { format } from "date-fns";
+import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const statusColors: Record<string, string> = {
   ACTIVE: "bg-green-100 text-green-800",
@@ -121,16 +128,39 @@ export const useTrainerClientsColumns = (): ColumnDef<TrainerClientRow>[] => {
       id: "actions",
       enableSorting: false,
       header: "Actions",
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 px-2 text-red-600 hover:text-red-800"
-        >
-          <Eye className="h-4 w-4" />
-          <span className="ml-2">View Details</span>
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const clientId = row.original.id;
+        
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link 
+                  href={`/fitness/clients/${clientId}`}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <Eye className="h-4 w-4" />
+                  View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link 
+                  href={`/fitness/plans/create?clientId=${clientId}`}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <FileText className="h-4 w-4" />
+                  Create Plan
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
     },
   ], []);
 };

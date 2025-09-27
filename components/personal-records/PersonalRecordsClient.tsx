@@ -179,81 +179,83 @@ export function PersonalRecordsClient({ uniqueExercises, allMaxLifts }: Personal
       <div className="flex flex-col gap-6">
 
         {/* Filter Controls */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Body Part Dropdown */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">Body Part</label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-48 justify-between">
-                  <span className="text-foreground">{selectedBodyPart || "Select Body Part"}</span>
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {uniqueBodyParts.map((bodyPart) => (
-                  <DropdownMenuItem 
-                    key={bodyPart} 
-                    onClick={() => {
-                      setSelectedBodyPart(bodyPart);
-                      setSelectedExercise("");
-                    }}
-                  >
-                    {bodyPart}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="space-y-4">
+          {/* Main Filter Row */}
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Body Part Dropdown */}
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <label className="text-sm font-medium text-foreground">Body Part</label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-48 justify-between">
+                    <span className="text-foreground truncate">{selectedBodyPart || "Select Body Part"}</span>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {uniqueBodyParts.map((bodyPart) => (
+                    <DropdownMenuItem 
+                      key={bodyPart} 
+                      onClick={() => {
+                        setSelectedBodyPart(bodyPart);
+                        setSelectedExercise("");
+                      }}
+                    >
+                      {bodyPart}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Exercise Dropdown */}
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <label className="text-sm font-medium text-foreground">Exercise</label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-48 justify-between">
+                    <span className="text-foreground truncate">{selectedExercise || "Select Exercise"}</span>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {filteredExercises.map((exercise) => (
+                    <DropdownMenuItem 
+                      key={exercise.exerciseId} 
+                      onClick={() => {
+                        setSelectedExercise(exercise.exerciseName);
+                        setSelectedBodyPart(exercise.exerciseType);
+                      }}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{exercise.exerciseName}</span>
+                        <span className="text-sm text-muted-foreground">{exercise.exerciseType}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <label className="text-sm font-medium text-foreground">Date Range</label>
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                placeholder="Select date range"
+                className="w-full sm:w-64"
+              />
+            </div>
           </div>
 
-          {/* Exercise Dropdown */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">Exercise</label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-48 justify-between">
-                  <span className="text-foreground">{selectedExercise || "Select Exercise"}</span>
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {filteredExercises.map((exercise) => (
-                  <DropdownMenuItem 
-                    key={exercise.exerciseId} 
-                    onClick={() => {
-                      setSelectedExercise(exercise.exerciseName);
-                      setSelectedBodyPart(exercise.exerciseType);
-                    }}
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium">{exercise.exerciseName}</span>
-                      <span className="text-sm text-muted-foreground">{exercise.exerciseType}</span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Date Range Filter */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">Date Range</label>
-            <DateRangePicker
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              placeholder="Select date range"
-              className="w-64"
-            />
-          </div>
-
-          {/* Clear Filters Button */}
+          {/* Clear Filters Button Row */}
           {(selectedExercise || selectedBodyPart || dateRange) && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-transparent">Actions</label>
+            <div className="flex justify-start">
               <Button 
                 variant="outline" 
                 onClick={clearAllFilters}
-                className="hover:bg-muted/80"
+                className="hover:bg-muted/80 w-full sm:w-auto"
               >
                 Clear Filters
               </Button>

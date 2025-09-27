@@ -42,10 +42,35 @@ export function ExercisePRCarousel({ uniqueExercises, allMaxLifts }: ExercisePRC
   useEffect(() => {
     if (exercisesWithPRs.length > 0 && currentExerciseIndex < exercisesWithPRs.length) {
       const currentExercise = exercisesWithPRs[currentExerciseIndex];
-      const exerciseData = allMaxLifts
-        .filter(lift => lift.exerciseName === currentExercise.exerciseName)
+      
+      // Filter and group by date, taking the best PR for each date
+      const filteredLifts = allMaxLifts.filter(lift => lift.exerciseName === currentExercise.exerciseName);
+      
+      // Group by date and take the best PR for each date
+      const groupedByDate = filteredLifts.reduce((acc, lift) => {
+        const date = new Date(lift.dateAchieved).toDateString();
+        const isRepsBased = lift.exerciseTypeEnum === "REPS_BASED";
+        
+        if (!acc[date]) {
+          acc[date] = lift;
+        } else {
+          // Compare and keep the better PR
+          const currentBest = acc[date];
+          const isCurrentBetter = isRepsBased 
+            ? (lift.maxReps ?? 0) > (currentBest.maxReps ?? 0)
+            : (lift.maxWeight ?? 0) > (currentBest.maxWeight ?? 0);
+          
+          if (isCurrentBetter) {
+            acc[date] = lift;
+          }
+        }
+        return acc;
+      }, {} as Record<string, MaxLiftOutput>);
+
+      // Convert back to array, sort by date, and take last 3 unique dates
+      const exerciseData = Object.values(groupedByDate)
         .sort((a, b) => new Date(a.dateAchieved).getTime() - new Date(b.dateAchieved).getTime())
-        .slice(-3); // Get last 3 PRs
+        .slice(-3); // Get last 3 unique dates
       
       setCurrentExerciseData(exerciseData);
     }

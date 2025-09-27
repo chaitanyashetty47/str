@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { WorkoutLoggerClient } from "@/components/workout-logger/workout-logger-client";
+import { validateServerRole } from "@/lib/server-role-validation";
+
 
 interface WorkoutLogPageProps {
   params: Promise<{ workoutId: string }>;
@@ -13,8 +15,10 @@ export default async function WorkoutLogPage({
   const { workoutId } = await params;
   const { weekNumber } = await searchParams;
 
+  const { user } = await validateServerRole(['CLIENT']);
+
   // Validate required search params
-  if ( !weekNumber) {
+  if (!weekNumber) {
     return (
       <div className="text-center py-12">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Invalid Date Range</h1>
@@ -25,7 +29,9 @@ export default async function WorkoutLogPage({
     );
   }
 
+
   return (
+
     <div className="container mx-auto px-4 py-6">
       <Suspense fallback={<WorkoutLoggerSkeleton />}>
         <WorkoutLoggerClient

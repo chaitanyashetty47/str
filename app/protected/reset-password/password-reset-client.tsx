@@ -35,7 +35,7 @@ export function PasswordResetClient({ searchParams }: PasswordResetClientProps) 
         return;
       }
 
-      console.log('Password reset - session found:', currentSession.user?.id);
+      // console.log('Password reset - session found:', currentSession.user?.id);
       setSession(currentSession);
       
       // For direct access, any authenticated session is valid
@@ -48,7 +48,7 @@ export function PasswordResetClient({ searchParams }: PasswordResetClientProps) 
     // Listen for auth state changes (including PASSWORD_RECOVERY events)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, currentSession: Session | null) => {
-        console.log('Auth state change:', event, currentSession?.user?.id);
+        // console.log('Auth state change:', event, currentSession?.user?.id);
         
         if (event === 'PASSWORD_RECOVERY') {
           // This is definitely a password recovery session

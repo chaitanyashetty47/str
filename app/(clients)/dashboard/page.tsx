@@ -113,6 +113,16 @@ export default async function DashboardPage() {
                 Update Profile
               </Link>
             </Button>
+
+            <Button 
+              className="w-full h-12 px-6 text-base rounded-full font-bold bg-strentor-red hover:bg-strentor-red/80 transition-all transform hover:scale-105" 
+              asChild
+            >
+              <Link href="/plans">
+                <Dumbbell className="mr-2 h-5 w-5" />
+                Check All Plans
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
