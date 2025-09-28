@@ -31,7 +31,7 @@ export default async function WorkoutPlanPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6">
-    tness journey with active, upcoming, and previous  <WorkoutPageHeader
+      <WorkoutPageHeader
         planId={workoutPlan.id}
         title={workoutPlan.title}
         description={workoutPlan.description}

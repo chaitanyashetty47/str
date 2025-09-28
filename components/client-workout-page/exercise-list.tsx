@@ -112,7 +112,7 @@ export default function ExerciseList({ exercises }: ExerciseListProps) {
                         <TableHead className="w-16">Set</TableHead>
                         <TableHead>Weight</TableHead>
                         <TableHead>Reps</TableHead>
-                        <TableHead className="w-16">RPE</TableHead>
+                        {/* <TableHead className="w-16">RPE</TableHead> */}
                         <TableHead>Notes</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -128,10 +128,10 @@ export default function ExerciseList({ exercises }: ExerciseListProps) {
                           <TableCell>
                             {set.reps || '-'}
                           </TableCell>
-                          <TableCell>
+                          {/* <TableCell> */}
                             {/* RPE can be calculated from notes or separate field */}
-                            -
-                          </TableCell>
+                            {/* - */}
+                          {/* </TableCell> */}
                           <TableCell className="text-muted-foreground">
                             {set.notes || '-'}
                           </TableCell>
