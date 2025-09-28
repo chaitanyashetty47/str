@@ -78,37 +78,6 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
   // Get current form values for client selection display
   const formValues = watch();
 
-  // Sync form with context state when context changes (but not during user input)
-  useEffect(() => {
-    const currentFormValues = form.getValues();
-    
-    // Only update form if context has different values and form hasn't been modified by user
-    if (meta.title !== currentFormValues.title && !form.formState.isDirty) {
-      setValue("title", meta.title);
-    }
-    if (meta.description !== currentFormValues.description && !form.formState.isDirty) {
-      setValue("description", meta.description);
-    }
-    if (meta.startDate !== format(currentFormValues.startDate, 'yyyy-MM-dd')) {
-      setValue("startDate", parseStartDate(meta.startDate));
-    }
-    if (meta.durationWeeks !== currentFormValues.durationWeeks) {
-      setValue("durationWeeks", meta.durationWeeks);
-    }
-    if (meta.category !== currentFormValues.category) {
-      setValue("category", meta.category);
-    }
-    if (meta.clientId !== currentFormValues.clientId) {
-      setValue("clientId", meta.clientId);
-    }
-    if (meta.intensityMode !== currentFormValues.intensityMode) {
-      setValue("intensityMode", meta.intensityMode);
-    }
-    if (meta.status !== currentFormValues.status) {
-      setValue("status", meta.status);
-    }
-  }, [meta, setValue, form]);
-
   const handleStartDateChange = (date: Date | undefined) => {
     if (!date) return;
     
@@ -259,10 +228,10 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
       });
 
       // Debug: Check what we're sending
-      console.log('🔍 Frontend - validatedData.startDate:', validatedData.startDate);
-      console.log('🔍 Frontend - typeof validatedData.startDate:', typeof validatedData.startDate);
-      console.log('🔍 Frontend - state.meta.startDate:', state.meta.startDate);
-      console.log('🔍 Frontend - typeof state.meta.startDate:', typeof state.meta.startDate);
+      // console.log('🔍 Frontend - validatedData.startDate:', validatedData.startDate);
+      // console.log('🔍 Frontend - typeof validatedData.startDate:', typeof validatedData.startDate);
+      // console.log('🔍 Frontend - state.meta.startDate:', state.meta.startDate);
+      // console.log('🔍 Frontend - typeof state.meta.startDate:', typeof state.meta.startDate);
       
       // Execute the action with the current state (will be updated by the time this runs)
       if (mode === "create" && trainerId) {
@@ -320,13 +289,6 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
                   type="text" 
                   placeholder="Enter plan name" 
                   {...field}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    dispatch({ 
-                      type: "UPDATE_META", 
-                      payload: { ...meta, title: e.target.value } 
-                    });
-                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -400,13 +362,7 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
             <FormItem className="flex flex-col gap-2">
               <FormLabel>Category</FormLabel>
               <Select 
-                onValueChange={(value) => {
-                  field.onChange(value);
-                  dispatch({ 
-                    type: "UPDATE_META", 
-                    payload: { ...meta, category: value as WorkoutCategory } 
-                  });
-                }} 
+                onValueChange={field.onChange} 
                 value={field.value}
               >
                 <FormControl>
@@ -516,13 +472,6 @@ export function PlanHeader({ mode, trainerId, planId }: PlanHeaderProps) {
               <Textarea
                 {...field}
                 placeholder="Enter plan description"
-                onChange={(e) => {
-                  field.onChange(e);
-                  dispatch({ 
-                    type: "UPDATE_META", 
-                    payload: { ...meta, description: e.target.value } 
-                  });
-                }}
                 className={cn(
                   "resize-none",                      // disable manual resizing
                   "rounded-2xl",                      // more circular corners
